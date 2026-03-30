@@ -1,0 +1,204 @@
+<UserControl x:Class="DevWorkspaceHub.Views.ProjectEditView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:conv="clr-namespace:DevWorkspaceHub.Converters"
+             xmlns:models="clr-namespace:DevWorkspaceHub.Models"
+             mc:Ignorable="d"
+             d:DesignWidth="500" d:DesignHeight="620"
+             Background="{StaticResource BaseBgBrush}">
+
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <conv:NullToVisibilityConverter x:Key="NullToVis" />
+        <conv:HexColorToBrushConverter x:Key="HexToBrush" />
+        <conv:ShellTypeToNameConverter x:Key="ShellToName" />
+    </UserControl.Resources>
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" /> <!-- Title -->
+            <RowDefinition Height="*" />    <!-- Form -->
+            <RowDefinition Height="Auto" /> <!-- Error message -->
+            <RowDefinition Height="Auto" /> <!-- Buttons -->
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             DIALOG TITLE
+             ═══════════════════════════════════════════════════════════════ -->
+        <TextBlock Grid.Row="0"
+                   Text="{Binding DialogTitle}"
+                   Style="{StaticResource HeadingText}"
+                   Margin="0,0,0,16" />
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             FORM FIELDS
+             ═══════════════════════════════════════════════════════════════ -->
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <!-- Project Name -->
+                <TextBlock Text="Nome do Projeto" Style="{StaticResource BodyText}"
+                           Margin="0,0,0,4" />
+                <TextBox Style="{StaticResource DarkTextBox}"
+                         Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                         Margin="0,0,0,16" />
+
+                <!-- Project Path -->
+                <TextBlock Text="Caminho do Projeto" Style="{StaticResource BodyText}"
+                           Margin="0,0,0,4" />
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0"
+                             Style="{StaticResource DarkTextBox}"
+                             Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"
+                             Margin="0,0,8,0" />
+                    <Button Grid.Column="1"
+                            Style="{StaticResource GhostButton}"
+                            Content="Procurar"
+                            Command="{Binding BrowsePathCommand}"
+                            Padding="12,8" />
+                </Grid>
+
+                <!-- Default Shell -->
+                <TextBlock Text="Shell Padrão" Style="{StaticResource BodyText}"
+                           Margin="0,0,0,4" />
+                <ComboBox Style="{StaticResource DarkComboBox}"
+                          ItemsSource="{Binding AvailableShells}"
+                          SelectedItem="{Binding DefaultShell}"
+                          Margin="0,0,0,16">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource ShellToName}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <!-- Color -->
+                <TextBlock Text="Cor do Projeto" Style="{StaticResource BodyText}"
+                           Margin="0,0,0,4" />
+                <ItemsControl ItemsSource="{Binding AvailableColors}"
+                              Margin="0,0,0,16">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Width="28" Height="28"
+                                    CornerRadius="14"
+                                    Background="{Binding Converter={StaticResource HexToBrush}}"
+                                    Margin="0,0,6,6"
+                                    Cursor="Hand"
+                                    BorderThickness="2"
+                                    BorderBrush="Transparent"
+                                    MouseLeftButtonDown="ColorSwatch_Click">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Opacity" Value="0.8" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Startup Commands -->
+                <TextBlock Text="Comandos de Inicialização" Style="{StaticResource BodyText}"
+                           Margin="0,0,0,4" />
+                <TextBlock Text="Comandos executados ao abrir este projeto"
+                           Style="{StaticResource CaptionText}"
+                           Margin="0,0,0,8" />
+
+                <!-- Add command -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0"
+                             Style="{StaticResource DarkTextBox}"
+                             Text="{Binding NewStartupCommand, UpdateSourceTrigger=PropertyChanged}"
+                             FontFamily="{StaticResource MonoFont}"
+                             FontSize="12"
+                             Margin="0,0,8,0" />
+                    <Button Grid.Column="1"
+                            Style="{StaticResource GhostButton}"
+                            Content="Adicionar"
+                            Command="{Binding AddStartupCommandCommand}"
+                            Padding="12,8" />
+                </Grid>
+
+                <!-- Command list -->
+                <ItemsControl ItemsSource="{Binding StartupCommands}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{StaticResource Surface0Brush}"
+                                    CornerRadius="4"
+                                    Padding="10,6"
+                                    Margin="0,0,0,4">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right"
+                                            Style="{StaticResource IconButton}"
+                                            Width="20" Height="20"
+                                            Command="{Binding DataContext.RemoveStartupCommandCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}">
+                                        <Path Data="{StaticResource CloseIcon}"
+                                              Width="8" Height="8"
+                                              Stroke="{StaticResource Overlay0Brush}"
+                                              StrokeThickness="2"
+                                              Stretch="Uniform" />
+                                    </Button>
+                                    <TextBlock Text="{Binding}"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontSize="12"
+                                               Foreground="{StaticResource TextBrush}"
+                                               VerticalAlignment="Center" />
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             ERROR MESSAGE
+             ═══════════════════════════════════════════════════════════════ -->
+        <TextBlock Grid.Row="2"
+                   Text="{Binding ErrorMessage}"
+                   Foreground="{StaticResource AccentRedBrush}"
+                   FontSize="12"
+                   Margin="0,8,0,0"
+                   Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVis}}" />
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             ACTION BUTTONS
+             ═══════════════════════════════════════════════════════════════ -->
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,16,0,0">
+            <Button Style="{StaticResource GhostButton}"
+                    Content="Cancelar"
+                    Command="{Binding CancelCommand}"
+                    Margin="0,0,8,0"
+                    Padding="16,8" />
+            <Button Style="{StaticResource AccentButton}"
+                    Content="Salvar"
+                    Command="{Binding SaveCommand}"
+                    IsEnabled="{Binding IsValid}"
+                    Padding="24,8" />
+        </StackPanel>
+    </Grid>
+</UserControl>

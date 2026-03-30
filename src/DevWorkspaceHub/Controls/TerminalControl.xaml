@@ -1,0 +1,77 @@
+<UserControl x:Class="DevWorkspaceHub.Controls.TerminalControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="800" d:DesignHeight="500"
+             Focusable="True"
+             Background="{StaticResource BaseBgBrush}"
+             SizeChanged="OnSizeChanged"
+             MouseDown="OnMouseDown"
+             GotFocus="OnGotFocus"
+             LostFocus="OnLostFocus">
+
+    <Grid>
+        <!-- Terminal output area (read-only, no focus) -->
+        <RichTextBox x:Name="OutputArea"
+                     IsReadOnly="True"
+                     IsReadOnlyCaretVisible="False"
+                     Background="{StaticResource BaseBgBrush}"
+                     Foreground="{StaticResource TextBrush}"
+                     FontFamily="{StaticResource MonoFont}"
+                     FontSize="14"
+                     BorderThickness="0"
+                     Padding="8,4"
+                     VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Disabled"
+                     IsUndoEnabled="False"
+                     Focusable="False"
+                     IsHitTestVisible="False"
+                     Cursor="IBeam">
+            <RichTextBox.Resources>
+                <Style TargetType="ScrollViewer">
+                    <Setter Property="Background" Value="Transparent" />
+                </Style>
+            </RichTextBox.Resources>
+        </RichTextBox>
+
+        <!-- Invisible TextBox that captures ALL keyboard input -->
+        <TextBox x:Name="HiddenInput"
+                 Opacity="0"
+                 Width="0" Height="0"
+                 Focusable="True"
+                 AcceptsReturn="False"
+                 AcceptsTab="False"
+                 IsUndoEnabled="False"
+                 PreviewKeyDown="OnPreviewKeyDown"
+                 PreviewTextInput="OnPreviewTextInput"
+                 Background="Transparent"
+                 BorderThickness="0" />
+
+        <!-- Blinking cursor overlay -->
+        <Canvas x:Name="CursorCanvas"
+                IsHitTestVisible="False">
+            <Border x:Name="CursorBlock"
+                    Width="8" Height="16"
+                    Background="#7C3AED"
+                    Opacity="0.8"
+                    Visibility="Collapsed"
+                    Canvas.Left="8" Canvas.Top="4">
+                <Border.Triggers>
+                    <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard>
+                            <Storyboard RepeatBehavior="Forever">
+                                <DoubleAnimation
+                                    Storyboard.TargetProperty="Opacity"
+                                    From="0.8" To="0.0"
+                                    Duration="0:0:0.5"
+                                    AutoReverse="True" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </Border.Triggers>
+            </Border>
+        </Canvas>
+    </Grid>
+</UserControl>
