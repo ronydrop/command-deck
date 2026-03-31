@@ -11,7 +11,7 @@
 
 #### Arquivos Criados
 
-**`src/DevWorkspaceHub/Views/TerminalCanvasView.xaml`**
+**`src/CommandDeck/Views/TerminalCanvasView.xaml`**
 - `UserControl` que substitui o `TerminalView.xaml` (TerminalView **não foi deletado**, mantido como backup).
 - Estrutura com dois rows: barra de ferramentas (40px) + área do canvas arrastável.
 - **Barra de ferramentas**: botão "Novo Terminal" (AccentButton, dispara `NewTerminalCommand`), indicador de zoom (ex: "100%"), botão "Ver Todos" (oculto quando não há foco ativo).
@@ -19,7 +19,7 @@
 - **Estado vazio**: `StackPanel` centralizado com ícone e texto português, visível quando não há terminais.
 - Converters declarados: `BoolToVisibilityConverter`, `TerminalStatusToColorConverter`.
 
-**`src/DevWorkspaceHub/Views/TerminalCanvasView.xaml.cs`**
+**`src/CommandDeck/Views/TerminalCanvasView.xaml.cs`**
 - Criação dinâmica de cards de terminal via `AddTerminalCard(TerminalViewModel)`.
 - Cada card tem: `Border` (600×420px, MantelBg, Surface0 borda, CornerRadius=8, sombra), barra de título (CrustBg, status dot com binding `Session.Status`, TextBlock com binding `Title`, botão fechar que invoca `CloseTerminalCommand`), e `TerminalControl` embedded com `DataContext = tvm`.
 - Sincronização com `ObservableCollection<TerminalViewModel>` via `INotifyCollectionChanged`.
@@ -49,7 +49,7 @@
 
 #### Arquivos Modificados
 
-**`src/DevWorkspaceHub/Views/MainWindow.xaml`**
+**`src/CommandDeck/Views/MainWindow.xaml`**
 - Linha 133: substituído `<views:TerminalView>` por `<views:TerminalCanvasView>`.
 - Binding de `Visibility` mantido idêntico (ConverterParameter=Terminal).
 - `TerminalView.xaml` e `TerminalView.xaml.cs` **preservados** sem alteração.
@@ -81,7 +81,7 @@
 | `MainWindow.xaml` — XML válido | ✅ Confirmado com parser XML Python |
 | Todos os `x:Name` no XAML correspondem ao code-behind | ✅ |
 | Todos os event handlers no XAML têm método correspondente no .cs | ✅ |
-| Converters referenciados existem no namespace `DevWorkspaceHub.Converters` | ✅ |
+| Converters referenciados existem no namespace `CommandDeck.Converters` | ✅ |
 | `using` directives cobrem todos os tipos usados | ✅ |
 | `.csproj` usa SDK-style (auto-discover) — não precisa registrar novos arquivos | ✅ |
 | `TerminalView.xaml` e `.cs` preservados como backup | ✅ |

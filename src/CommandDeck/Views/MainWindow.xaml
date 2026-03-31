@@ -1,0 +1,604 @@
+<Window x:Class="CommandDeck.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:CommandDeck.ViewModels"
+        xmlns:views="clr-namespace:CommandDeck.Views"
+        xmlns:conv="clr-namespace:CommandDeck.Converters"
+        xmlns:controls="clr-namespace:CommandDeck.Controls"
+        mc:Ignorable="d"
+        Title="Command Deck"
+        Width="1400" Height="900"
+        MinWidth="800" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Style="{StaticResource DarkWindowStyle}"
+        Loaded="Window_Loaded">
+
+    <Window.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <conv:NullToVisibilityConverter x:Key="NullToVis" />
+        <conv:ViewTypeToVisibilityConverter x:Key="ViewTypeToVis" />
+        <conv:HexColorToBrushConverter x:Key="HexToBrush" />
+        <conv:BoolToGridLengthConverter x:Key="BoolToGridLength" />
+        <conv:CountToVisibilityConverter x:Key="CountToVis" />
+        <conv:StringToVisibilityConverter x:Key="StringToVis" />
+    </Window.Resources>
+
+    <Window.InputBindings>
+        <KeyBinding Key="T" Modifiers="Ctrl+Shift" Command="{Binding NewTerminalCommand}" />
+        <KeyBinding Key="W" Modifiers="Ctrl+Shift" Command="{Binding CloseTerminalCommand}"
+                    CommandParameter="{Binding ActiveTerminal}" />
+        <KeyBinding Key="Tab" Modifiers="Ctrl" Command="{Binding NextTerminalCommand}" />
+        <KeyBinding Key="Tab" Modifiers="Ctrl+Shift" Command="{Binding PreviousTerminalCommand}" />
+        <KeyBinding Key="B" Modifiers="Ctrl" Command="{Binding ToggleSidebarCommand}" />
+        <KeyBinding Key="K" Modifiers="Ctrl" Command="{Binding OpenCommandPaletteCommand}" />
+        <KeyBinding Key="I" Modifiers="Ctrl" Command="{Binding ToggleAIPanelCommand}" />
+        <KeyBinding Key="B" Modifiers="Ctrl+Shift" Command="{Binding ToggleTerminalPanelCommand}" />
+        <KeyBinding Key="C" Modifiers="Ctrl+Shift" Command="{Binding LaunchClaudeCommand}" />
+        <KeyBinding Key="Tab" Modifiers="Shift" Command="{Binding NextProjectCommand}" />
+        <KeyBinding Key="L" Modifiers="Ctrl+Shift" Command="{Binding CanvasViewModel.ToggleLayoutModeCommand}" />
+        <KeyBinding Key="G" Modifiers="Ctrl+Shift" Command="{Binding OpenBranchSelectorCommand}" />
+        <!-- AI Orb shortcuts -->
+        <KeyBinding Key="A" Modifiers="Ctrl+Alt" Command="{Binding AiOrb.ToggleRadialMenuCommand}" />
+        <KeyBinding Key="I" Modifiers="Ctrl+Shift" Command="{Binding AiOrb.ImprovePromptCommand}" />
+        <KeyBinding Key="X" Modifiers="Ctrl+Shift" Command="{Binding AiOrb.CopyContextCommand}" />
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <!-- Sidebar -->
+            <ColumnDefinition Width="Auto" />
+            <!-- Main content -->
+            <ColumnDefinition Width="*" />
+            <!-- AI Panel (320px when open, 0 when closed) -->
+            <ColumnDefinition Width="{Binding IsAIPanelOpen, Converter={StaticResource BoolToGridLength}}" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <!-- Top nav bar -->
+            <RowDefinition Height="40" />
+            <RowDefinition Height="*" />
+            <!-- Status bar -->
+            <RowDefinition Height="28" />
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             TOP NAVIGATION BAR
+             ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="0"
+                Background="{DynamicResource GlassToolbarBrush}"
+                BorderBrush="{DynamicResource GlassBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="8,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Toggle sidebar button -->
+                <Button Grid.Column="0"
+                        Style="{StaticResource IconButton}"
+                        Width="32" Height="32"
+                        Command="{Binding ToggleSidebarCommand}"
+                        ToolTip="Alternar Barra Lateral (Ctrl+B)"
+                        Margin="0,0,8,0">
+                    <Path Data="{StaticResource SidebarIcon}"
+                          Style="{StaticResource IconPathSmall}" />
+                </Button>
+
+                <!-- Painel -->
+                <Button Grid.Column="1"
+                        Command="{Binding NavigateToCommand}"
+                        CommandParameter="{x:Static vm:ViewType.Dashboard}"
+                        VerticalAlignment="Center"
+                        Margin="0,0,4,0"
+                        Padding="10,6">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentView}" Value="{x:Static vm:ViewType.Dashboard}">
+                                    <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="{StaticResource DashboardIcon}"
+                              Style="{StaticResource IconPathSmall}"
+                              Margin="0,0,6,0" />
+                        <TextBlock Text="Painel" VerticalAlignment="Center" FontSize="13" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Terminal -->
+                <Button Grid.Column="2"
+                        Command="{Binding NavigateToCommand}"
+                        CommandParameter="{x:Static vm:ViewType.Terminal}"
+                        VerticalAlignment="Center"
+                        Margin="0,0,4,0"
+                        Padding="10,6">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentView}" Value="{x:Static vm:ViewType.Terminal}">
+                                    <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="{StaticResource TerminalIcon}"
+                              Style="{StaticResource IconPathSmall}"
+                              Margin="0,0,6,0" />
+                        <TextBlock Text="Terminal" VerticalAlignment="Center" FontSize="13" />
+                    </StackPanel>
+                </Button>
+
+
+                <!-- AI Assistant toggle -->
+                <Button Grid.Column="4"
+                        Style="{StaticResource IconButton}"
+                        Width="32" Height="32"
+                        Command="{Binding ToggleAIPanelCommand}"
+                        ToolTip="Assistente IA (Ctrl+I)">
+                    <Border Width="16" Height="16"
+                            CornerRadius="3"
+                            Background="{DynamicResource AccentBrush}">
+                        <TextBlock Text="AI"
+                                   Foreground="White"
+                                   FontSize="8"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             SIDEBAR
+             ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Column="0" Grid.Row="1"
+                Background="{DynamicResource GlassSidebarBrush}"
+                BorderBrush="{DynamicResource GlassBorderBrush}"
+                BorderThickness="0,0,1,0">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Width" Value="280" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsSidebarCollapsed}" Value="True">
+                            <Setter Property="Width" Value="50" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Grid>
+                <!-- ── EXPANDED SIDEBAR ── -->
+                <Grid Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" MaxHeight="250" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Sidebar Header -->
+                    <StackPanel Grid.Row="0" Margin="16,20,16,8" HorizontalAlignment="Stretch">
+                        <TextBlock Text="Command Deck"
+                                   Style="{StaticResource SubheadingText}"
+                                   FontSize="26"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Workspace Tree View -->
+                    <views:WorkspaceTreeView Grid.Row="1"
+                                             DataContext="{Binding WorkspaceTree}" />
+
+                    <!-- Separator -->
+                    <Separator Grid.Row="2"
+                               Style="{StaticResource DarkSeparator}"
+                               Margin="12,4,12,0" />
+
+                    <!-- Project List View -->
+                    <views:ProjectListView Grid.Row="3"
+                                           DataContext="{Binding ProjectList}" />
+
+                    <!-- Bottom menu items -->
+                    <StackPanel Grid.Row="4" Margin="8,4,8,8">
+                        <Separator Style="{StaticResource DarkSeparator}"
+                                   Margin="4,0,4,4" />
+
+                        <!-- Monitor de Processos -->
+                        <Button Style="{StaticResource GhostButton}"
+                                Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{x:Static vm:ViewType.ProcessMonitor}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Padding="8,6"
+                                Margin="0,1">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource ProcessIcon}"
+                                      Style="{StaticResource IconPathSmall}"
+                                      Margin="0,0,8,0" />
+                                <TextBlock Text="Monitor de Processos" VerticalAlignment="Center" FontSize="13" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Configurações -->
+                        <Button Style="{StaticResource GhostButton}"
+                                Command="{Binding DataContext.OpenSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Left"
+                                Padding="8,6"
+                                Margin="0,1">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource SettingsIcon}"
+                                      Style="{StaticResource IconPathSmall}"
+                                      Margin="0,0,8,0" />
+                                <TextBlock Text="Configurações" VerticalAlignment="Center" FontSize="13" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ── COLLAPSED SIDEBAR (icons only) ── -->
+                <Grid Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource BoolToVis}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Collapsed header: app icon -->
+                    <Border Grid.Row="0" Margin="0,12,0,8" HorizontalAlignment="Center">
+                        <Path Data="{StaticResource TerminalIcon}"
+                              Stroke="{DynamicResource AccentBrush}"
+                              StrokeThickness="1.5"
+                              StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              Fill="Transparent"
+                              Stretch="Uniform"
+                              Width="18" Height="18" />
+                    </Border>
+
+                    <!-- Collapsed project avatars -->
+                    <ScrollViewer Grid.Row="1"
+                                  VerticalScrollBarVisibility="Hidden"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding ProjectList.FilteredProjects}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Width="32" Height="32"
+                                            CornerRadius="6"
+                                            Background="{Binding Color, Converter={StaticResource HexToBrush}}"
+                                            Margin="0,2"
+                                            HorizontalAlignment="Center"
+                                            Cursor="Hand"
+                                            ToolTip="{Binding Name}"
+                                            Opacity="0.85">
+                                        <TextBlock Text="{Binding Name, Converter={x:Static conv:FirstLetterConverter.Instance}}"
+                                                   Foreground="White"
+                                                   FontWeight="Bold"
+                                                   FontSize="13"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             MAIN CONTENT AREA
+             ═══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Column="1" Grid.Row="1"
+              Background="{DynamicResource BaseBgBrush}">
+            <!-- Dashboard View -->
+            <views:DashboardView
+                DataContext="{Binding Dashboard}"
+                Visibility="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window},
+                             Converter={StaticResource ViewTypeToVis}, ConverterParameter=Dashboard}" />
+
+            <!-- Terminal Canvas View -->
+            <views:TerminalCanvasView
+                Visibility="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window},
+                             Converter={StaticResource ViewTypeToVis}, ConverterParameter=Terminal}" />
+
+            <!-- Process Monitor View -->
+            <views:ProcessMonitorView
+                DataContext="{Binding ProcessMonitor}"
+                Visibility="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window},
+                             Converter={StaticResource ViewTypeToVis}, ConverterParameter=ProcessMonitor}" />
+
+            <!-- Settings View -->
+            <views:SettingsView
+                DataContext="{Binding SettingsViewModel}"
+                Visibility="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window},
+                             Converter={StaticResource ViewTypeToVis}, ConverterParameter=Settings}" />
+
+            <!-- Browser View -->
+            <views:BrowserView
+                DataContext="{Binding Browser}"
+                Visibility="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window},
+                             Converter={StaticResource ViewTypeToVis}, ConverterParameter=Browser}" />
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             AI ASSISTANT SIDE PANEL (Column 2, collapsible)
+             ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Column="2" Grid.Row="1"
+                BorderBrush="{DynamicResource GlassBorderBrush}"
+                BorderThickness="1,0,0,0"
+                Visibility="{Binding IsAIPanelOpen, Converter={StaticResource BoolToVis}}">
+            <views:AssistantPanelView DataContext="{Binding AssistantPanel}"
+                                      Width="320" />
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             PROJECT EDIT DIALOG OVERLAY
+             ═══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="1"
+              Visibility="{Binding IsProjectEditVisible, Converter={StaticResource BoolToVis}}">
+            <!-- Backdrop -->
+            <Border Background="#80000000" />
+            <!-- Dialog -->
+            <Border Background="{DynamicResource GlassBgBrush}"
+                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Width="500"
+                    MaxHeight="650"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="0">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="0" BlurRadius="40" Opacity="0.6" Color="#1a1a2e" />
+                </Border.Effect>
+                <views:ProjectEditView DataContext="{Binding ProjectEditViewModel}" />
+            </Border>
+        </Grid>
+
+        <!-- Settings overlay removed — now inline in main content area -->
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             NOTIFICATION TOAST OVERLAY (top-right corner)
+             ═══════════════════════════════════════════════════════════════ -->
+        <ItemsControl Grid.Column="1" Grid.Row="1"
+                      Panel.ZIndex="900"
+                      ItemsSource="{Binding ActiveNotifications}"
+                      HorizontalAlignment="Right"
+                      VerticalAlignment="Top"
+                      Margin="0,12,16,0"
+                      IsHitTestVisible="True">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Vertical" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <controls:NotificationToast />
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             PROJECT SWITCH LOADING OVERLAY
+             ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="0" Grid.RowSpan="3"
+                Panel.ZIndex="950"
+                Visibility="{Binding IsProjectSwitching, Converter={StaticResource BoolToVis}}"
+                Background="#CC181825"
+                IsHitTestVisible="True">
+            <Border.Resources>
+                <Storyboard x:Key="SpinnerAnimation" RepeatBehavior="Forever">
+                    <DoubleAnimation Storyboard.TargetName="SpinnerRotate"
+                                     Storyboard.TargetProperty="Angle"
+                                     From="0" To="360"
+                                     Duration="0:0:1" />
+                </Storyboard>
+            </Border.Resources>
+            <Border.Triggers>
+                <EventTrigger RoutedEvent="Border.Loaded">
+                    <BeginStoryboard Storyboard="{StaticResource SpinnerAnimation}" />
+                </EventTrigger>
+            </Border.Triggers>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <!-- Spinner ring -->
+                <Canvas Width="40" Height="40" HorizontalAlignment="Center" Margin="0,0,0,16">
+                    <Canvas.RenderTransform>
+                        <RotateTransform x:Name="SpinnerRotate" CenterX="20" CenterY="20" />
+                    </Canvas.RenderTransform>
+                    <Ellipse Width="40" Height="40"
+                             Stroke="{DynamicResource Surface0Brush}"
+                             StrokeThickness="3"
+                             Fill="Transparent" />
+                    <Ellipse Width="40" Height="40"
+                             Stroke="{DynamicResource AccentBrush}"
+                             StrokeThickness="3"
+                             Fill="Transparent"
+                             StrokeDashArray="2.5 5"
+                             StrokeDashCap="Round" />
+                </Canvas>
+                <!-- Message -->
+                <TextBlock Text="{Binding ProjectSwitchMessage}"
+                           Foreground="{DynamicResource TextBrush}"
+                           FontSize="15"
+                           FontWeight="Medium"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             COMMAND PALETTE OVERLAY (Ctrl+K)
+             ═══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="1"
+              Panel.ZIndex="999"
+              Visibility="{Binding IsCommandPaletteOpen, Converter={StaticResource BoolToVis}}">
+            <views:CommandPaletteOverlay DataContext="{Binding CommandPalette}" />
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             BRANCH SELECTOR OVERLAY (Ctrl+Shift+G)
+             ═══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="1"
+              Panel.ZIndex="998"
+              Visibility="{Binding IsBranchSelectorOpen, Converter={StaticResource BoolToVis}}">
+            <views:BranchSelectorOverlay DataContext="{Binding BranchSelector}" />
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             AI FLOATING ORB (always on top — ZIndex 1000)
+             ═══════════════════════════════════════════════════════════════ -->
+        <!-- Canvas sem background (null) = transparente a cliques na área vazia.
+             NÃO usar IsHitTestVisible="False" no Canvas: bloquearia TODOS os filhos também. -->
+        <Canvas Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="0" Grid.RowSpan="3"
+                Panel.ZIndex="1000">
+            <controls:AiOrbControl
+                DataContext="{Binding AiOrb}"
+                Canvas.Left="{Binding PositionX}"
+                Canvas.Top="{Binding PositionY}" />
+        </Canvas>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             STATUS BAR
+             ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="2"
+                Background="{DynamicResource GlassToolbarBrush}"
+                BorderBrush="{DynamicResource GlassBorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="8,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Status text -->
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusBarText}"
+                           Style="{StaticResource CaptionText}"
+                           VerticalAlignment="Center"
+                           Margin="4,0" />
+
+                <!-- Pane state aggregated icons (like Zellij tab icons) -->
+                <TextBlock Grid.Column="1"
+                           Text="{Binding PaneStateIcons}"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="8,0"
+                           Visibility="{Binding PaneStateIcons, Converter={StaticResource StringToVis}}" />
+
+                <!-- Notification badge + history popup -->
+                <Grid Grid.Column="2" Margin="4,0"
+                      VerticalAlignment="Center">
+                    <Button Style="{StaticResource IconButton}"
+                            Width="24" Height="20"
+                            Command="{Binding ToggleNotificationHistoryCommand}"
+                            ToolTip="Notificações">
+                        <Grid>
+                            <TextBlock Text="🔔" FontSize="12"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                            <Border Background="{DynamicResource AccentRedBrush}"
+                                    CornerRadius="6"
+                                    MinWidth="14" Height="14"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Margin="0,-4,-4,0"
+                                    Padding="3,0"
+                                    Visibility="{Binding UnreadNotificationCount, Converter={StaticResource CountToVis}}">
+                                <TextBlock Text="{Binding UnreadNotificationCount}"
+                                           Foreground="White"
+                                           FontSize="9"
+                                           FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
+                    </Button>
+
+                    <!-- History popup (appears above the status bar) -->
+                    <Popup IsOpen="{Binding IsNotificationHistoryOpen}"
+                           Placement="Top"
+                           StaysOpen="False"
+                           AllowsTransparency="True"
+                           PopupAnimation="Fade"
+                           HorizontalOffset="-160">
+                        <controls:NotificationHistoryPopup />
+                    </Popup>
+                </Grid>
+
+                <!-- Active processes -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="8,0">
+                    <Path Data="{StaticResource ProcessIcon}"
+                          Style="{StaticResource IconPathSmall}"
+                          Margin="0,0,4,0" />
+                    <TextBlock Text="{Binding ActiveProcessCount, StringFormat='{}{0} processos'}"
+                               Style="{StaticResource CaptionText}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Git branch — click to open branch selector -->
+                <Button Grid.Column="4"
+                        Style="{StaticResource GhostButton}"
+                        Padding="6,0"
+                        VerticalAlignment="Center"
+                        Command="{Binding OpenBranchSelectorCommand}"
+                        Visibility="{Binding GitBranchDisplay, Converter={StaticResource StringToVis}}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="{StaticResource GitBranchIcon}"
+                              Style="{StaticResource IconPathSmall}"
+                              Margin="0,0,4,0" />
+                        <TextBlock Text="{Binding GitBranchDisplay}"
+                                   Style="{StaticResource CaptionText}"
+                                   FontFamily="{StaticResource MonoFont}"
+                                   VerticalAlignment="Center" />
+                        <Path Data="{StaticResource ChevronDownIcon}"
+                              Stroke="{DynamicResource SubtextBrush}"
+                              StrokeThickness="1.5"
+                              Fill="Transparent"
+                              Stretch="Uniform"
+                              Width="8" Height="8"
+                              Margin="4,0,0,0"
+                              VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Shell type -->
+                <TextBlock Grid.Column="5"
+                           Text="{Binding ShellTypeDisplay}"
+                           Style="{StaticResource CaptionText}"
+                           VerticalAlignment="Center"
+                           Margin="8,0" />
+
+                <!-- Terminal count -->
+                <StackPanel Grid.Column="6" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="8,0">
+                    <Path Data="{StaticResource TerminalIcon}"
+                          Style="{StaticResource IconPathSmall}"
+                          Margin="0,0,4,0" />
+                    <TextBlock Text="{Binding ActiveTerminalCount}"
+                               Style="{StaticResource CaptionText}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

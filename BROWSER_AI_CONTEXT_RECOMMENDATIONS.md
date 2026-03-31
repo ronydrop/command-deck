@@ -1,4 +1,4 @@
-# DevWorkspaceHub — Browser AI Context: Recomendações Técnicas Detalhadas
+# CommandDeck — Browser AI Context: Recomendações Técnicas Detalhadas
 
 **Versão:** 1.0
 **Data:** 31/03/2026
@@ -1221,7 +1221,7 @@ o risco de adversário é mínimo. Documentar a limitação mas não over-engine
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  WPF Host Process (DevWorkspaceHub.exe)             │
+│  WPF Host Process (CommandDeck.exe)             │
 │  ┌───────────────────────────────────────────────┐  │
 │  │ Acesso total ao filesystem, rede, APIs do OS  │  │
 │  │ SQLite, ConPTY, Git, ProcessMonitor           │  │
@@ -1245,7 +1245,7 @@ o risco de adversário é mínimo. Documentar a limitação mas não over-engine
 
 ## PARTE 3: UX / PRODUCT DESIGN
 
-### 3.1 Layout do Browser no DevWorkspaceHub
+### 3.1 Layout do Browser no CommandDeck
 
 **Recomendação: Tab dedicada no sistema de tabs existente.**
 
@@ -1253,7 +1253,7 @@ O browser deve ser uma tab peer do Terminal Canvas e Dashboard, não um painel e
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ [Logo] DevWorkspaceHub     [🔍] [Search]  [Agent: Claude Code ▼]│
+│ [Logo] CommandDeck     [🔍] [Search]  [Agent: Claude Code ▼]│
 ├──────────────────────────────────────────────────────────────────┤
 │ [📟 Terminal Canvas] [📊 Dashboard] [🌐 Browser] [⚙ Settings]   │
 ├──────────────────────────────────────────────────────────────────┤
@@ -1572,7 +1572,7 @@ public enum ViewType
 
 ### 3.11 Status Bar Indicators
 
-**Adicionar na barra inferior do DevWorkspaceHub:**
+**Adicionar na barra inferior do CommandDeck:**
 
 ```
 [Terminal: 3 sessions] [Git: main ↑2] [🌐 localhost:3000 ●] [Picker: 🔍 On] [Agent: CC]

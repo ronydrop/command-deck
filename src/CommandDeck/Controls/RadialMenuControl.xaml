@@ -1,0 +1,168 @@
+<UserControl x:Class="CommandDeck.Controls.RadialMenuControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:CommandDeck.ViewModels"
+             xmlns:conv="clr-namespace:CommandDeck.Converters"
+             Width="220" Height="220"
+             Background="Transparent"
+             d:DataContext="{d:DesignInstance vm:AiOrbViewModel}"
+             mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <conv:HexColorToBrushConverter x:Key="HexToBrush" />
+
+        <Style x:Key="RadialItemStyle" TargetType="Button">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Background" Value="#CC1E1E2E" />
+            <Setter Property="BorderBrush" Value="#33FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#CDD6F4" />
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Ellipse Fill="{TemplateBinding Background}"
+                                     Stroke="{TemplateBinding BorderBrush}"
+                                     StrokeThickness="{TemplateBinding BorderThickness}" />
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#CC313244" />
+                                <Setter Property="BorderBrush" Value="#88CBA6F7" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#CC45475A" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Effect">
+                        <Setter.Value>
+                            <DropShadowEffect Color="#CBA6F7" BlurRadius="12" ShadowDepth="0" Opacity="0.6" />
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <!-- Canvas centered at (110,110) — the orb center -->
+    <Canvas Width="220" Height="220" Background="Transparent">
+
+        <!-- Decorative inner ring at center -->
+        <Ellipse Canvas.Left="95" Canvas.Top="95"
+                 Width="30" Height="30"
+                 Fill="Transparent"
+                 Stroke="#11FFFFFF"
+                 StrokeThickness="1" />
+
+        <!-- Item 1: Voice (top, 270°) -->
+        <Button x:Name="VoiceButton"
+                Canvas.Left="88" Canvas.Top="14"
+                Style="{StaticResource RadialItemStyle}"
+                Command="{Binding StartRecordingCommand}"
+                ToolTip="Voice Input — segurar para gravar">
+            <Button.Effect>
+                <DropShadowEffect Color="#F38BA8" BlurRadius="8" ShadowDepth="0" Opacity="0.4" />
+            </Button.Effect>
+            <TextBlock Text="&#127908;" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" />
+        </Button>
+
+        <!-- Item 2: Improve Prompt (top-right, ~342°) -->
+        <Button Canvas.Left="162" Canvas.Top="42"
+                Style="{StaticResource RadialItemStyle}"
+                Command="{Binding ImprovePromptCommand}"
+                ToolTip="Melhorar último comando (Ctrl+Shift+I)">
+            <TextBlock Text="&#129504;" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" />
+        </Button>
+
+        <!-- Item 3: Copy Context (right, ~54°) -->
+        <Button Canvas.Left="162" Canvas.Top="134"
+                Style="{StaticResource RadialItemStyle}"
+                Command="{Binding CopyContextCommand}"
+                ToolTip="Copiar contexto do terminal (Ctrl+Shift+X)">
+            <TextBlock Text="&#128203;" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" />
+        </Button>
+
+        <!-- Item 4: Run Suggestion (bottom-left, ~126°) -->
+        <Button Canvas.Left="14" Canvas.Top="134"
+                Style="{StaticResource RadialItemStyle}"
+                Command="{Binding RunSuggestionCommand}"
+                ToolTip="Executar sugestão AI no terminal">
+            <Button.Effect>
+                <DropShadowEffect Color="#A6E3A1" BlurRadius="8" ShadowDepth="0" Opacity="0.4" />
+            </Button.Effect>
+            <TextBlock Text="&#9889;" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" />
+        </Button>
+
+        <!-- Item 5: Choose Agent (left, ~198°) -->
+        <Button Canvas.Left="14" Canvas.Top="42"
+                Style="{StaticResource RadialItemStyle}"
+                Command="{Binding ToggleAgentSelectorCommand}"
+                ToolTip="Trocar provider de AI">
+            <TextBlock Text="&#129302;" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" />
+        </Button>
+
+        <!-- Agent selector popup (inside the radial menu canvas) -->
+        <Border Canvas.Left="50" Canvas.Top="60"
+                Background="#F01E1E2E"
+                BorderBrush="#33CBA6F7"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="8"
+                Visibility="{Binding IsAgentSelectorOpen, Converter={StaticResource BoolToVis}}">
+            <Border.Effect>
+                <DropShadowEffect ShadowDepth="0" BlurRadius="20" Opacity="0.6" Color="#1a1a2e" />
+            </Border.Effect>
+            <StackPanel>
+                <TextBlock Text="Escolher Agent"
+                           Foreground="#A6ADC8"
+                           FontSize="10"
+                           Margin="4,0,4,6" />
+                <Button Content="Claude"
+                        Style="{StaticResource GhostButton}"
+                        Command="{Binding SelectAgentCommand}"
+                        CommandParameter="anthropic"
+                        Foreground="#CBA6F7"
+                        FontSize="12"
+                        Padding="8,4"
+                        HorizontalContentAlignment="Left" />
+                <Button Content="GPT"
+                        Style="{StaticResource GhostButton}"
+                        Command="{Binding SelectAgentCommand}"
+                        CommandParameter="openai"
+                        Foreground="#A6E3A1"
+                        FontSize="12"
+                        Padding="8,4"
+                        HorizontalContentAlignment="Left" />
+                <Button Content="Ollama"
+                        Style="{StaticResource GhostButton}"
+                        Command="{Binding SelectAgentCommand}"
+                        CommandParameter="local"
+                        Foreground="#FAB387"
+                        FontSize="12"
+                        Padding="8,4"
+                        HorizontalContentAlignment="Left" />
+                <Button Content="OpenRouter"
+                        Style="{StaticResource GhostButton}"
+                        Command="{Binding SelectAgentCommand}"
+                        CommandParameter="openrouter"
+                        Foreground="#89DCEB"
+                        FontSize="12"
+                        Padding="8,4"
+                        HorizontalContentAlignment="Left" />
+            </StackPanel>
+        </Border>
+    </Canvas>
+</UserControl>

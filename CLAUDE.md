@@ -1,4 +1,4 @@
-# CLAUDE.md — DevWorkspaceHub
+# CLAUDE.md — CommandDeck
 
 Terminal manager e dashboard de desenvolvimento para Windows. Gerencia múltiplas sessões de terminal, projetos, Git e processos em um único painel desktop.
 
@@ -10,7 +10,7 @@ C# 12 + .NET 8 + WPF (net8.0-windows) | MVVM via CommunityToolkit.Mvvm 8.2.2 | D
 ```bash
 dotnet restore
 dotnet build
-dotnet run --project src/DevWorkspaceHub
+dotnet run --project src/CommandDeck
 
 # Ou pelo script Windows:
 Iniciar.bat    # valida .NET 8, restaura dependências, roda o projeto
@@ -25,24 +25,24 @@ Views (XAML) ↔ ViewModels (ObservableObject, RelayCommand) → Services → Mo
 **DI setup em `App.xaml.cs`** — todos os serviços registrados como Singleton, `ProjectEditViewModel` como Transient.
 
 **Estrutura de pastas:**
-- `src/DevWorkspaceHub/Views/` — XAML das telas
-- `src/DevWorkspaceHub/ViewModels/` — lógica de apresentação
-- `src/DevWorkspaceHub/Services/` — regras de negócio (interfaces + implementações)
-- `src/DevWorkspaceHub/Models/` — entidades
-- `src/DevWorkspaceHub/Helpers/` — ConPtyHelper (P/Invoke), AnsiParser (state machine VT100)
-- `src/DevWorkspaceHub/Converters/` — value converters para XAML
-- `src/DevWorkspaceHub/Resources/` — Styles.xaml (tema Catppuccin Mocha), Icons.xaml
+- `src/CommandDeck/Views/` — XAML das telas
+- `src/CommandDeck/ViewModels/` — lógica de apresentação
+- `src/CommandDeck/Services/` — regras de negócio (interfaces + implementações)
+- `src/CommandDeck/Models/` — entidades
+- `src/CommandDeck/Helpers/` — ConPtyHelper (P/Invoke), AnsiParser (state machine VT100)
+- `src/CommandDeck/Converters/` — value converters para XAML
+- `src/CommandDeck/Resources/` — Styles.xaml (tema Catppuccin Mocha), Icons.xaml
 
 **Serviços principais:**
 - `TerminalService` — orquestra sessões ConPTY (CreateSession, Write, Resize, Close). Eventos: OutputReceived, SessionExited, TitleChanged
-- `ProjectService` — CRUD + auto-scan de projetos. Persistência JSON em `%APPDATA%/DevWorkspaceHub/projects.json`
+- `ProjectService` — CRUD + auto-scan de projetos. Persistência JSON em `%APPDATA%/CommandDeck/projects.json`
 - `GitService` — spawna `git.exe` e parseia saída (branch, status, ahead/behind, diffs)
 - `ProcessMonitorService` — WMI para monitorar node, php, artisan, npm, python, docker
-- `SettingsService` — preferências em `%APPDATA%/DevWorkspaceHub/settings.json`
+- `SettingsService` — preferências em `%APPDATA%/CommandDeck/settings.json`
 
 ## Persistência
 
-JSON em `%APPDATA%/DevWorkspaceHub/` — sem banco de dados.
+JSON em `%APPDATA%/CommandDeck/` — sem banco de dados.
 - Thread-safe com `SemaphoreSlim`
 - Serialização com `JsonStringEnumConverter` + `camelCase`
 - Schema em `Project` e `AppSettings`

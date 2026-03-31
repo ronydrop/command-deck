@@ -1,0 +1,183 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════
+         LIQUID GLASS DARK — Premium glass dark theme
+         Inspired by: Arc Browser, Linear dark, Raycast dark, macOS dark mode
+         Design philosophy:
+           • Deep indigo-black base — not generic gray (#1E1E1E), but rich and chromatic
+           • Cards CLEARLY lighter than background (not semi-transparent on same color)
+           • Diagonal gradients simulate glass light refraction from upper-left
+           • Borders use white semi-transparency — visible but not harsh
+           • Strong ambient shadows for depth and elevation feeling
+           • Saturated vivid accents that pop against deep dark
+         ═══════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         A. BASE COLORS — Deep indigo-black with clear luminance steps
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Window background: deep indigo-black (NOT generic dark gray)
+         The blue undertone is crucial — it makes the dark feel rich, not dull -->
+    <Color x:Key="BaseBg">#0C0C1E</Color>
+    <!-- Secondary panels: visible step above base -->
+    <Color x:Key="MantelBg">#111120</Color>
+    <!-- Tertiary / canvas depth: deepest layer -->
+    <Color x:Key="CrustBg">#080812</Color>
+    <!-- Card/input surface: clearly lighter than BaseBg — creates visible elevation -->
+    <Color x:Key="Surface0">#1A1A2E</Color>
+    <!-- Raised elements, strong borders: visibly above Surface0 -->
+    <Color x:Key="Surface1">#262640</Color>
+    <!-- Active states, hover backgrounds: clear selection indicator -->
+    <Color x:Key="Surface2">#343452</Color>
+    <!-- Muted elements: inactive icons, disabled text indicators -->
+    <Color x:Key="Overlay0">#4C4C68</Color>
+    <!-- Primary text: crisp near-white with cool blue tint (not pure white) -->
+    <Color x:Key="TextColor">#ECEDF6</Color>
+    <!-- Secondary text: medium blue-gray — good contrast on dark surfaces -->
+    <Color x:Key="SubtextColor">#8888A8</Color>
+    <Color x:Key="Subtext0Color">#B0B0C8</Color>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         B. ACCENT COLORS — Vivid, saturated for dark backgrounds
+         More saturated than system colors so they POP against deep dark base
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Primary accent: vibrant electric blue — punchy on dark -->
+    <Color x:Key="AccentPurple">#3D90FF</Color>
+    <!-- Secondary blue: violet-blue -->
+    <Color x:Key="AccentBlue">#7070F0</Color>
+    <!-- Success green -->
+    <Color x:Key="AccentGreen">#34D85C</Color>
+    <!-- Warning yellow -->
+    <Color x:Key="AccentYellow">#FFD832</Color>
+    <!-- Danger red -->
+    <Color x:Key="AccentRed">#FF5048</Color>
+    <!-- Pink -->
+    <Color x:Key="AccentPink">#FF4D7A</Color>
+    <!-- Cyan: for terminal highlights, links -->
+    <Color x:Key="AccentCyan">#60D8FF</Color>
+    <!-- Mauve: for special decorations -->
+    <Color x:Key="AccentMauve">#CC6EFF</Color>
+
+    <!-- Search highlights -->
+    <Color x:Key="SearchHighlight">#66FFD832</Color>
+    <Color x:Key="SearchCurrentHighlight">#993D90FF</Color>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         C. GLASS DESIGN TOKENS
+         Key insight: on dark backgrounds, use WHITE semi-transparent borders
+         Cards must be SOLID (not semi-transparent) to ensure clear visibility
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Card gradient top: solid indigo — clearly above #0C0C1E base -->
+    <Color x:Key="GlassTop">#262642</Color>
+    <!-- Card gradient mid-point for three-stop gradient depth -->
+    <Color x:Key="GlassMid">#202038</Color>
+    <!-- Card gradient bottom: slightly deeper — creates top-lit glass effect -->
+    <Color x:Key="GlassBottom">#1A1A30</Color>
+    <!-- Inner top highlight: white edge line (8% white — subtle but present) -->
+    <Color x:Key="GlassHighlight">#14FFFFFF</Color>
+    <!-- Border: 16% white — clearly visible without being harsh -->
+    <Color x:Key="GlassBorder">#28FFFFFF</Color>
+    <!-- Subtle inner border -->
+    <Color x:Key="GlassBorderSubtle">#16FFFFFF</Color>
+    <!-- Card shadow: strong black shadow for clear elevation on dark bg -->
+    <Color x:Key="ElevatedShadow">#55000000</Color>
+    <!-- Blue tint overlay for sidebar accent -->
+    <Color x:Key="GlassTintBlue">#183D90FF</Color>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         D. STANDARD BRUSHES
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <SolidColorBrush x:Key="BaseBgBrush"     Color="{StaticResource BaseBg}" />
+    <SolidColorBrush x:Key="MantelBgBrush"   Color="{StaticResource MantelBg}" />
+    <SolidColorBrush x:Key="CrustBgBrush"    Color="{StaticResource CrustBg}" />
+    <SolidColorBrush x:Key="Surface0Brush"   Color="{StaticResource Surface0}" />
+    <SolidColorBrush x:Key="Surface1Brush"   Color="{StaticResource Surface1}" />
+    <SolidColorBrush x:Key="Surface2Brush"   Color="{StaticResource Surface2}" />
+    <SolidColorBrush x:Key="Overlay0Brush"   Color="{StaticResource Overlay0}" />
+    <SolidColorBrush x:Key="TextBrush"       Color="{StaticResource TextColor}" />
+    <SolidColorBrush x:Key="SubtextBrush"    Color="{StaticResource SubtextColor}" />
+    <SolidColorBrush x:Key="AccentBrush"     Color="{StaticResource AccentPurple}" />
+    <SolidColorBrush x:Key="AccentBlueBrush"   Color="{StaticResource AccentBlue}" />
+    <SolidColorBrush x:Key="AccentGreenBrush"  Color="{StaticResource AccentGreen}" />
+    <SolidColorBrush x:Key="AccentYellowBrush" Color="{StaticResource AccentYellow}" />
+    <SolidColorBrush x:Key="AccentRedBrush"    Color="{StaticResource AccentRed}" />
+    <SolidColorBrush x:Key="AccentMauveBrush"  Color="{StaticResource AccentMauve}" />
+
+    <!-- Search highlight brushes -->
+    <SolidColorBrush x:Key="SearchHighlightBrush"        Color="{StaticResource SearchHighlight}" />
+    <SolidColorBrush x:Key="SearchCurrentHighlightBrush" Color="{StaticResource SearchCurrentHighlight}" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         E. GLASS BRUSHES — premium dark glass surface system
+         Rule: gradients go top-left (slightly brighter) → bottom-right (deeper)
+         This simulates ambient light from above hitting the glass surface
+         All values are SOLID (no semi-transparency) for guaranteed visibility
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- PRIMARY GLASS SURFACE (cards, panels)
+         Diagonal gradient: lighter indigo top-left → deeper indigo bottom-right
+         Creates a "lit from above-left" glass material feel
+         Clearly distinguishable from BaseBg (#0C0C1E) at 3-4 lightness steps above -->
+    <LinearGradientBrush x:Key="GlassBgBrush" StartPoint="0,0" EndPoint="0.25,1">
+        <GradientStop Color="{StaticResource GlassTop}"    Offset="0" />
+        <GradientStop Color="{StaticResource GlassMid}"    Offset="0.45" />
+        <GradientStop Color="{StaticResource GlassBottom}" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- GLASS BORDER — 16% white: visible frosted edge on dark surfaces -->
+    <SolidColorBrush x:Key="GlassBorderBrush" Color="{StaticResource GlassBorder}" />
+
+    <!-- GLASS HIGHLIGHT — subtle inner top-edge glow (luminous rim on glass) -->
+    <SolidColorBrush x:Key="GlassHighlightBrush" Color="{StaticResource GlassHighlight}" />
+
+    <!-- SHADOW BRUSH -->
+    <SolidColorBrush x:Key="ElevatedShadowBrush" Color="{StaticResource ElevatedShadow}" />
+
+    <!-- SIDEBAR GLASS — clearly between MantelBg and Surface0 in luminance -->
+    <LinearGradientBrush x:Key="GlassSidebarBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#131326" Offset="0" />    <!-- slightly above MantelBg -->
+        <GradientStop Color="#111120" Offset="0.5" />  <!-- matches MantelBg at mid -->
+        <GradientStop Color="#0E0E1C" Offset="1" />    <!-- slightly darker bottom -->
+    </LinearGradientBrush>
+
+    <!-- CANVAS BACKGROUND — radial vignette for spatial depth in canvas view -->
+    <RadialGradientBrush x:Key="CanvasDepthBrush"
+                         GradientOrigin="0.5,0.3"
+                         Center="0.5,0.3"
+                         RadiusX="0.7"
+                         RadiusY="0.7">
+        <GradientStop Color="#14142A" Offset="0" />    <!-- slightly lighter center -->
+        <GradientStop Color="#0E0E1E" Offset="0.55" /> <!-- mid transition -->
+        <GradientStop Color="{StaticResource CrustBg}" Offset="1" />
+    </RadialGradientBrush>
+
+    <!-- TOOLBAR GLASS — header/titlebar area: between MantelBg and Surface0 -->
+    <LinearGradientBrush x:Key="GlassToolbarBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#18182E" Offset="0" />    <!-- slightly above MantelBg -->
+        <GradientStop Color="#141424" Offset="1" />    <!-- matches MantelBg -->
+    </LinearGradientBrush>
+
+    <!-- CARD TITLE BAR — top section of card panels, slightly highlighted -->
+    <LinearGradientBrush x:Key="GlassTitleBarBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#222240" Offset="0" />    <!-- clearly above Surface0 -->
+        <GradientStop Color="#1E1E38" Offset="1" />    <!-- slightly darker bottom -->
+    </LinearGradientBrush>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         F. ELEVATION SHADOW — per-theme shadow tuned for dark backgrounds
+         Dark mode: strong shadow required for contrast against deep dark bg
+         Opacity=0.40 = clearly visible ambient shadow (cards float above bg)
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <DropShadowEffect x:Key="CardShadow"
+                      ShadowDepth="3"
+                      BlurRadius="24"
+                      Opacity="0.40"
+                      Color="#000000"
+                      Direction="270" />
+
+</ResourceDictionary>

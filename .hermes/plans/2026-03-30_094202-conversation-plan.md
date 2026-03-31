@@ -1,4 +1,4 @@
-# Revisão Técnica — DevWorkspaceHub Multi-Subagent Integration
+# Revisão Técnica — CommandDeck Multi-Subagent Integration
 
 Data: 2026-03-30
 Escopo: 4 subagents modificaram simultaneamente o mesmo projeto WPF/.NET 8.

@@ -1,0 +1,132 @@
+<UserControl x:Class="CommandDeck.Controls.MiniMapControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:CommandDeck.ViewModels"
+             mc:Ignorable="d"
+             d:DesignWidth="200" d:DesignHeight="140"
+             d:DataContext="{d:DesignInstance Type={x:Type vm:MiniMapViewModel}}"
+             Width="{Binding MiniMapWidth}"
+             Height="{Binding MiniMapHeight}"
+             IsHitTestVisible="True"
+             Focusable="False">
+
+    <!-- Outer border: glass surface with visible shadow and frosted border -->
+    <Border CornerRadius="10"
+            Opacity="0.96"
+            Background="{DynamicResource GlassBgBrush}"
+            BorderBrush="{DynamicResource GlassBorderBrush}"
+            BorderThickness="1.5">
+
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.20" Color="#000000" />
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <!-- Header label row -->
+                <RowDefinition Height="18" />
+                <!-- Map canvas row -->
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- ── Header ─────────────────────────────────────────────────── -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource GlassTitleBarBrush}"
+                    CornerRadius="9,9,0,0"
+                    Padding="8,0">
+                <TextBlock Text="Visão Geral"
+                           FontSize="10"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource SubtextBrush}"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left" />
+            </Border>
+
+            <!-- ── Map canvas ─────────────────────────────────────────────── -->
+            <!-- ClipToBounds ensures nothing bleeds outside the 200x122 area -->
+            <Canvas Grid.Row="1"
+                    x:Name="MapCanvas"
+                    ClipToBounds="True"
+                    Background="Transparent"
+                    MouseDown="OnMapMouseDown"
+                    MouseMove="OnMapMouseMove"
+                    MouseUp="OnMapMouseUp"
+                    Cursor="Hand">
+
+                <!-- Item rectangles — rendered via ItemsControl so they update reactively -->
+                <ItemsControl ItemsSource="{Binding ItemRects}"
+                              IsHitTestVisible="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Canvas.Left" Value="{Binding X}" />
+                            <Setter Property="Canvas.Top"  Value="{Binding Y}" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Rectangle Width="{Binding Width}"
+                                       Height="{Binding Height}"
+                                       RadiusX="1" RadiusY="1"
+                                       Opacity="0.85">
+                                <Rectangle.Style>
+                                    <Style TargetType="Rectangle">
+                                        <!-- Default: widget colour -->
+                                        <Setter Property="Fill"   Value="{DynamicResource AccentYellowBrush}" />
+                                        <Setter Property="Stroke" Value="Transparent" />
+                                        <Setter Property="StrokeThickness" Value="1" />
+                                        <Style.Triggers>
+                                            <!-- Terminal colour -->
+                                            <DataTrigger Binding="{Binding IsTerminal}" Value="True">
+                                                <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                            <!-- AI terminal colour (overrides terminal) -->
+                                            <DataTrigger Binding="{Binding IsAiSession}" Value="True">
+                                                <Setter Property="Fill">
+                                                    <Setter.Value>
+                                                        <SolidColorBrush Color="{DynamicResource AccentCyan}" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                            <!-- Selected highlight -->
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="Stroke" Value="{DynamicResource AccentMauveBrush}" />
+                                                <Setter Property="StrokeThickness" Value="1.5" />
+                                                <Setter Property="Opacity" Value="1" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Rectangle.Style>
+                            </Rectangle>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Viewport rectangle — shows what is currently visible on the main canvas -->
+                <Border x:Name="ViewportRect"
+                        IsHitTestVisible="False"
+                        BorderThickness="1.5"
+                        CornerRadius="1"
+                        Canvas.Left="{Binding ViewportRectX}"
+                        Canvas.Top="{Binding ViewportRectY}"
+                        Width="{Binding ViewportRectW}"
+                        Height="{Binding ViewportRectH}">
+                    <Border.BorderBrush>
+                        <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.9" />
+                    </Border.BorderBrush>
+                    <Border.Background>
+                        <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.08" />
+                    </Border.Background>
+                </Border>
+
+            </Canvas>
+
+        </Grid>
+    </Border>
+</UserControl>

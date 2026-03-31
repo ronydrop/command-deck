@@ -1,4 +1,4 @@
-# DevWorkspaceHub — AI-First Terminal Architecture
+# CommandDeck — AI-First Terminal Architecture
 
 ## Plano de Transformação: Terminal-Centric AI com `cc` / `claude`
 
@@ -12,7 +12,7 @@
 
 O mercado de IDEs desktop está saturado por VS Code, Cursor, Windsurf, Zed. Tentar competir no eixo "editor + chat lateral" é suicídio. Mas existe um nicho real e mal atendido: **power users que já usam Claude Code / Codex / aider no terminal e precisam de um workspace manager em volta disso, não de um editor que tenta engolir o terminal**.
 
-A premissa "a IA vive no terminal" é exatamente o que Claude Code, Codex CLI e aider já fazem. O DevWorkspaceHub não precisa reimplementar nada disso — ele precisa ser a **camada de orquestração visual** em volta dessas ferramentas.
+A premissa "a IA vive no terminal" é exatamente o que Claude Code, Codex CLI e aider já fazem. O CommandDeck não precisa reimplementar nada disso — ele precisa ser a **camada de orquestração visual** em volta dessas ferramentas.
 
 **Veredicto: faz sentido. É a única direção que evita competir frontalmente com IDEs estabelecidas.**
 
@@ -107,7 +107,7 @@ Não criar:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    DevWorkspaceHub                          │
+│                    CommandDeck                          │
 │                                                             │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │              CAMADA DE IA                            │   │
@@ -163,7 +163,7 @@ Não criar:
 
 ```csharp
 // Services/IAiTerminalService.cs
-namespace DevWorkspaceHub.Services;
+namespace CommandDeck.Services;
 
 public interface IAiTerminalService
 {
@@ -212,7 +212,7 @@ public interface IAiTerminalService
 
 ```csharp
 // Services/IAiModelConfigService.cs
-namespace DevWorkspaceHub.Services;
+namespace CommandDeck.Services;
 
 public interface IAiModelConfigService
 {
@@ -242,7 +242,7 @@ public interface IAiModelConfigService
 
 ```csharp
 // Models/AiModelSlot.cs
-namespace DevWorkspaceHub.Models;
+namespace CommandDeck.Models;
 
 public enum AiModelSlot
 {
@@ -253,12 +253,12 @@ public enum AiModelSlot
 }
 
 // Models/AiAlias.cs
-namespace DevWorkspaceHub.Models;
+namespace CommandDeck.Models;
 
 public record AiAlias(string Name, string ModelId);
 
 // Models/AiCliInfo.cs
-namespace DevWorkspaceHub.Models;
+namespace CommandDeck.Models;
 
 public record AiCliInfo(
     bool CcAvailable,
@@ -268,7 +268,7 @@ public record AiCliInfo(
     bool OpenRouterConfigured);
 
 // Models/AiSessionTag.cs — tag para marcar sessão como AI
-namespace DevWorkspaceHub.Models;
+namespace CommandDeck.Models;
 
 public enum AiSessionType
 {
@@ -384,14 +384,14 @@ private string _aiModelUsed = string.Empty;
 
 | Arquivo | Fase |
 |---|---|
-| `src/DevWorkspaceHub/Models/AiModelSlot.cs` | 1 |
-| `src/DevWorkspaceHub/Models/AiAlias.cs` | 1 |
-| `src/DevWorkspaceHub/Models/AiCliInfo.cs` | 1 |
-| `src/DevWorkspaceHub/Models/AiSessionType.cs` | 1 |
-| `src/DevWorkspaceHub/Services/IAiTerminalService.cs` | 1 |
-| `src/DevWorkspaceHub/Services/AiTerminalService.cs` | 1 |
-| `src/DevWorkspaceHub/Services/IAiModelConfigService.cs` | 2 |
-| `src/DevWorkspaceHub/Services/AiModelConfigService.cs` | 2 |
+| `src/CommandDeck/Models/AiModelSlot.cs` | 1 |
+| `src/CommandDeck/Models/AiAlias.cs` | 1 |
+| `src/CommandDeck/Models/AiCliInfo.cs` | 1 |
+| `src/CommandDeck/Models/AiSessionType.cs` | 1 |
+| `src/CommandDeck/Services/IAiTerminalService.cs` | 1 |
+| `src/CommandDeck/Services/AiTerminalService.cs` | 1 |
+| `src/CommandDeck/Services/IAiModelConfigService.cs` | 2 |
+| `src/CommandDeck/Services/AiModelConfigService.cs` | 2 |
 
 ## 6. Arquivos a modificar
 

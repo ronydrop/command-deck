@@ -1,4 +1,4 @@
-# DevWorkspaceHub — Browser Embutido + Element Picker + AI Context
+# CommandDeck — Browser Embutido + Element Picker + AI Context
 ## Plano Consolidado de Implementação
 
 **Data:** 31/03/2026
@@ -11,7 +11,7 @@
 
 ### O que já existe e funciona
 
-O DevWorkspaceHub já possui uma **Fase 1 parcialmente implementada**:
+O CommandDeck já possui uma **Fase 1 parcialmente implementada**:
 
 | Componente | Status | Localização |
 |---|---|---|
@@ -101,7 +101,7 @@ O CDP `Overlay.setInspectMode` **não é viável** como método principal porque
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                     DevWorkspaceHub (WPF .NET 8)                         │
+│                     CommandDeck (WPF .NET 8)                         │
 │                                                                          │
 │  ┌──────────────┐   ┌──────────────────────┐   ┌─────────────────────┐  │
 │  │ Terminal      │   │ Browser Panel        │   │ Assistant Panel     │  │
@@ -441,7 +441,7 @@ LocateElementCode,  // Encontrar arquivo fonte
 ### 7.3 UserDataFolder por Projeto
 
 ```
-%LOCALAPPDATA%/DevWorkspaceHub/WebView2Data/{ProjectId}/
+%LOCALAPPDATA%/CommandDeck/WebView2Data/{ProjectId}/
 ```
 - Isolamento completo de cookies, localStorage, cache
 - Cleanup: ao deletar projeto, ao startup (pastas órfãs), periódico (>1GB)
@@ -819,7 +819,7 @@ Os subagents produziram documentos técnicos detalhados que servem como referên
 | Documento | Localização | Conteúdo |
 |---|---|---|
 | BROWSER_FEATURE_PLAN.md | `/BROWSER_FEATURE_PLAN.md` | Plano original (1300 linhas) |
-| BROWSER_TECHNICAL_ANALYSIS.md | `~/DevWorkspaceHub-Analysis/` | Gap analysis + WebView2 lifecycle + WPF risks (1065 linhas) |
+| BROWSER_TECHNICAL_ANALYSIS.md | `~/CommandDeck-Analysis/` | Gap analysis + WebView2 lifecycle + WPF risks (1065 linhas) |
 | TECHNICAL_GUIDE.md | `~/webview2-element-picker/docs/` | DOM Inspection + JS architecture + Edge cases (815 linhas) |
 | element-picker.js | `~/webview2-element-picker/js/` | JS completo do picker (~40KB, pronto para uso) |
 | chunk-reassembler.cs | `~/webview2-element-picker/js/` | C# integration code para WebMessage chunking |
@@ -844,7 +844,7 @@ A maior complexidade está na bridge JS↔C# e no overlay que funciona sobre qua
 ### O que torna esta feature transformadora
 
 1. **Fecha o loop visual→código**: ver problema → selecionar → AI corrige
-2. **Zero context switching**: tudo dentro do DevWorkspaceHub
+2. **Zero context switching**: tudo dentro do CommandDeck
 3. **AI contextualizada**: agent recebe exatamente o que o usuário vê
 4. **Multi-agent**: funciona com assistant local (Ollama), Claude Code, Codex
-5. **Evolução natural**: o DevWorkspaceHub já tem 34+ serviços, 9 de AI, terminal ConPTY — o browser + picker é a peça que falta para conectar frontend visual com backend de desenvolvimento
+5. **Evolução natural**: o CommandDeck já tem 34+ serviços, 9 de AI, terminal ConPTY — o browser + picker é a peça que falta para conectar frontend visual com backend de desenvolvimento

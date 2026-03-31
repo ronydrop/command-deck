@@ -1,8 +1,8 @@
 # Plano: Persistência de Preferências IA + Histórico de Comandos + IsAvailable Dinâmico
 
 Data: 2026-03-30
-Projeto: DevWorkspaceHub — WPF .NET 8 / MVVM / CommunityToolkit.Mvvm
-Base: /mnt/c/Users/ronyo/OneDrive/Downloads/DevWorkspaceHub/src/DevWorkspaceHub/
+Projeto: CommandDeck — WPF .NET 8 / MVVM / CommunityToolkit.Mvvm
+Base: /mnt/c/Users/ronyo/OneDrive/Downloads/CommandDeck/src/CommandDeck/
 
 ---
 

@@ -1,4 +1,4 @@
-# DevWorkspaceHub — Browser Embutido + Element Picker + AI Context
+# CommandDeck — Browser Embutido + Element Picker + AI Context
 
 ## Plano de Implementação Completo
 
@@ -12,7 +12,7 @@
 
 ### O que é
 
-Um navegador web embutido dentro do DevWorkspaceHub que carrega aplicações locais em execução (localhost), permitindo ao usuário **selecionar visualmente elementos HTML** e enviar o contexto completo desses elementos para um **agent de IA específico** (assistant panel ou terminal com AI CLI).
+Um navegador web embutido dentro do CommandDeck que carrega aplicações locais em execução (localhost), permitindo ao usuário **selecionar visualmente elementos HTML** e enviar o contexto completo desses elementos para um **agent de IA específico** (assistant panel ou terminal com AI CLI).
 
 ### Fluxo ideal de uso
 
@@ -71,7 +71,7 @@ Um navegador web embutido dentro do DevWorkspaceHub que carrega aplicações loc
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    DevWorkspaceHub (WPF)                         │
+│                    CommandDeck (WPF)                         │
 │                                                                  │
 │  ┌─────────────┐  ┌──────────────────┐  ┌───────────────────┐  │
 │  │  Terminal    │  │  Browser Panel   │  │  Assistant Panel  │  │
@@ -962,7 +962,7 @@ public class LinkedProjectRuntime
 
 ### Fase 1 — Browser Local Embutido (1-2 semanas)
 
-**Objetivo:** Abrir e navegar em apps locais dentro do DevWorkspaceHub.
+**Objetivo:** Abrir e navegar em apps locais dentro do CommandDeck.
 
 **Tarefas:**
 1. Adicionar `Microsoft.Web.WebView2` ao .csproj
@@ -1205,7 +1205,7 @@ public class LinkedProjectRuntime
 
 ### Síntese
 
-DevWorkspaceHub já possui uma **infraestrutura madura** com 34 serviços, AI integration robusta (9 serviços de AI), terminal ConPTY completo, e sistema de canvas espacial. A adição de um browser embutido com element picker é uma **evolução natural** que conecta o mundo visual (frontend) com o mundo de desenvolvimento (terminais + AI agents).
+CommandDeck já possui uma **infraestrutura madura** com 34 serviços, AI integration robusta (9 serviços de AI), terminal ConPTY completo, e sistema de canvas espacial. A adição de um browser embutido com element picker é uma **evolução natural** que conecta o mundo visual (frontend) com o mundo de desenvolvimento (terminais + AI agents).
 
 ### Abordagem técnica recomendada
 
@@ -1222,7 +1222,7 @@ DevWorkspaceHub já possui uma **infraestrutura madura** com 34 serviços, AI in
 ### O que torna essa feature transformadora
 
 - **Fecha o loop**: ver o problema → selecionar → enviar para AI → receber solução → aplicar
-- **Zero context switching**: não precisa sair do DevWorkspaceHub para inspecionar UI
+- **Zero context switching**: não precisa sair do CommandDeck para inspecionar UI
 - **AI contextualizada**: agent recebe exatamente o que o usuário está vendo, não precisa descrever
 - **Multiplataforma de agents**: funciona com assistant local (Ollama) e terminal agents (CC, Claude)
 
@@ -1254,7 +1254,7 @@ public enum ViewType
 ## Apêndice C — Arquivos a Criar (Resumo)
 
 ```
-src/DevWorkspaceHub/
+src/CommandDeck/
 ├── Services/Browser/
 │   ├── IBrowserRuntimeService.cs
 │   ├── BrowserRuntimeService.cs

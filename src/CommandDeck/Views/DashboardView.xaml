@@ -1,0 +1,732 @@
+<UserControl x:Class="CommandDeck.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:conv="clr-namespace:CommandDeck.Converters"
+             xmlns:vm="clr-namespace:CommandDeck.ViewModels"
+             xmlns:controls="clr-namespace:CommandDeck.Controls"
+             mc:Ignorable="d"
+             d:DesignWidth="1100" d:DesignHeight="800"
+             Background="{DynamicResource BaseBgBrush}">
+
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <conv:CountToVisibilityConverter x:Key="CountToVis" />
+        <conv:NullToVisibilityConverter x:Key="NullToVis" />
+        <conv:GitStatusToColorConverter x:Key="GitStatusToColor" />
+        <conv:GitFileStatusToColorConverter x:Key="FileStatusToColor" />
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  Padding="32,24">
+        <Grid MaxWidth="1100">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 PROJECT HEADER
+                 ═══════════════════════════════════════════════════════════ -->
+            <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,16"
+                    Visibility="{Binding CurrentProject, Converter={StaticResource NullToVis}}">
+                <StackPanel>
+                <DockPanel>
+                    <!-- Right side: Open + Refresh + Time -->
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   Style="{StaticResource CaptionText}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,12,0" />
+
+                        <!-- Open split button -->
+                        <Border CornerRadius="8" Background="{DynamicResource AccentBrush}"
+                                ClipToBounds="True" Margin="0,0,8,0" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Style="{StaticResource AccentButtonLeft}"
+                                        Command="{Binding OpenInCursorCommand}"
+                                        ToolTip="Abrir no Cursor (Ctrl+O)">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource FolderIcon}"
+                                              Stroke="White" StrokeThickness="1.5"
+                                              Fill="Transparent" Stretch="Uniform"
+                                              Width="14" Height="14"
+                                              Margin="0,0,6,0" />
+                                        <TextBlock Text="Open" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="White"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Rectangle Width="1" Fill="White" Opacity="0.2"
+                                           VerticalAlignment="Stretch" Margin="0,6" />
+                                <Button x:Name="OpenDropdownBtn"
+                                        Style="{StaticResource AccentButtonRight}"
+                                        Tag="{Binding}"
+                                        ToolTip="Mais opções"
+                                        Click="OnOpenDropdownClick">
+                                    <Path Data="{StaticResource ChevronDownIcon}"
+                                          Stroke="White" StrokeThickness="1.5"
+                                          StrokeLineJoin="Round" StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round" Fill="Transparent"
+                                          Width="10" Height="10" Stretch="Uniform" />
+                                    <Button.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Command="{Binding PlacementTarget.Tag.OpenInCursorCommand,
+                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Image Source="/Resources/Images/cursor.png"
+                                                               Width="14" Height="14" Margin="0,0,8,0"
+                                                               RenderOptions.BitmapScalingMode="HighQuality" />
+                                                        <TextBlock Text="Cursor" VerticalAlignment="Center" />
+                                                        <TextBlock Text="Ctrl+O" Margin="20,0,0,0"
+                                                                   Foreground="{DynamicResource SubtextBrush}"
+                                                                   FontSize="11" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem Command="{Binding PlacementTarget.Tag.OpenInVsCodeCommand,
+                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Image Source="/Resources/Images/vscode.png"
+                                                               Width="14" Height="14" Margin="0,0,8,0"
+                                                               RenderOptions.BitmapScalingMode="HighQuality" />
+                                                        <TextBlock Text="VS Code" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem Command="{Binding PlacementTarget.Tag.OpenInExplorerCommand,
+                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Image Source="/Resources/Images/explorer.png"
+                                                               Width="14" Height="14" Margin="0,0,8,0"
+                                                               RenderOptions.BitmapScalingMode="HighQuality" />
+                                                        <TextBlock Text="Explorer" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Commit split button -->
+                        <Border CornerRadius="8" Background="{DynamicResource Surface0Brush}"
+                                ClipToBounds="True" Margin="0,0,8,0" VerticalAlignment="Center"
+                                Visibility="{Binding HasGitInfo, Converter={StaticResource BoolToVis}}">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Style="{StaticResource AccentButtonLeft}"
+                                        Command="{Binding GitCommitCommand}"
+                                        ToolTip="Git Commit">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource GitBranchIcon}"
+                                              Stroke="{DynamicResource TextBrush}" StrokeThickness="1.5"
+                                              Fill="Transparent" Stretch="Uniform"
+                                              Width="14" Height="14"
+                                              Margin="0,0,6,0" />
+                                        <TextBlock Text="Commit" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Rectangle Width="1" Fill="{DynamicResource TextBrush}" Opacity="0.2"
+                                           VerticalAlignment="Stretch" Margin="0,6" />
+                                <Button x:Name="CommitDropdownBtn"
+                                        Style="{StaticResource AccentButtonRight}"
+                                        Tag="{Binding}"
+                                        ToolTip="Mais opções Git"
+                                        Click="OnCommitDropdownClick">
+                                    <Path Data="{StaticResource ChevronDownIcon}"
+                                          Stroke="{DynamicResource TextBrush}" StrokeThickness="1.5"
+                                          StrokeLineJoin="Round" StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round" Fill="Transparent"
+                                          Width="10" Height="10" Stretch="Uniform" />
+                                    <Button.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Command="{Binding PlacementTarget.Tag.GitCommitCommand,
+                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Path Data="{StaticResource GitBranchIcon}"
+                                                              Stroke="{DynamicResource TextBrush}"
+                                                              StrokeThickness="1.5" Fill="Transparent"
+                                                              Stretch="Uniform" Width="14" Height="14"
+                                                              Margin="0,0,8,0" />
+                                                        <TextBlock Text="Commit" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem Command="{Binding PlacementTarget.Tag.GitPushCommand,
+                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Path Data="M12 19V5M12 5L5 12M12 5L19 12"
+                                                              Stroke="{DynamicResource AccentGreenBrush}"
+                                                              StrokeThickness="1.5" Fill="Transparent"
+                                                              Stretch="Uniform" Width="14" Height="14"
+                                                              Margin="0,0,8,0" />
+                                                        <TextBlock Text="Push" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                            <MenuItem Command="{Binding PlacementTarget.Tag.GitCreatePrCommand,
+                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Path Data="M18 15L22 19L18 23M6 9L2 5L6 1M14 3L10 21"
+                                                              Stroke="{DynamicResource AccentBlueBrush}"
+                                                              StrokeThickness="1.5" Fill="Transparent"
+                                                              Stretch="Uniform" Width="14" Height="14"
+                                                              Margin="0,0,8,0" />
+                                                        <TextBlock Text="Create PR" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                            <Separator />
+                                            <MenuItem Command="{Binding PlacementTarget.Tag.AiCommitAndPushCommand,
+                                                      RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Border Width="14" Height="14" Margin="0,0,8,0"
+                                                                VerticalAlignment="Center">
+                                                            <TextBlock Text="✦" FontSize="11"
+                                                                       Foreground="{DynamicResource AccentMauveBrush}"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center" />
+                                                        </Border>
+                                                        <TextBlock VerticalAlignment="Center">
+                                                            <Run Text="AI Commit" Foreground="{DynamicResource AccentMauveBrush}" FontWeight="SemiBold"/>
+                                                            <Run Text=" + Push"/>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <Button Style="{StaticResource GhostButton}"
+                                Command="{Binding RefreshCommand}"
+                                ToolTip="Atualizar dados"
+                                Padding="6,4">
+                            <Path Data="{StaticResource RefreshIcon}"
+                                  Style="{StaticResource IconPathSmall}" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Left side: Project info -->
+                    <StackPanel DockPanel.Dock="Left">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock Text="{Binding CurrentProject.Name}"
+                                       Style="{StaticResource SubheadingText}"
+                                       FontSize="20"
+                                       VerticalAlignment="Center" />
+                            <!-- Branch badge — click to open branch selector -->
+                            <Button x:Name="BranchBadgeBtn"
+                                    Style="{StaticResource GhostButton}"
+                                    Padding="8,2"
+                                    Margin="12,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding OpenBranchSelectorCommand}"
+                                    Visibility="{Binding HasGitInfo, Converter={StaticResource BoolToVis}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource GitBranchIcon}"
+                                          Stroke="{DynamicResource AccentMauveBrush}"
+                                          StrokeThickness="1.5"
+                                          Fill="Transparent"
+                                          Stretch="Uniform"
+                                          Width="12" Height="12"
+                                          Margin="0,0,4,0" />
+                                    <TextBlock Text="{Binding GitInfo.BranchDisplay}"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource AccentMauveBrush}"
+                                               VerticalAlignment="Center" />
+                                    <Path Data="{StaticResource ChevronDownIcon}"
+                                          Stroke="{DynamicResource AccentMauveBrush}"
+                                          StrokeThickness="1.5"
+                                          Fill="Transparent"
+                                          Stretch="Uniform"
+                                          Width="8" Height="8"
+                                          Margin="4,0,0,0"
+                                          VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Worktree selector button + popup -->
+                            <Button x:Name="WorktreeBtn"
+                                    Style="{StaticResource GhostButton}"
+                                    Padding="6,2"
+                                    Margin="4,0,0,0"
+                                    VerticalAlignment="Center"
+                                    ToolTip="Worktrees"
+                                    Command="{Binding OpenWorktreeSelectorCommand}"
+                                    Visibility="{Binding HasGitInfo, Converter={StaticResource BoolToVis}}">
+                                <Path Data="{StaticResource FolderIcon}"
+                                      Stroke="{DynamicResource SubtextBrush}"
+                                      StrokeThickness="1.5"
+                                      Fill="Transparent"
+                                      Stretch="Uniform"
+                                      Width="12" Height="12" />
+                            </Button>
+                            <Popup PlacementTarget="{Binding ElementName=WorktreeBtn}"
+                                   Placement="Bottom"
+                                   StaysOpen="False"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Fade"
+                                   IsOpen="{Binding WorktreeSelector.IsOpen, Mode=TwoWay}">
+                                <controls:WorktreeSelectorPopup DataContext="{Binding WorktreeSelector}" />
+                            </Popup>
+                        </StackPanel>
+                        <TextBlock Text="{Binding CurrentProject.Path}"
+                                   Style="{StaticResource MonoText}"
+                                   Foreground="{DynamicResource SubtextBrush}"
+                                   FontSize="11" />
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Commit message input bar -->
+                <Border Visibility="{Binding IsCommitInputVisible, Converter={StaticResource BoolToVis}}"
+                        BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Surface1Brush}"
+                        Padding="0,12,0,0" Margin="0,12,0,0">
+                    <DockPanel LastChildFill="True">
+                        <Button DockPanel.Dock="Right"
+                                Style="{StaticResource GhostButton}"
+                                Command="{Binding CancelCommitCommand}"
+                                Padding="8,6" Margin="8,0,0,0"
+                                ToolTip="Cancelar">
+                            <TextBlock Text="✕" FontSize="12" Foreground="{DynamicResource SubtextBrush}" />
+                        </Button>
+                        <Button DockPanel.Dock="Right"
+                                Style="{StaticResource AccentButton}"
+                                Command="{Binding ConfirmCommitCommand}"
+                                Padding="14,6"
+                                ToolTip="Confirmar commit (Enter)">
+                            <TextBlock Text="Commit" FontSize="12" FontWeight="SemiBold" />
+                        </Button>
+                        <TextBox Text="{Binding CommitMessage, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource DarkTextBox}"
+                                 FontFamily="{StaticResource MonoFont}"
+                                 FontSize="12"
+                                 Padding="10,6"
+                                 Tag="Mensagem do commit...">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Return" Command="{Binding ConfirmCommitCommand}" />
+                                <KeyBinding Key="Escape" Command="{Binding CancelCommitCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                    </DockPanel>
+                </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 MAIN 2-COLUMN LAYOUT
+                 ═══════════════════════════════════════════════════════════ -->
+            <Grid Grid.Row="1"
+                  Visibility="{Binding CurrentProject, Converter={StaticResource NullToVis}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     LEFT COLUMN
+                     ═══════════════════════════════════════════════════════ -->
+                <StackPanel Grid.Column="0">
+
+                    <!-- STATS ROW -->
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Active Terminals -->
+                        <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0">
+                                    <TextBlock Text="Terminais Ativos"
+                                               Style="{StaticResource CaptionText}"
+                                               Margin="0,0,0,6" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource TerminalIcon}"
+                                              Style="{StaticResource IconPath}"
+                                              Stroke="{DynamicResource AccentGreenBrush}"
+                                              Margin="0,0,8,0" />
+                                        <TextBlock Text="{Binding ActiveTerminalCount}"
+                                                   FontSize="28" FontWeight="Bold"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <Button Grid.Row="1"
+                                        Style="{StaticResource GhostButton}"
+                                        HorizontalAlignment="Right"
+                                        Padding="6,3"
+                                        Margin="0,6,0,0"
+                                        Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{x:Static vm:ViewType.Terminal}"
+                                        ToolTip="Abrir terminais">
+                                    <TextBlock Text="Ver Terminais >"
+                                               Style="{StaticResource CaptionText}"
+                                               Foreground="{DynamicResource AccentGreenBrush}" />
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- Running Processes -->
+                        <Border Grid.Column="2" Style="{StaticResource Card}" Margin="0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0">
+                                    <TextBlock Text="Processos"
+                                               Style="{StaticResource CaptionText}"
+                                               Margin="0,0,0,6" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path Data="{StaticResource ProcessIcon}"
+                                              Style="{StaticResource IconPath}"
+                                              Stroke="{DynamicResource AccentBlueBrush}"
+                                              Margin="0,0,8,0" />
+                                        <TextBlock Text="{Binding RunningProcessCount}"
+                                                   FontSize="28" FontWeight="Bold"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <Button Grid.Row="1"
+                                        Style="{StaticResource GhostButton}"
+                                        HorizontalAlignment="Right"
+                                        Padding="6,3"
+                                        Margin="0,6,0,0"
+                                        Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{x:Static vm:ViewType.ProcessMonitor}"
+                                        ToolTip="Monitor de processos">
+                                    <TextBlock Text="Ver Monitor >"
+                                               Style="{StaticResource CaptionText}"
+                                               Foreground="{DynamicResource AccentBlueBrush}" />
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- GIT QUICK ACTIONS -->
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,12"
+                            Visibility="{Binding HasGitInfo, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <TextBlock Text="Git"
+                                       Style="{StaticResource CaptionText}"
+                                       Margin="0,0,0,8" />
+                            <WrapPanel>
+                                <Button Style="{StaticResource GhostButton}"
+                                        Command="{Binding RunGitActionCommand}"
+                                        CommandParameter="pull"
+                                        Margin="0,0,6,4" Padding="10,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Pull" FontSize="12"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource GhostButton}"
+                                        Command="{Binding RunGitActionCommand}"
+                                        CommandParameter="push"
+                                        Margin="0,0,6,4" Padding="10,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Push" FontSize="12"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource GhostButton}"
+                                        Command="{Binding RunGitActionCommand}"
+                                        CommandParameter="fetch"
+                                        Margin="0,0,6,4" Padding="10,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Fetch" FontSize="12"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource GhostButton}"
+                                        Command="{Binding RunGitActionCommand}"
+                                        CommandParameter="stash"
+                                        Margin="0,0,6,4" Padding="10,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Stash" FontSize="12"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- GIT REPO DETAILS -->
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,12"
+                            Visibility="{Binding HasGitInfo, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <TextBlock Text="Repositório"
+                                       Style="{StaticResource SubheadingText}"
+                                       Margin="0,0,0,10" />
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <!-- Status -->
+                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,8">
+                                    <TextBlock Text="Status" Style="{StaticResource CaptionText}" />
+                                    <TextBlock Text="{Binding GitInfo.StatusSummary}"
+                                               Foreground="{Binding GitInfo.RepoStatus, Converter={StaticResource GitStatusToColor}}"
+                                               FontSize="13" />
+                                </StackPanel>
+
+                                <!-- Remote -->
+                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,8">
+                                    <TextBlock Text="Remote" Style="{StaticResource CaptionText}" />
+                                    <TextBlock Text="{Binding GitInfo.Remote}"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               FontSize="13" />
+                                </StackPanel>
+
+                                <!-- Counts row -->
+                                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Modificados: " Style="{StaticResource CaptionText}" />
+                                    <TextBlock Text="{Binding GitInfo.ModifiedFiles}"
+                                               Foreground="{DynamicResource AccentYellowBrush}" FontWeight="SemiBold" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Preparados: " Style="{StaticResource CaptionText}" />
+                                    <TextBlock Text="{Binding GitInfo.StagedFiles}"
+                                               Foreground="{DynamicResource AccentGreenBrush}" FontWeight="SemiBold" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,4">
+                                    <TextBlock Text="Nao rastreados: " Style="{StaticResource CaptionText}" />
+                                    <TextBlock Text="{Binding GitInfo.UntrackedFiles}"
+                                               Foreground="{DynamicResource SubtextBrush}" FontWeight="SemiBold" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,4">
+                                    <TextBlock Text="Conflitos: " Style="{StaticResource CaptionText}" />
+                                    <TextBlock Text="{Binding GitInfo.ConflictedFiles}"
+                                               Foreground="{DynamicResource AccentRedBrush}" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- STARTUP COMMANDS -->
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Comandos Rapidos"
+                                       Style="{StaticResource SubheadingText}"
+                                       Margin="0,0,0,10" />
+
+                            <ItemsControl ItemsSource="{Binding StartupCommands}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource GhostButton}"
+                                                Command="{Binding DataContext.RunStartupCommandCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"
+                                                HorizontalContentAlignment="Left"
+                                                Margin="0,0,0,4"
+                                                Padding="10,7">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{StaticResource PlayIcon}"
+                                                      Style="{StaticResource IconPathSmall}"
+                                                      Stroke="{DynamicResource AccentGreenBrush}"
+                                                      Width="10" Height="10"
+                                                      Margin="0,0,8,0" />
+                                                <TextBlock Text="{Binding}"
+                                                           FontFamily="{StaticResource MonoFont}"
+                                                           FontSize="12"
+                                                           Foreground="{DynamicResource TextBrush}" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="Nenhum comando configurado."
+                                       Style="{StaticResource CaptionText}"
+                                       Visibility="{Binding StartupCommands.Count, Converter={StaticResource CountToVis}, ConverterParameter=Invert}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     RIGHT COLUMN
+                     ═══════════════════════════════════════════════════════ -->
+                <StackPanel Grid.Column="2">
+
+                    <!-- RECENT COMMITS -->
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,12"
+                            Visibility="{Binding HasGitInfo, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <TextBlock Text="Commits Recentes"
+                                       Style="{StaticResource SubheadingText}"
+                                       Margin="0,0,0,10" />
+
+                            <ItemsControl ItemsSource="{Binding RecentCommits}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource Surface0Brush}"
+                                                BorderThickness="0,0,0,1"
+                                                Padding="0,6"
+                                                Margin="0,0,0,2">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+
+                                                <!-- Hash -->
+                                                <TextBlock Grid.Column="0" Grid.Row="0"
+                                                           Text="{Binding Hash}"
+                                                           FontFamily="{StaticResource MonoFont}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource AccentYellowBrush}"
+                                                           Margin="0,0,8,0"
+                                                           VerticalAlignment="Center" />
+                                                <!-- Message -->
+                                                <TextBlock Grid.Column="1" Grid.Row="0"
+                                                           Text="{Binding Message}"
+                                                           FontSize="12"
+                                                           Foreground="{DynamicResource TextBrush}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center" />
+                                                <!-- Time -->
+                                                <TextBlock Grid.Column="2" Grid.Row="0"
+                                                           Text="{Binding RelativeTime}"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource SubtextBrush}"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Center" />
+                                                <!-- Author -->
+                                                <TextBlock Grid.Column="1" Grid.Row="1"
+                                                           Text="{Binding Author}"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource SubtextBrush}"
+                                                           Margin="0,2,0,0" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Empty state -->
+                            <TextBlock Text="Nenhum commit encontrado."
+                                       Style="{StaticResource CaptionText}"
+                                       Visibility="{Binding RecentCommits.Count, Converter={StaticResource CountToVis}, ConverterParameter=Invert}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- CHANGED FILES -->
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,12"
+                            Visibility="{Binding HasChangedFiles, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <TextBlock Text="Arquivos Alterados"
+                                           Style="{StaticResource SubheadingText}" />
+                                <Border Background="{DynamicResource Surface0Brush}"
+                                        CornerRadius="8"
+                                        Padding="6,1"
+                                        Margin="8,0,0,0"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding ChangedFiles.Count}"
+                                               FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SubtextBrush}" />
+                                </Border>
+                            </StackPanel>
+
+                            <ItemsControl ItemsSource="{Binding ChangedFiles}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Status badge -->
+                                            <Border Grid.Column="0"
+                                                    Width="18" Height="18"
+                                                    CornerRadius="3"
+                                                    Margin="0,0,8,0"
+                                                    VerticalAlignment="Center"
+                                                    HorizontalAlignment="Center">
+                                                <TextBlock Text="{Binding Status}"
+                                                           FontFamily="{StaticResource MonoFont}"
+                                                           FontSize="11" FontWeight="Bold"
+                                                           Foreground="{Binding Status, Converter={StaticResource FileStatusToColor}}"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center" />
+                                            </Border>
+
+                                            <!-- File path -->
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding FilePath}"
+                                                       FontFamily="{StaticResource MonoFont}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource TextBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center"
+                                                       ToolTip="{Binding FilePath}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 NO PROJECT SELECTED
+                 ═══════════════════════════════════════════════════════════ -->
+            <StackPanel Grid.Row="1"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Margin="0,60,0,0"
+                        Visibility="{Binding CurrentProject, Converter={StaticResource NullToVis}, ConverterParameter=Invert}">
+                <Path Data="{StaticResource DashboardIcon}"
+                      Style="{StaticResource IconPathLarge}"
+                      Width="64" Height="64"
+                      Stroke="{DynamicResource Surface1Brush}"
+                      HorizontalAlignment="Center"
+                      Margin="0,0,0,20" />
+                <TextBlock Text="Selecione um projeto para comecar"
+                           FontSize="18" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Surface2Brush}"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="Escolha um projeto na barra lateral ou adicione um novo"
+                           Style="{StaticResource BodyText}"
+                           HorizontalAlignment="Center"
+                           Margin="0,8,0,0" />
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

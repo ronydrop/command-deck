@@ -1,0 +1,275 @@
+<UserControl x:Class="CommandDeck.Controls.NoteWidgetControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="260" d:DesignHeight="260">
+
+    <Grid x:Name="RootGrid">
+        <!-- Widget tinted background — color is updated via ApplyColor() -->
+        <Grid.Background>
+            <SolidColorBrush x:Name="WidgetBgBrush" Color="#f9e2af" Opacity="0.10" />
+        </Grid.Background>
+
+        <Grid.RowDefinitions>
+            <!-- Color accent strip -->
+            <RowDefinition Height="4" />
+            <!-- Icon + settings button -->
+            <RowDefinition Height="Auto" />
+            <!-- Note text area -->
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Top color accent strip -->
+        <Border Grid.Row="0" CornerRadius="0">
+            <Border.Background>
+                <SolidColorBrush x:Name="StripBrush" Color="#f9e2af" />
+            </Border.Background>
+        </Border>
+
+        <!-- Header: note icon (left) + settings gear (right) -->
+        <Grid Grid.Row="1" Margin="12,10,12,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Note icon -->
+            <Border Grid.Column="0" Width="24" Height="24" CornerRadius="6"
+                    VerticalAlignment="Center" Margin="0,0,8,0">
+                <Border.Background>
+                    <SolidColorBrush x:Name="IconBgBrush" Color="#f9e2af" Opacity="0.20" />
+                </Border.Background>
+                <TextBlock Text="📝" FontSize="12"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+
+            <!-- Settings gear button -->
+            <Button Grid.Column="2"
+                    x:Name="SettingsButton"
+                    Click="OnSettingsClick"
+                    Width="24" Height="24"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    VerticalAlignment="Center"
+                    ToolTip="Cor do widget">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="GearBg" CornerRadius="5" Background="Transparent"
+                                Width="24" Height="24">
+                            <TextBlock Text="⚙" FontSize="13"
+                                       Foreground="{DynamicResource SubtextBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="GearBg" Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5" />
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </Grid>
+
+        <!-- Separator -->
+        <Border Grid.Row="1" Height="1" VerticalAlignment="Bottom" Margin="14,0">
+            <Border.Background>
+                <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.4" />
+            </Border.Background>
+        </Border>
+
+        <!-- Note text area -->
+        <TextBox Grid.Row="2"
+                 x:Name="NoteTextBox"
+                 Text="{Binding NoteText, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True"
+                 AcceptsTab="True"
+                 TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto"
+                 Margin="10,8,10,10"
+                 Padding="8"
+                 FontSize="13"
+                 FontFamily="{StaticResource MonoFont}"
+                 Foreground="{DynamicResource TextBrush}"
+                 CaretBrush="{DynamicResource TextBrush}"
+                 BorderThickness="0">
+            <TextBox.Background>
+                <SolidColorBrush Color="{DynamicResource Surface0}" Opacity="0.20" />
+            </TextBox.Background>
+            <TextBox.Style>
+                <Style TargetType="TextBox">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TextBox">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="8"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ScrollViewer x:Name="PART_ContentHost"
+                                                  VerticalScrollBarVisibility="Auto" />
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TextBox.Style>
+        </TextBox>
+
+        <!-- Color picker Popup — opens on settings button click -->
+        <Popup x:Name="ColorPickerPopup"
+               PlacementTarget="{Binding ElementName=SettingsButton}"
+               Placement="Bottom"
+               VerticalOffset="4"
+               StaysOpen="False"
+               AllowsTransparency="True">
+            <Border CornerRadius="8"
+                    Padding="10,8"
+                    BorderThickness="1"
+                    Background="{DynamicResource GlassBgBrush}">
+                <Border.BorderBrush>
+                    <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.7" />
+                </Border.BorderBrush>
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="12" ShadowDepth="3" Opacity="0.35" Color="#000000" />
+                </Border.Effect>
+                <StackPanel Orientation="Horizontal">
+
+                    <!-- Yellow -->
+                    <Border Width="22" Height="22" CornerRadius="11" Margin="3,0"
+                            Background="#f9e2af" Cursor="Hand"
+                            MouseDown="OnColorPick" Tag="#f9e2af">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="RenderTransform">
+                                            <Setter.Value><ScaleTransform ScaleX="1.15" ScaleY="1.15" /></Setter.Value>
+                                        </Setter>
+                                        <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                    <!-- Green -->
+                    <Border Width="22" Height="22" CornerRadius="11" Margin="3,0"
+                            Background="#a6e3a1" Cursor="Hand"
+                            MouseDown="OnColorPick" Tag="#a6e3a1">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="RenderTransform">
+                                            <Setter.Value><ScaleTransform ScaleX="1.15" ScaleY="1.15" /></Setter.Value>
+                                        </Setter>
+                                        <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                    <!-- Blue -->
+                    <Border Width="22" Height="22" CornerRadius="11" Margin="3,0"
+                            Background="#89b4fa" Cursor="Hand"
+                            MouseDown="OnColorPick" Tag="#89b4fa">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="RenderTransform">
+                                            <Setter.Value><ScaleTransform ScaleX="1.15" ScaleY="1.15" /></Setter.Value>
+                                        </Setter>
+                                        <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                    <!-- Pink -->
+                    <Border Width="22" Height="22" CornerRadius="11" Margin="3,0"
+                            Background="#f5c2e7" Cursor="Hand"
+                            MouseDown="OnColorPick" Tag="#f5c2e7">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="RenderTransform">
+                                            <Setter.Value><ScaleTransform ScaleX="1.15" ScaleY="1.15" /></Setter.Value>
+                                        </Setter>
+                                        <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                    <!-- Peach -->
+                    <Border Width="22" Height="22" CornerRadius="11" Margin="3,0"
+                            Background="#fab387" Cursor="Hand"
+                            MouseDown="OnColorPick" Tag="#fab387">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="RenderTransform">
+                                            <Setter.Value><ScaleTransform ScaleX="1.15" ScaleY="1.15" /></Setter.Value>
+                                        </Setter>
+                                        <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                    <!-- Lavender -->
+                    <Border Width="22" Height="22" CornerRadius="11" Margin="3,0"
+                            Background="#b4befe" Cursor="Hand"
+                            MouseDown="OnColorPick" Tag="#b4befe">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="RenderTransform">
+                                            <Setter.Value><ScaleTransform ScaleX="1.15" ScaleY="1.15" /></Setter.Value>
+                                        </Setter>
+                                        <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                    <!-- Red -->
+                    <Border Width="22" Height="22" CornerRadius="11" Margin="3,0"
+                            Background="#f38ba8" Cursor="Hand"
+                            MouseDown="OnColorPick" Tag="#f38ba8">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="RenderTransform">
+                                            <Setter.Value><ScaleTransform ScaleX="1.15" ScaleY="1.15" /></Setter.Value>
+                                        </Setter>
+                                        <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                </StackPanel>
+            </Border>
+        </Popup>
+
+    </Grid>
+</UserControl>

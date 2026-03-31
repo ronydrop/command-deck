@@ -1,8 +1,8 @@
-# Plano de Correção — DevWorkspaceHub Stabilization Sprint
+# Plano de Correção — CommandDeck Stabilization Sprint
 
 **Data:** 2026-03-31
-**Projeto:** DevWorkspaceHub (WPF .NET 8)
-**Base:** `/mnt/c/Users/ronyo/Desktop/Rony/Projetos/DevWorkspaceHub/`
+**Projeto:** CommandDeck (WPF .NET 8)
+**Base:** `/mnt/c/Users/ronyo/Desktop/Rony/Projetos/CommandDeck/`
 
 ---
 

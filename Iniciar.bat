@@ -1,6 +1,6 @@
 @echo off
-title Dev Workspace Hub
-echo Iniciando Dev Workspace Hub...
+title Command Deck
+echo Iniciando Command Deck...
 echo.
 
 REM Verificar se .NET 8 SDK esta instalado
@@ -13,12 +13,12 @@ if %errorlevel% neq 0 (
 )
 
 echo Limpando build anterior...
-dotnet clean src\DevWorkspaceHub\DevWorkspaceHub.csproj >nul 2>&1
+dotnet clean src\CommandDeck\CommandDeck.csproj >nul 2>&1
 
 echo Restaurando dependencias...
-dotnet restore src\DevWorkspaceHub\DevWorkspaceHub.csproj
+dotnet restore src\CommandDeck\CommandDeck.csproj
 
 echo.
 echo Compilando e iniciando...
-dotnet run --project src\DevWorkspaceHub\DevWorkspaceHub.csproj
+dotnet run --project src\CommandDeck\CommandDeck.csproj
 pause

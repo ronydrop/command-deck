@@ -96,7 +96,7 @@ SECTION I: RADIUS TOKENS (in Styles.xaml, not per-theme)
 
 #### Step 1.1: Expandir LiquidGlass.xaml (Light)
 
-**Arquivo:** `src/DevWorkspaceHub/Resources/Themes/LiquidGlass.xaml`
+**Arquivo:** `src/CommandDeck/Resources/Themes/LiquidGlass.xaml`
 
 Ações:
 - Recalibrar cores base para maior contraste entre camadas:
@@ -145,7 +145,7 @@ Ações:
 
 #### Step 1.2: Expandir LiquidGlassDark.xaml (Dark)
 
-**Arquivo:** `src/DevWorkspaceHub/Resources/Themes/LiquidGlassDark.xaml`
+**Arquivo:** `src/CommandDeck/Resources/Themes/LiquidGlassDark.xaml`
 
 Ações:
 - Recalibrar cores base para maior separação:
@@ -191,7 +191,7 @@ Ações:
 
 #### Step 1.3: Adicionar Radius Tokens em Styles.xaml
 
-**Arquivo:** `src/DevWorkspaceHub/Resources/Styles.xaml`
+**Arquivo:** `src/CommandDeck/Resources/Styles.xaml`
 
 Ações:
 - Adicionar CornerRadius resources no topo:
@@ -210,10 +210,10 @@ Ações:
 #### Step 1.4: Atualizar Non-Glass Themes para Compatibilidade
 
 **Arquivos:**
-- `src/DevWorkspaceHub/Resources/Themes/CatppuccinMocha.xaml`
-- `src/DevWorkspaceHub/Resources/Themes/Dracula.xaml`
-- `src/DevWorkspaceHub/Resources/Themes/VSCodeDark.xaml`
-- `src/DevWorkspaceHub/Resources/Themes/VSCodeLight.xaml`
+- `src/CommandDeck/Resources/Themes/CatppuccinMocha.xaml`
+- `src/CommandDeck/Resources/Themes/Dracula.xaml`
+- `src/CommandDeck/Resources/Themes/VSCodeDark.xaml`
+- `src/CommandDeck/Resources/Themes/VSCodeLight.xaml`
 
 Ações:
 - Adicionar fallback flat brushes para todos os novos tokens (HoverBgBrush, ActiveBgBrush, etc.) para que os temas não quebrem.
@@ -224,7 +224,7 @@ Ações:
 
 #### Step 2.1: Refatorar AccentButton
 
-**Arquivo:** `src/DevWorkspaceHub/Resources/Styles.xaml`
+**Arquivo:** `src/CommandDeck/Resources/Styles.xaml`
 
 Mudanças:
 - Remover uso de `Opacity` para hover/press — substituir por cores dedicadas
@@ -310,7 +310,7 @@ Mudanças:
 
 #### Step 3.1: MainWindow — Toolbar e Status Bar
 
-**Arquivo:** `src/DevWorkspaceHub/Views/MainWindow.xaml`
+**Arquivo:** `src/CommandDeck/Views/MainWindow.xaml`
 
 Mudanças:
 - Toolbar: manter `GlassToolbarBrush` mas reduzir bottom border opacity para 0.5
@@ -321,12 +321,12 @@ Mudanças:
 
 Mudanças:
 - Right border: usar `GlassBorderSubtle` em vez de `GlassBorderBrush` (mais sutil)
-- Sidebar header "Dev Workspace Hub": adicionar letter-spacing sutil (CharacterSpacing)
+- Sidebar header "Command Deck": adicionar letter-spacing sutil (CharacterSpacing)
 - Project avatars collapsed: adicionar hover glow sutil
 
 #### Step 3.3: CanvasCardControl — Glass Card Premium
 
-**Arquivo:** `src/DevWorkspaceHub/Controls/CanvasCardControl.xaml`
+**Arquivo:** `src/CommandDeck/Controls/CanvasCardControl.xaml`
 
 Mudanças:
 - Card border: manter `GlassBgBrush` + `GlassBorderBrush`
@@ -338,7 +338,7 @@ Mudanças:
 
 #### Step 3.4: DashboardView — Cards
 
-**Arquivo:** `src/DevWorkspaceHub/Views/DashboardView.xaml`
+**Arquivo:** `src/CommandDeck/Views/DashboardView.xaml`
 
 Mudanças:
 - Os Cards já usam `Style="{StaticResource Card}"` — serão melhorados via Step 2.5
@@ -346,7 +346,7 @@ Mudanças:
 
 #### Step 3.5: SettingsView — Form Cards
 
-**Arquivo:** `src/DevWorkspaceHub/Views/SettingsView.xaml`
+**Arquivo:** `src/CommandDeck/Views/SettingsView.xaml`
 
 Mudanças:
 - Cards de settings: já usam Card style
@@ -354,7 +354,7 @@ Mudanças:
 
 #### Step 3.6: ProjectEditView — Modal Dialog
 
-**Arquivo:** `src/DevWorkspaceHub/Views/ProjectEditView.xaml`
+**Arquivo:** `src/CommandDeck/Views/ProjectEditView.xaml`
 
 Mudanças:
 - Backdrop: `#80000000` → `#60000000` (menos opaco, mais glass-like)
@@ -363,7 +363,7 @@ Mudanças:
 
 #### Step 3.7: CommandPaletteOverlay
 
-**Arquivo:** `src/DevWorkspaceHub/Views/CommandPaletteOverlay.xaml`
+**Arquivo:** `src/CommandDeck/Views/CommandPaletteOverlay.xaml`
 
 Mudanças:
 - Backdrop: glassmorphism feel (usar GlassFrost)
@@ -372,7 +372,7 @@ Mudanças:
 
 #### Step 3.8: NotificationToast
 
-**Arquivo:** `src/DevWorkspaceHub/Controls/NotificationToast.xaml`
+**Arquivo:** `src/CommandDeck/Controls/NotificationToast.xaml`
 
 Mudanças:
 - Background: `GlassBgBrush` com `GlassBorderBrush`
@@ -382,7 +382,7 @@ Mudanças:
 
 #### Step 3.9: AssistantPanelView — AI Panel
 
-**Arquivo:** `src/DevWorkspaceHub/Views/AssistantPanelView.xaml`
+**Arquivo:** `src/CommandDeck/Views/AssistantPanelView.xaml`
 
 Mudanças:
 - Left border: `GlassBorderSubtle`
@@ -397,7 +397,7 @@ Mudanças:
 
 Criar uma imagem PNG 200x200 de noise gaussiano sutil (2-4% opacity, grayscale).
 
-**Arquivo novo:** `src/DevWorkspaceHub/Resources/Assets/noise-texture.png`
+**Arquivo novo:** `src/CommandDeck/Resources/Assets/noise-texture.png`
 
 #### Step 4.2: Adicionar Noise Overlay em Styles.xaml
 

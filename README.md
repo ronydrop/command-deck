@@ -1,4 +1,4 @@
-# Dev Workspace Hub
+# Command Deck
 
 Terminal manager + dev dashboard nativo para Windows. Gerencia múltiplas instâncias de terminal por projeto com integração Git, monitoramento de processos e tema dark.
 
@@ -27,18 +27,18 @@ Terminal manager + dev dashboard nativo para Windows. Gerencia múltiplas instâ
 ## Build
 
 ```bash
-cd DevWorkspaceHub
+cd CommandDeck
 dotnet restore
 dotnet build
-dotnet run --project src/DevWorkspaceHub
+dotnet run --project src/CommandDeck
 ```
 
-Ou abra `DevWorkspaceHub.sln` no Visual Studio e pressione F5.
+Ou abra `CommandDeck.sln` no Visual Studio e pressione F5.
 
 ## Estrutura
 
 ```
-src/DevWorkspaceHub/
+src/CommandDeck/
 ├── Models/          → Entidades (Project, TerminalSession, GitInfo, ProcessInfo)
 ├── Services/        → Lógica de negócio (Terminal, Project, Git, ProcessMonitor)
 ├── ViewModels/      → MVVM ViewModels com CommunityToolkit
@@ -52,7 +52,7 @@ src/DevWorkspaceHub/
 ## Configuração
 
 Projetos e settings são salvos em:
-- `%APPDATA%/DevWorkspaceHub/projects.json`
-- `%APPDATA%/DevWorkspaceHub/settings.json`
+- `%APPDATA%/CommandDeck/projects.json`
+- `%APPDATA%/CommandDeck/settings.json`
 # dev-workspace-hub
 "# dev-workspace-hub" 

@@ -39,7 +39,7 @@ The order should be:
 5. `<DockPanel>` (content child)
 
 ## Files to Change
-- `/mnt/c/Users/ronyo/Desktop/Rony/Projetos/DevWorkspaceHub/src/DevWorkspaceHub/Controls/CanvasCardControl.xaml`
+- `/mnt/c/Users/ronyo/Desktop/Rony/Projetos/CommandDeck/src/CommandDeck/Controls/CanvasCardControl.xaml`
 
 ## Validation
 - Build via .bat should pass this error

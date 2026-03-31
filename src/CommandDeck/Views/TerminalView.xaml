@@ -1,0 +1,140 @@
+<UserControl x:Class="CommandDeck.Views.TerminalView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:CommandDeck.ViewModels"
+             xmlns:controls="clr-namespace:CommandDeck.Controls"
+             xmlns:conv="clr-namespace:CommandDeck.Converters"
+             mc:Ignorable="d"
+             d:DesignWidth="900" d:DesignHeight="600"
+             Background="{StaticResource BaseBgBrush}">
+
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <conv:NullToVisibilityConverter x:Key="NullToVis" />
+        <conv:TerminalStatusToColorConverter x:Key="StatusToColor" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Tab bar -->
+            <RowDefinition Height="36" />
+            <!-- Terminal content -->
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             TERMINAL TAB BAR
+             ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0"
+                Background="{StaticResource MantelBgBrush}"
+                BorderBrush="{StaticResource Surface0Brush}"
+                BorderThickness="0,0,0,1">
+            <DockPanel>
+                <!-- New terminal button -->
+                <Button DockPanel.Dock="Right"
+                        Style="{StaticResource IconButton}"
+                        Width="36" Height="36"
+                        Command="{Binding DataContext.NewTerminalCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        ToolTip="Novo Terminal (Ctrl+Shift+T)">
+                    <Path Data="{StaticResource PlusIcon}"
+                          Style="{StaticResource IconPathSmall}" />
+                </Button>
+
+                <!-- Terminal tabs -->
+                <ItemsControl ItemsSource="{Binding DataContext.Terminals, RelativeSource={RelativeSource AncestorType=Window}}"
+                              VerticalAlignment="Stretch">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:TerminalViewModel}">
+                            <Border x:Name="tabBorder"
+                                    Padding="12,0"
+                                    Background="Transparent"
+                                    BorderThickness="0,0,0,2"
+                                    BorderBrush="Transparent"
+                                    Cursor="Hand"
+                                    MinWidth="120"
+                                    MouseLeftButtonDown="Tab_MouseLeftButtonDown">
+                                <DockPanel VerticalAlignment="Center">
+                                    <!-- Status dot -->
+                                    <Ellipse DockPanel.Dock="Left"
+                                             Width="6" Height="6"
+                                             Fill="{Binding Session.Status, Converter={StaticResource StatusToColor}}"
+                                             Margin="0,0,6,0"
+                                             VerticalAlignment="Center" />
+
+                                    <!-- Close button -->
+                                    <Button DockPanel.Dock="Right"
+                                            Style="{StaticResource IconButton}"
+                                            Width="20" Height="20"
+                                            Command="{Binding DataContext.CloseTerminalCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"
+                                            ToolTip="Fechar Terminal">
+                                        <Path Data="{StaticResource CloseIcon}"
+                                              Width="8" Height="8"
+                                              Stroke="{StaticResource Overlay0Brush}"
+                                              StrokeThickness="2"
+                                              Stretch="Uniform" />
+                                    </Button>
+
+                                    <!-- Title -->
+                                    <TextBlock Text="{Binding Title}"
+                                               Foreground="{StaticResource SubtextBrush}"
+                                               FontSize="12"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxWidth="120" />
+                                </DockPanel>
+                            </Border>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                    <Setter TargetName="tabBorder" Property="Background"
+                                            Value="{StaticResource BaseBgBrush}" />
+                                    <Setter TargetName="tabBorder" Property="BorderBrush"
+                                            Value="{StaticResource AccentBrush}" />
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             TERMINAL CONTENT
+             ═══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="1">
+            <!-- Active terminal control -->
+            <controls:TerminalControl
+                DataContext="{Binding DataContext.ActiveTerminal, RelativeSource={RelativeSource AncestorType=Window}}"
+                Visibility="{Binding DataContext.ActiveTerminal, RelativeSource={RelativeSource AncestorType=Window},
+                             Converter={StaticResource NullToVis}}" />
+
+            <!-- Empty state -->
+            <StackPanel VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Visibility="{Binding DataContext.ActiveTerminal, RelativeSource={RelativeSource AncestorType=Window},
+                                     Converter={StaticResource NullToVis}, ConverterParameter=Invert}">
+                <Path Data="{StaticResource TerminalIcon}"
+                      Style="{StaticResource IconPathLarge}"
+                      Width="48" Height="48"
+                      Stroke="{StaticResource Surface2Brush}"
+                      HorizontalAlignment="Center"
+                      Margin="0,0,0,16" />
+                <TextBlock Text="Nenhum terminal aberto"
+                           Style="{StaticResource SubheadingText}"
+                           HorizontalAlignment="Center"
+                           Foreground="{StaticResource Surface2Brush}" />
+                <TextBlock Text="Pressione Ctrl+Shift+T para abrir um novo terminal"
+                           Style="{StaticResource CaptionText}"
+                           HorizontalAlignment="Center"
+                           Margin="0,4,0,0" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>
