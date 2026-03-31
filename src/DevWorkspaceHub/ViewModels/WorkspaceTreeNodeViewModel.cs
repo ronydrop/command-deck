@@ -16,6 +16,12 @@ public partial class WorkspaceTreeNodeViewModel : ObservableObject
     [ObservableProperty] private bool _isExpanded = true;
     [ObservableProperty] private bool _isSelected;
     [ObservableProperty] private bool _isEditing;
+    [ObservableProperty] private string _editingName = string.Empty;
+
+    partial void OnIsEditingChanged(bool value)
+    {
+        if (value) EditingName = Model.Name;
+    }
 
     public ObservableCollection<WorkspaceTreeNodeViewModel> Children { get; } = new();
 

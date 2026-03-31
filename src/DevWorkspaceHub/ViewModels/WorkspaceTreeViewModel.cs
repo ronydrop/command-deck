@@ -20,6 +20,7 @@ public partial class WorkspaceTreeViewModel : ObservableObject
 {
     private readonly IWorkspaceTreeService _treeService;
     private readonly IWorkspaceService _workspaceService;
+    private readonly IWorkspaceExportService _exportService;
 
     public ObservableCollection<WorkspaceTreeNodeViewModel> RootNodes { get; } = new();
 
