@@ -50,12 +50,21 @@ internal class TerminalLineBuffer
     /// <summary>Logical length of content in the line (rightmost non-empty position + 1).</summary>
     public int LineLength { get; private set; }
 
-    private static readonly Color DefaultFg = Color.FromRgb(0xCD, 0xD6, 0xF4);
-    private static readonly Color DefaultBg = Color.FromRgb(0x1E, 0x1E, 0x2E);
+    private readonly Color _defaultFg;
+    private readonly Color _defaultBg;
+    private readonly TerminalCell _emptyCell;
 
     public TerminalLineBuffer(int columns = 120)
+        : this(columns, Color.FromRgb(0xCD, 0xD6, 0xF4), Color.FromRgb(0x1E, 0x1E, 0x2E))
+    {
+    }
+
+    public TerminalLineBuffer(int columns, Color defaultFg, Color defaultBg)
     {
         _width = columns;
+        _defaultFg = defaultFg;
+        _defaultBg = defaultBg;
+        _emptyCell = new TerminalCell { Char = ' ', Foreground = defaultFg, Background = defaultBg };
         _cells = new TerminalCell[columns];
         Clear();
     }
@@ -138,19 +147,19 @@ internal class TerminalLineBuffer
         {
             case 0: // Erase to end of line
                 for (int i = CursorCol; i < _width; i++)
-                    _cells[i] = TerminalCell.Empty;
+                    _cells[i] = _emptyCell;
                 if (CursorCol < LineLength)
                     LineLength = CursorCol;
                 break;
 
             case 1: // Erase to start of line
                 for (int i = 0; i <= CursorCol && i < _width; i++)
-                    _cells[i] = TerminalCell.Empty;
+                    _cells[i] = _emptyCell;
                 break;
 
             case 2: // Erase entire line
                 for (int i = 0; i < _width; i++)
-                    _cells[i] = TerminalCell.Empty;
+                    _cells[i] = _emptyCell;
                 LineLength = 0;
                 break;
         }
@@ -166,7 +175,7 @@ internal class TerminalLineBuffer
 
         Array.Copy(_cells, CursorCol + n, _cells, CursorCol, _width - CursorCol - n);
         for (int i = _width - n; i < _width; i++)
-            _cells[i] = TerminalCell.Empty;
+            _cells[i] = _emptyCell;
 
         LineLength = Math.Max(0, LineLength - n);
     }
@@ -185,7 +194,7 @@ internal class TerminalLineBuffer
 
         // Fill inserted positions with blanks
         for (int i = CursorCol; i < CursorCol + n && i < _width; i++)
-            _cells[i] = TerminalCell.Empty;
+            _cells[i] = _emptyCell;
 
         LineLength = Math.Min(LineLength + n, _width);
     }
@@ -226,11 +235,11 @@ internal class TerminalLineBuffer
                 var run = new Run(text);
 
                 // Apply foreground
-                if (fmt.Foreground != DefaultFg)
+                if (fmt.Foreground != _defaultFg)
                     run.Foreground = GetBrush(fmt.Foreground);
 
                 // Apply background
-                if (fmt.Background != DefaultBg)
+                if (fmt.Background != _defaultBg)
                     run.Background = GetBrush(fmt.Background);
 
                 if (fmt.IsBold) run.FontWeight = System.Windows.FontWeights.Bold;
@@ -253,7 +262,7 @@ internal class TerminalLineBuffer
     public void Clear()
     {
         for (int i = 0; i < _width; i++)
-            _cells[i] = TerminalCell.Empty;
+            _cells[i] = _emptyCell;
         CursorCol = 0;
         LineLength = 0;
     }
@@ -270,7 +279,7 @@ internal class TerminalLineBuffer
         Array.Copy(_cells, newCells, copyLen);
 
         for (int i = copyLen; i < columns; i++)
-            newCells[i] = TerminalCell.Empty;
+            newCells[i] = _emptyCell;
 
         _cells = newCells;
         _width = columns;

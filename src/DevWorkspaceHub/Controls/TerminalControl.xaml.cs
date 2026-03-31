@@ -294,6 +294,25 @@ public partial class TerminalControl : UserControl
     }
 
     /// <summary>
+    /// Called once when the control is first rendered. Sends the actual measured size
+    /// to ConPTY (replacing the default 120x30) and auto-focuses the hidden input.
+    /// </summary>
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        // Sync ConPTY with the real control dimensions
+        if (_viewModel != null && ActualWidth > 0 && ActualHeight > 0)
+        {
+            var (charWidth, lineHeight) = MeasureCharDimensions();
+            short columns = (short)Math.Max(40, (int)(ActualWidth / charWidth));
+            short rows = (short)Math.Max(10, (int)(ActualHeight / lineHeight));
+            _viewModel.ResizeTerminal(columns, rows);
+        }
+
+        // Auto-focus after layout stabilizes so keystrokes reach HiddenInput
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, FocusInput);
+    }
+
+    /// <summary>
     /// Recalculates terminal dimensions on resize.
     /// </summary>
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)

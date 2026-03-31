@@ -28,6 +28,9 @@ public partial class SettingsViewModel : ObservableObject
     private string _originalTheme = "LiquidGlassDark";
 
     [ObservableProperty]
+    private int _selectedTabIndex;
+
+    [ObservableProperty]
     private string _selectedTheme = "LiquidGlassDark";
 
     partial void OnSelectedThemeChanged(string value)
@@ -116,6 +119,32 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _claudeSubscriptionInfo = string.Empty;
+
+    // ─── Per-provider configuration ─────────────────────────────────────
+
+    [ObservableProperty]
+    private string _openAiApiKey = string.Empty;
+
+    [ObservableProperty]
+    private string _openAiModel = "gpt-4o-mini";
+
+    [ObservableProperty]
+    private string _anthropicApiKey = string.Empty;
+
+    [ObservableProperty]
+    private string _anthropicModel = "claude-sonnet-4-20250514";
+
+    [ObservableProperty]
+    private string _openRouterApiKey = string.Empty;
+
+    [ObservableProperty]
+    private string _openRouterModel = "anthropic/claude-sonnet-4";
+
+    [ObservableProperty]
+    private string _ollamaModel = "llama3.2";
+
+    [ObservableProperty]
+    private string _ollamaBaseUrl = "http://localhost:11434";
 
     // ─── Notificações ────────────────────────────────────────────────────────
 
@@ -323,12 +352,41 @@ public partial class SettingsViewModel : ObservableObject
         "apikey", "claude_oauth"
     };
 
+    public IReadOnlyList<string> AvailableOpenAiModels { get; } = new[]
+    {
+        "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo",
+        "o3-mini", "o1", "o1-mini"
+    };
+
+    public IReadOnlyList<string> AvailableAnthropicModels { get; } = new[]
+    {
+        "claude-sonnet-4-20250514", "claude-opus-4-20250514",
+        "claude-haiku-4-5-20251001"
+    };
+
+    public IReadOnlyList<string> AvailableOpenRouterModels { get; } = new[]
+    {
+        "anthropic/claude-sonnet-4", "anthropic/claude-opus-4",
+        "anthropic/claude-haiku-4.5",
+        "openai/gpt-4o", "openai/gpt-4o-mini",
+        "google/gemini-2.5-pro", "google/gemini-2.5-flash",
+        "meta-llama/llama-4-maverick",
+        "deepseek/deepseek-r1", "deepseek/deepseek-chat-v3"
+    };
+
+    [RelayCommand]
+    private void SetActiveProvider(string provider)
+    {
+        AiProvider = provider;
+    }
+
     partial void OnAiProviderChanged(string value)
     {
         OnPropertyChanged(nameof(IsAiEnabled));
         OnPropertyChanged(nameof(IsOpenAiProvider));
         OnPropertyChanged(nameof(IsAnthropicProvider));
         OnPropertyChanged(nameof(IsLocalProvider));
+        OnPropertyChanged(nameof(IsOpenRouterProvider));
         OnPropertyChanged(nameof(IsApiKeyProvider));
         OnPropertyChanged(nameof(IsAnthropicOAuthMode));
     }
@@ -418,6 +476,13 @@ public partial class SettingsViewModel : ObservableObject
         AiProvider = settings.AiProvider;
         AiModel = settings.AiModel;
         AiBaseUrl = settings.AiBaseUrl;
+
+        // Per-provider models
+        OpenAiModel = settings.AiProvider == "openai" ? settings.AiModel : "gpt-4o-mini";
+        AnthropicModel = settings.AiProvider == "anthropic" ? settings.AiModel : "claude-sonnet-4-20250514";
+        OpenRouterModel = settings.AiProvider == "openrouter" ? settings.AiModel : "anthropic/claude-sonnet-4";
+        OllamaModel = settings.AiProvider == "local" ? settings.AiModel : "llama3.2";
+        OllamaBaseUrl = !string.IsNullOrWhiteSpace(settings.AiBaseUrl) ? settings.AiBaseUrl : "http://localhost:11434";
         AiMaxContextMessages = settings.AiMaxContextMessages;
         AiAssistantVisible = settings.AiAssistantVisible;
         AnthropicAuthMode = settings.AnthropicAuthMode;
@@ -449,21 +514,24 @@ public partial class SettingsViewModel : ObservableObject
         TerminalWallpaperContrast = settings.TerminalWallpaperContrast;
         TerminalWallpaperStretch = settings.TerminalWallpaperStretch;
 
-        // API key (from secure storage — load based on provider)
-        try
+        // Per-provider API keys (from secure storage)
+        try { OpenAiApiKey = await _secretStorageService.RetrieveSecretAsync("ai_openai_api_key") ?? string.Empty; }
+        catch { OpenAiApiKey = string.Empty; }
+
+        try { AnthropicApiKey = await _secretStorageService.RetrieveSecretAsync("ai_anthropic_api_key") ?? string.Empty; }
+        catch { AnthropicApiKey = string.Empty; }
+
+        try { OpenRouterApiKey = await _secretStorageService.RetrieveSecretAsync("ai_openrouter_api_key") ?? string.Empty; }
+        catch { OpenRouterApiKey = string.Empty; }
+
+        // Backward compat: sync AiApiKey with active provider
+        AiApiKey = AiProvider switch
         {
-            var secretName = AiProvider switch
-            {
-                "anthropic" => "ai_anthropic_api_key",
-                "openrouter" => "ai_openrouter_api_key",
-                _ => "ai_openai_api_key"
-            };
-            AiApiKey = await _secretStorageService.RetrieveSecretAsync(secretName) ?? string.Empty;
-        }
-        catch
-        {
-            AiApiKey = string.Empty;
-        }
+            "openai" => OpenAiApiKey,
+            "anthropic" => AnthropicApiKey,
+            "openrouter" => OpenRouterApiKey,
+            _ => string.Empty
+        };
 
         // Model slots
         LoadModelSlots();
@@ -531,7 +599,24 @@ public partial class SettingsViewModel : ObservableObject
         settings.ToggleSidebarShortcut = ToggleSidebarShortcut;
         settings.FocusTerminalShortcut = FocusTerminalShortcut;
 
-        // Assistente IA
+        // Assistente IA — sync from active provider
+        AiModel = AiProvider switch
+        {
+            "openai" => OpenAiModel,
+            "anthropic" => AnthropicModel,
+            "openrouter" => OpenRouterModel,
+            "local" => OllamaModel,
+            _ => AiModel
+        };
+        AiApiKey = AiProvider switch
+        {
+            "openai" => OpenAiApiKey,
+            "anthropic" => AnthropicApiKey,
+            "openrouter" => OpenRouterApiKey,
+            _ => string.Empty
+        };
+        AiBaseUrl = AiProvider == "local" ? OllamaBaseUrl : AiBaseUrl;
+
         settings.AiProvider = AiProvider;
         settings.AiModel = AiModel;
         settings.AiBaseUrl = AiBaseUrl;
@@ -566,15 +651,15 @@ public partial class SettingsViewModel : ObservableObject
         settings.TerminalWallpaperContrast = Math.Clamp(TerminalWallpaperContrast, 0.5, 1.5);
         settings.TerminalWallpaperStretch = TerminalWallpaperStretch;
 
-        // Salvar API key (secure storage)
+        // Save ALL provider API keys
         try
         {
-            if (AiProvider == "openai" && !string.IsNullOrWhiteSpace(AiApiKey))
-                await _secretStorageService.StoreSecretAsync("ai_openai_api_key", AiApiKey);
-            else if (AiProvider == "anthropic" && !string.IsNullOrWhiteSpace(AiApiKey))
-                await _secretStorageService.StoreSecretAsync("ai_anthropic_api_key", AiApiKey);
-            else if (AiProvider == "openrouter" && !string.IsNullOrWhiteSpace(AiApiKey))
-                await _secretStorageService.StoreSecretAsync("ai_openrouter_api_key", AiApiKey);
+            if (!string.IsNullOrWhiteSpace(OpenAiApiKey))
+                await _secretStorageService.StoreSecretAsync("ai_openai_api_key", OpenAiApiKey);
+            if (!string.IsNullOrWhiteSpace(AnthropicApiKey))
+                await _secretStorageService.StoreSecretAsync("ai_anthropic_api_key", AnthropicApiKey);
+            if (!string.IsNullOrWhiteSpace(OpenRouterApiKey))
+                await _secretStorageService.StoreSecretAsync("ai_openrouter_api_key", OpenRouterApiKey);
         }
         catch { }
 

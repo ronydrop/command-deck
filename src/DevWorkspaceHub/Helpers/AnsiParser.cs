@@ -42,8 +42,8 @@ public class AnsiParser
 
     // ─── Parser State ───────────────────────────────────────────────────────
 
-    private Color _foreground = Color.FromRgb(0xCD, 0xD6, 0xF4); // Default: white
-    private Color _background = Color.FromRgb(0x1E, 0x1E, 0x2E); // Default: dark bg
+    private Color _foreground;
+    private Color _background;
     private bool _isBold;
     private bool _isItalic;
     private bool _isUnderline;
@@ -53,7 +53,7 @@ public class AnsiParser
 
     // ─── Line Buffer for cursor-aware rendering ────────────────────────────
 
-    private readonly TerminalLineBuffer _lineBuffer = new(120);
+    private readonly TerminalLineBuffer _lineBuffer;
 
     /// <summary>Number of committed inlines (before current line) in the Paragraph.</summary>
     private int _committedInlineCount;
@@ -61,8 +61,28 @@ public class AnsiParser
     /// <summary>Current cursor column position within the active line.</summary>
     public int CursorColumn => _lineBuffer.CursorCol;
 
-    private readonly Color _defaultForeground = Color.FromRgb(0xCD, 0xD6, 0xF4);
-    private readonly Color _defaultBackground = Color.FromRgb(0x1E, 0x1E, 0x2E);
+    private readonly Color _defaultForeground;
+    private readonly Color _defaultBackground;
+
+    private static readonly Color FallbackFg = Color.FromRgb(0xCD, 0xD6, 0xF4);
+    private static readonly Color FallbackBg = Color.FromRgb(0x1E, 0x1E, 0x2E);
+
+    /// <summary>
+    /// Creates a parser with Catppuccin Mocha defaults (backward-compatible).
+    /// </summary>
+    public AnsiParser() : this(FallbackFg, FallbackBg) { }
+
+    /// <summary>
+    /// Creates a parser with theme-specific default colors.
+    /// </summary>
+    public AnsiParser(Color defaultForeground, Color defaultBackground)
+    {
+        _defaultForeground = defaultForeground;
+        _defaultBackground = defaultBackground;
+        _foreground = defaultForeground;
+        _background = defaultBackground;
+        _lineBuffer = new TerminalLineBuffer(120, defaultForeground, defaultBackground);
+    }
 
     /// <summary>
     /// Fires when an OSC title-change sequence is received.

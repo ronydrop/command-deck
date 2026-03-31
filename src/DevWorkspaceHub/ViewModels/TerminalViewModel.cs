@@ -20,7 +20,7 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     private readonly ITerminalService _terminalService;
     private readonly IDatabaseService _db;
     private readonly ITerminalBackgroundService? _backgroundService;
-    private readonly AnsiParser _ansiParser = new();
+    private readonly AnsiParser _ansiParser;
     private readonly Dispatcher _dispatcher;
 
     // ─── Output throttling ───────────────────────────────────────────────────
@@ -28,13 +28,9 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     private readonly object _bufferLock = new();
     private bool _flushScheduled;
 
-    private static readonly SolidColorBrush DefaultBgBrush =
-        new(Color.FromRgb(0x1E, 0x1E, 0x2E));
-
-    static TerminalViewModel()
-    {
-        DefaultBgBrush.Freeze();
-    }
+    // Theme-resolved terminal colors
+    private readonly Color _terminalFg;
+    private readonly Color _terminalBg;
 
     [ObservableProperty]
     private TerminalSession? _session;
@@ -94,13 +90,21 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
         _backgroundService = backgroundService;
         _dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
 
+        // Resolve terminal colors from the active theme
+        _terminalFg = Application.Current?.TryFindResource("TextColor") is Color fg
+            ? fg : Color.FromRgb(0xCD, 0xD6, 0xF4);
+        _terminalBg = Application.Current?.TryFindResource("BaseBg") is Color bg
+            ? bg : Color.FromRgb(0x1E, 0x1E, 0x2E);
+
+        _ansiParser = new AnsiParser(_terminalFg, _terminalBg);
+
         _outputDocument = new FlowDocument
         {
             FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
             FontSize = 14,
             PagePadding = new Thickness(8, 0, 8, 0),
             Background = Brushes.Transparent,
-            Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4))
+            Foreground = new SolidColorBrush(_terminalFg)
         };
 
         _currentParagraph = new Paragraph { Margin = new Thickness(0) };
@@ -255,8 +259,7 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
         {
             _currentParagraph.Inlines.Add(new Run(buffered)
             {
-                Foreground = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(0xCD, 0xD6, 0xF4))
+                Foreground = new System.Windows.Media.SolidColorBrush(_terminalFg)
             });
         }
     }
@@ -270,10 +273,11 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
             IsConnected = false;
             StatusText = "Disconnected";
 
+            var exitColor = Application.Current?.TryFindResource("AccentRed") is Color red
+                ? red : Color.FromRgb(0xF3, 0x8B, 0xA8);
             _currentParagraph.Inlines.Add(new Run("\r\n[Process exited]\r\n")
             {
-                Foreground = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromRgb(0xF3, 0x8B, 0xA8))
+                Foreground = new SolidColorBrush(exitColor)
             });
         });
     }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using DevWorkspaceHub.Models;
 
 namespace DevWorkspaceHub.Services;
@@ -6,12 +7,21 @@ namespace DevWorkspaceHub.Services;
 public sealed class AiTerminalService : IAiTerminalService
 {
     private readonly ITerminalSessionService _sessionService;
+    private readonly ITerminalService _terminalService;
 
     private AiCliInfo? _cachedCliInfo;
 
-    public AiTerminalService(ITerminalSessionService sessionService)
+    // Prompt patterns to detect when the shell is ready for input
+    private static readonly Regex[] PromptPatterns =
+    {
+        new(@"[#$%>\]]\s*$", RegexOptions.Compiled),
+        new(@"PS>\s*$", RegexOptions.Compiled),
+    };
+
+    public AiTerminalService(ITerminalSessionService sessionService, ITerminalService terminalService)
     {
         _sessionService = sessionService;
+        _terminalService = terminalService;
     }
 
     public async Task<bool> IsCliAvailableAsync(string cliName = "cc")
@@ -65,8 +75,39 @@ public sealed class AiTerminalService : IAiTerminalService
         if (string.IsNullOrEmpty(command))
             return;
 
-        await Task.Delay(400);
-        await _sessionService.WriteAsync(sessionId, command + "\n");
+        // Wait for the shell to print its prompt before injecting the command.
+        // This replaces the old fixed Task.Delay(400) which was unreliable
+        // (too short for cold WSL starts, too long for warm shells).
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        void OnOutput(string sid, string output)
+        {
+            if (sid != sessionId) return;
+            var trimmed = output.TrimEnd();
+            foreach (var pattern in PromptPatterns)
+            {
+                if (pattern.IsMatch(trimmed))
+                {
+                    tcs.TrySetResult(true);
+                    return;
+                }
+            }
+        }
+
+        _terminalService.OutputReceived += OnOutput;
+        try
+        {
+            // Wait up to 8 seconds for the shell prompt; fallback: inject anyway
+            await Task.WhenAny(tcs.Task, Task.Delay(8000));
+        }
+        finally
+        {
+            _terminalService.OutputReceived -= OnOutput;
+        }
+
+        // Small settle delay so the shell's line editor is fully initialized
+        await Task.Delay(100);
+        await _sessionService.WriteAsync(sessionId, command + "\r");
     }
 
     public void TagSession(TerminalSessionModel session, AiSessionType sessionType, string? modelOrAlias = null)

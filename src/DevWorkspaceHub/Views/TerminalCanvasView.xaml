@@ -401,10 +401,10 @@
                   Cursor="Arrow">
 
                 <!-- ── Wallpaper background layer (hidden in tiled mode) ── -->
-                <Image Source="{Binding WallpaperSource}"
-                       Stretch="{Binding WallpaperStretch}"
-                       Opacity="{Binding WallpaperOpacity}"
-                       Visibility="{Binding HasWallpaper, Converter={StaticResource BoolToVis}}"
+                <Image Source="{Binding CanvasViewModel.WallpaperSource}"
+                       Stretch="{Binding CanvasViewModel.WallpaperStretch}"
+                       Opacity="{Binding CanvasViewModel.WallpaperOpacity}"
+                       Visibility="{Binding CanvasViewModel.HasWallpaper, Converter={StaticResource BoolToVis}}"
                        IsHitTestVisible="False">
                     <Image.Style>
                         <Style TargetType="Image">

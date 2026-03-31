@@ -177,11 +177,17 @@ public partial class BrowserViewModel : ObservableObject, IDisposable
             _domSelection.Initialize(_browserRuntime);
 
             var projects = await _projectService.GetAllProjectsAsync();
-            var currentProject = projects?.FirstOrDefault(p => p.IsFavorite)
-                                 ?? projects?.FirstOrDefault();
+            var currentProject = _currentProjectId != null
+                ? projects?.FirstOrDefault(p => p.Id == _currentProjectId)
+                : null;
+            currentProject ??= projects?.FirstOrDefault(p => p.IsFavorite)
+                               ?? projects?.FirstOrDefault();
 
             if (currentProject != null)
+            {
+                _currentProjectId = currentProject.Id;
                 await DetectAndNavigateAsync(currentProject.Path, currentProject.ProjectType.ToString());
+            }
         }
         catch (Exception ex)
         {
