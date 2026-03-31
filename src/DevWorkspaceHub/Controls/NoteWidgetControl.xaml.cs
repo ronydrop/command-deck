@@ -36,6 +36,7 @@ public partial class NoteWidgetControl : UserControl
         {
             var color = (Color)ColorConverter.ConvertFromString(hex);
             StripBrush.Color = color;
+            IconBgBrush.Color = color;
         }
         catch { /* ignore invalid color */ }
     }

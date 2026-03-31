@@ -6,7 +6,6 @@ public sealed class AiActionContinuation
     public AiPromptIntent OriginalIntent { get; init; }
     public string SessionId { get; init; } = string.Empty;
     public string? OriginalCorrelationId { get; init; }
-    public AiModelSlot? OverrideModelSlot { get; init; }
     public string? AdditionalContext { get; init; }
 
     public static AiActionContinuation FixAgain(string sessionId, string? correlationId) => new()
@@ -25,15 +24,6 @@ public sealed class AiActionContinuation
         OriginalCorrelationId = correlationId
     };
 
-    public static AiActionContinuation RetryWithModel(string sessionId, string? correlationId, AiModelSlot slot) => new()
-    {
-        Type = AiContinuationType.RetryWithModel,
-        OriginalIntent = AiPromptIntent.GeneralQuestion,
-        SessionId = sessionId,
-        OriginalCorrelationId = correlationId,
-        OverrideModelSlot = slot
-    };
-
     public static AiActionContinuation RunAgain(string sessionId, AiSessionHistoryEntry original) => new()
     {
         Type = AiContinuationType.RunAgain,
@@ -47,6 +37,5 @@ public enum AiContinuationType
 {
     RunAgain,
     FixAgain,
-    ExplainMore,
-    RetryWithModel
+    ExplainMore
 }

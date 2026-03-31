@@ -101,7 +101,6 @@ public partial class App : Application
         // ─── AI Terminal (cc/claude CLI) ──────────────────────────────────
         services.AddSingleton<IAiTerminalService, AiTerminalService>();
         services.AddSingleton<IAiContextService, AiContextService>();
-        services.AddSingleton<IAiModelConfigService, AiModelConfigService>();
         services.AddSingleton<IAiSessionHistoryService, AiSessionHistoryService>();
         services.AddSingleton<IAiContinuationService, AiContinuationService>();
         services.AddSingleton<IAiTerminalLauncher, AiTerminalLauncher>();

@@ -311,6 +311,36 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- ── Auto-arrange button ── -->
+                    <Button Padding="6,4"
+                            Margin="4,0,0,0"
+                            Command="{Binding CanvasViewModel.AutoArrangeCommand}"
+                            ToolTip="Organizar terminais automaticamente"
+                            Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                                <Setter Property="Opacity" Value="0.6" />
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Opacity" Value="1" />
+                                        <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <!-- Grid/arrange icon (4 arrows pointing outward) -->
+                        <Path Data="M4 1L4 5M1 4L5 4 M16 1L16 5M13 4L17 4 M4 15L4 19M1 16L5 16 M16 15L16 19M13 16L17 16 M7 7H13V13H7Z"
+                              Stroke="{DynamicResource TextBrush}"
+                              StrokeThickness="1.2"
+                              StrokeLineJoin="Round"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              Fill="Transparent"
+                              Width="14" Height="14"
+                              Stretch="Uniform"
+                              VerticalAlignment="Center" />
+                    </Button>
+
                     <!-- Vertical separator -->
                     <Rectangle Width="1" Height="20"
                                Fill="{DynamicResource Surface1Brush}"
@@ -417,7 +447,7 @@
                     </Image.Style>
                 </Image>
 
-                <!-- ── Dot-grid background (hidden in tiled mode) ── -->
+                <!-- ── Dot-grid overlay — always visible on top of wallpaper (hidden in tiled mode) ── -->
                 <Canvas IsHitTestVisible="False">
                     <Canvas.Style>
                         <Style TargetType="Canvas">
@@ -438,8 +468,8 @@
                                     <!-- Layer 1: dot at each tile origin -->
                                     <GeometryDrawing>
                                         <GeometryDrawing.Brush>
-                                            <SolidColorBrush Color="{DynamicResource Surface0}"
-                                                             Opacity="0.35" />
+                                            <SolidColorBrush Color="#FFFFFF"
+                                                             Opacity="0.18" />
                                         </GeometryDrawing.Brush>
                                         <GeometryDrawing.Geometry>
                                             <EllipseGeometry Center="2,2"
@@ -448,36 +478,31 @@
                                         </GeometryDrawing.Geometry>
                                     </GeometryDrawing>
 
-                                    <!-- Layer 2a: very faint horizontal hairline every 128 px
-                                         (4 × 32 px tile = rendered at tile row 0 height 0.5)
-                                         We draw it as a 0-height line at the very top edge
-                                         of the tile, visible when 4 tiles stack to 128 px. -->
+                                    <!-- Layer 2a: faint horizontal hairline -->
                                     <GeometryDrawing>
                                         <GeometryDrawing.Pen>
                                             <Pen Thickness="0.5">
                                                 <Pen.Brush>
-                                                    <SolidColorBrush Color="{DynamicResource Surface1}"
-                                                                     Opacity="0.08" />
+                                                    <SolidColorBrush Color="#FFFFFF"
+                                                                     Opacity="0.06" />
                                                 </Pen.Brush>
                                             </Pen>
                                         </GeometryDrawing.Pen>
-                                        <!-- Horizontal line across full tile width at y=0 -->
                                         <GeometryDrawing.Geometry>
                                             <LineGeometry StartPoint="0,0" EndPoint="32,0" />
                                         </GeometryDrawing.Geometry>
                                     </GeometryDrawing>
 
-                                    <!-- Layer 2b: very faint vertical hairline every 128 px -->
+                                    <!-- Layer 2b: faint vertical hairline -->
                                     <GeometryDrawing>
                                         <GeometryDrawing.Pen>
                                             <Pen Thickness="0.5">
                                                 <Pen.Brush>
-                                                    <SolidColorBrush Color="{DynamicResource Surface1}"
-                                                                     Opacity="0.08" />
+                                                    <SolidColorBrush Color="#FFFFFF"
+                                                                     Opacity="0.06" />
                                                 </Pen.Brush>
                                             </Pen>
                                         </GeometryDrawing.Pen>
-                                        <!-- Vertical line down full tile height at x=0 -->
                                         <GeometryDrawing.Geometry>
                                             <LineGeometry StartPoint="0,0" EndPoint="0,32" />
                                         </GeometryDrawing.Geometry>
@@ -636,27 +661,66 @@
 
                     <!-- ── Toggle widget buttons ──────────────────────────────────── -->
                     <StackPanel DockPanel.Dock="Bottom" Margin="8,8">
-                        <Button Content="Widget Git"
-                                Style="{StaticResource GhostButton}"
-                                HorizontalContentAlignment="Left"
-                                Padding="8,5"
-                                FontSize="11"
-                                Click="OnToggleGitWidgetClick"
-                                Margin="0,2" />
-                        <Button Content="Widget Processos"
-                                Style="{StaticResource GhostButton}"
-                                HorizontalContentAlignment="Left"
-                                Padding="8,5"
-                                FontSize="11"
-                                Click="OnToggleProcessWidgetClick"
-                                Margin="0,2" />
-                        <Button Content="Widget Notas"
-                                Style="{StaticResource GhostButton}"
-                                HorizontalContentAlignment="Left"
-                                Padding="8,5"
-                                FontSize="11"
-                                Click="OnAddNoteWidgetClick"
-                                Margin="0,2" />
+                        <!-- Git widget -->
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="Widget Git"
+                                    Style="{StaticResource GhostButton}"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,5" FontSize="11"
+                                    Click="OnToggleGitWidgetClick" />
+                            <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
+                                    VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
+                                    ToolTip="Exibe a branch atual, arquivos modificados, staged e novos, alem do ultimo commit do repositorio."
+                                    Background="Transparent">
+                                <TextBlock Text="?" FontSize="9" FontWeight="Bold"
+                                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
+                        <!-- Process widget -->
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="Widget Processos"
+                                    Style="{StaticResource GhostButton}"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,5" FontSize="11"
+                                    Click="OnToggleProcessWidgetClick" />
+                            <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
+                                    VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
+                                    ToolTip="Monitora processos de desenvolvimento ativos (node, npm, php, python, docker) com uso de CPU e memoria."
+                                    Background="Transparent">
+                                <TextBlock Text="?" FontSize="9" FontWeight="Bold"
+                                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
+                        <!-- Note widget -->
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="Widget Notas"
+                                    Style="{StaticResource GhostButton}"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,5" FontSize="11"
+                                    Click="OnAddNoteWidgetClick" />
+                            <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
+                                    VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
+                                    ToolTip="Cria um bloco de notas rapido no canvas. Ideal para lembretes, TODOs e anotacoes durante o desenvolvimento."
+                                    Background="Transparent">
+                                <TextBlock Text="?" FontSize="9" FontWeight="Bold"
+                                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
                     </StackPanel>
 
                     <Separator DockPanel.Dock="Bottom"

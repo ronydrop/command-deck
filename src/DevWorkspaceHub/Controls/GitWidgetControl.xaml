@@ -5,71 +5,124 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DesignWidth="320" d:DesignHeight="280"
-             Background="{DynamicResource Surface0Brush}"
-             Padding="12">
+             Background="Transparent"
+             Padding="14,10,14,14">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel>
 
-            <!-- Branch + status row -->
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                <TextBlock Text=" " FontSize="14" Foreground="{DynamicResource AccentBrush}"
-                           VerticalAlignment="Center" Margin="0,0,6,0" />
-                <TextBlock Text="{Binding GitInfo.Branch, FallbackValue='–'}"
-                           FontFamily="{StaticResource MonoFont}" FontSize="13"
-                           Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding GitInfo.BranchDisplay, FallbackValue=''}"
-                           FontSize="11" Foreground="{DynamicResource SubtextBrush}"
-                           VerticalAlignment="Center" Margin="6,0,0,0" />
-            </StackPanel>
+            <!-- Header: branch info -->
+            <Border CornerRadius="8" Padding="10,8" Margin="0,0,0,12">
+                <Border.Background>
+                    <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.4" />
+                </Border.Background>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="28" Height="28" CornerRadius="7" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <Border.Background>
+                            <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.15" />
+                        </Border.Background>
+                        <TextBlock Text="" FontSize="14" Foreground="{DynamicResource AccentBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding GitInfo.Branch, FallbackValue='–'}"
+                                   FontFamily="{StaticResource MonoFont}" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}" />
+                        <TextBlock Text="{Binding GitInfo.BranchDisplay, FallbackValue=''}"
+                                   FontSize="10" Foreground="{DynamicResource SubtextBrush}" Opacity="0.7" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
 
-            <Separator Background="{DynamicResource Surface1Brush}" />
-
-            <!-- File stats -->
-            <Grid>
+            <!-- File stats cards -->
+            <Grid Margin="0,0,0,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="6" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="6" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" HorizontalAlignment="Center">
-                    <TextBlock Text="{Binding GitInfo.ModifiedFiles, FallbackValue='0'}"
-                               FontSize="20" FontWeight="SemiBold"
-                               Foreground="{DynamicResource AccentYellowBrush}" HorizontalAlignment="Center" />
-                    <TextBlock Text="modificados" FontSize="10"
-                               Foreground="{DynamicResource SubtextBrush}" HorizontalAlignment="Center" />
-                </StackPanel>
+                <!-- Modified -->
+                <Border Grid.Column="0" CornerRadius="8" Padding="8,10">
+                    <Border.Background>
+                        <SolidColorBrush Color="{DynamicResource AccentYellow}" Opacity="0.08" />
+                    </Border.Background>
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding GitInfo.ModifiedFiles, FallbackValue='0'}"
+                                   FontSize="22" FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentYellowBrush}"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="modificados" FontSize="9" FontWeight="Medium"
+                                   Foreground="{DynamicResource AccentYellowBrush}" Opacity="0.7"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
 
-                <StackPanel Grid.Column="1" HorizontalAlignment="Center">
-                    <TextBlock Text="{Binding GitInfo.StagedFiles, FallbackValue='0'}"
-                               FontSize="20" FontWeight="SemiBold"
-                               Foreground="{DynamicResource AccentGreenBrush}" HorizontalAlignment="Center" />
-                    <TextBlock Text="staged" FontSize="10"
-                               Foreground="{DynamicResource SubtextBrush}" HorizontalAlignment="Center" />
-                </StackPanel>
+                <!-- Staged -->
+                <Border Grid.Column="2" CornerRadius="8" Padding="8,10">
+                    <Border.Background>
+                        <SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.08" />
+                    </Border.Background>
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding GitInfo.StagedFiles, FallbackValue='0'}"
+                                   FontSize="22" FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentGreenBrush}"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="staged" FontSize="9" FontWeight="Medium"
+                                   Foreground="{DynamicResource AccentGreenBrush}" Opacity="0.7"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
 
-                <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                    <TextBlock Text="{Binding GitInfo.UntrackedFiles, FallbackValue='0'}"
-                               FontSize="20" FontWeight="SemiBold"
-                               Foreground="{DynamicResource SubtextBrush}" HorizontalAlignment="Center" />
-                    <TextBlock Text="novos" FontSize="10"
-                               Foreground="{DynamicResource SubtextBrush}" HorizontalAlignment="Center" />
-                </StackPanel>
+                <!-- Untracked -->
+                <Border Grid.Column="4" CornerRadius="8" Padding="8,10">
+                    <Border.Background>
+                        <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.08" />
+                    </Border.Background>
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding GitInfo.UntrackedFiles, FallbackValue='0'}"
+                                   FontSize="22" FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentBlueBrush}"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="novos" FontSize="9" FontWeight="Medium"
+                                   Foreground="{DynamicResource AccentBlueBrush}" Opacity="0.7"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
             </Grid>
 
-            <Separator Background="{DynamicResource Surface1Brush}" />
+            <!-- Last commit section -->
+            <Border CornerRadius="8" Padding="12,10">
+                <Border.Background>
+                    <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.3" />
+                </Border.Background>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Text="Ultimo commit" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource SubtextBrush}" Opacity="0.7"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding GitInfo.RelativeTime, FallbackValue=''}"
+                                   FontSize="9" Foreground="{DynamicResource SubtextBrush}" Opacity="0.5"
+                                   VerticalAlignment="Center" Margin="8,0,0,0" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding GitInfo.Message, FallbackValue='–'}"
+                               FontSize="12" Foreground="{DynamicResource TextBrush}"
+                               TextWrapping="Wrap" LineHeight="18" />
+                </StackPanel>
+            </Border>
 
-            <!-- Last commit -->
-            <StackPanel>
-                <TextBlock Text="Último commit" FontSize="10"
-                           Foreground="{DynamicResource SubtextBrush}" Margin="0,0,0,2" />
-                <TextBlock Text="{Binding GitInfo.Message, FallbackValue='–'}"
-                           FontSize="12" Foreground="{DynamicResource TextBrush}"
-                           TextWrapping="Wrap" />
-                <TextBlock Text="{Binding GitInfo.RelativeTime, FallbackValue=''}"
-                           FontSize="10" Foreground="{DynamicResource SubtextBrush}" Margin="0,2,0,0" />
-            </StackPanel>
+            <!-- Bottom accent line -->
+            <Border Height="2" CornerRadius="1" Margin="20,12,20,0">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="Transparent" Offset="0" />
+                        <GradientStop Color="{DynamicResource AccentPurple}" Offset="0.5" />
+                        <GradientStop Color="Transparent" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
 
         </StackPanel>
     </ScrollViewer>

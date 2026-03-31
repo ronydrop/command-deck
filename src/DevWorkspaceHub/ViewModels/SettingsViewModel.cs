@@ -16,7 +16,6 @@ namespace DevWorkspaceHub.ViewModels;
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly ISettingsService _settingsService;
-    private readonly IAiModelConfigService _aiModelConfigService;
     private readonly ISecretStorageService _secretStorageService;
     private readonly IUpdateService _updateService;
     private readonly IAssistantService _assistantService;
@@ -132,13 +131,13 @@ public partial class SettingsViewModel : ObservableObject
     private string _anthropicApiKey = string.Empty;
 
     [ObservableProperty]
-    private string _anthropicModel = "claude-sonnet-4-20250514";
+    private string _anthropicModel = "claude-sonnet-4-6-20250627";
 
     [ObservableProperty]
     private string _openRouterApiKey = string.Empty;
 
     [ObservableProperty]
-    private string _openRouterModel = "anthropic/claude-sonnet-4";
+    private string _openRouterModel = "anthropic/claude-sonnet-4.6";
 
     [ObservableProperty]
     private string _ollamaModel = "llama3.2";
@@ -335,8 +334,6 @@ public partial class SettingsViewModel : ObservableObject
         "none", "anthropic", "openai", "openrouter", "local"
     };
 
-    public ObservableCollection<AiSlotItemViewModel> AiModelSlots { get; } = new();
-
     // ─── Propriedades computadas (visibilidade condicional) ──────────────────
 
     public bool IsAiEnabled => AiProvider != "none";
@@ -360,18 +357,23 @@ public partial class SettingsViewModel : ObservableObject
 
     public IReadOnlyList<string> AvailableAnthropicModels { get; } = new[]
     {
+        "claude-sonnet-4-6-20250627", "claude-opus-4-6-20250626",
         "claude-sonnet-4-20250514", "claude-opus-4-20250514",
         "claude-haiku-4-5-20251001"
     };
 
     public IReadOnlyList<string> AvailableOpenRouterModels { get; } = new[]
     {
+        "anthropic/claude-sonnet-4.6", "anthropic/claude-opus-4.6",
         "anthropic/claude-sonnet-4", "anthropic/claude-opus-4",
         "anthropic/claude-haiku-4.5",
         "openai/gpt-4o", "openai/gpt-4o-mini",
         "google/gemini-2.5-pro", "google/gemini-2.5-flash",
         "meta-llama/llama-4-maverick",
-        "deepseek/deepseek-r1", "deepseek/deepseek-chat-v3"
+        "deepseek/deepseek-r1", "deepseek/deepseek-chat-v3",
+        "z-ai/glm-5-turbo", "z-ai/glm-5",
+        "moonshotai/kimi-k2.5", "minimax/minimax-m2.7",
+        "nvidia/nemotron-3-super-120b-a12b"
     };
 
     [RelayCommand]
@@ -421,7 +423,6 @@ public partial class SettingsViewModel : ObservableObject
 
     public SettingsViewModel(
         ISettingsService settingsService,
-        IAiModelConfigService aiModelConfigService,
         ISecretStorageService secretStorageService,
         IUpdateService updateService,
         IAssistantService assistantService,
@@ -429,7 +430,6 @@ public partial class SettingsViewModel : ObservableObject
         IClaudeOAuthService claudeOAuthService)
     {
         _settingsService = settingsService;
-        _aiModelConfigService = aiModelConfigService;
         _secretStorageService = secretStorageService;
         _updateService = updateService;
         _assistantService = assistantService;
@@ -479,8 +479,8 @@ public partial class SettingsViewModel : ObservableObject
 
         // Per-provider models
         OpenAiModel = settings.AiProvider == "openai" ? settings.AiModel : "gpt-4o-mini";
-        AnthropicModel = settings.AiProvider == "anthropic" ? settings.AiModel : "claude-sonnet-4-20250514";
-        OpenRouterModel = settings.AiProvider == "openrouter" ? settings.AiModel : "anthropic/claude-sonnet-4";
+        AnthropicModel = settings.AiProvider == "anthropic" ? settings.AiModel : "claude-sonnet-4-6-20250627";
+        OpenRouterModel = settings.AiProvider == "openrouter" ? settings.AiModel : "anthropic/claude-sonnet-4.6";
         OllamaModel = settings.AiProvider == "local" ? settings.AiModel : "llama3.2";
         OllamaBaseUrl = !string.IsNullOrWhiteSpace(settings.AiBaseUrl) ? settings.AiBaseUrl : "http://localhost:11434";
         AiMaxContextMessages = settings.AiMaxContextMessages;
@@ -533,27 +533,6 @@ public partial class SettingsViewModel : ObservableObject
             _ => string.Empty
         };
 
-        // Model slots
-        LoadModelSlots();
-    }
-
-    private void LoadModelSlots()
-    {
-        AiModelSlots.Clear();
-        var slots = _aiModelConfigService.GetAllSlots();
-        var activeSlot = _aiModelConfigService.ActiveSlot;
-
-        foreach (var cfg in slots)
-        {
-            AiModelSlots.Add(new AiSlotItemViewModel
-            {
-                Slot = cfg.Slot,
-                DisplayName = cfg.DisplayName,
-                ShortLabel = cfg.ShortLabel,
-                ModelId = cfg.ModelId,
-                IsActive = cfg.Slot == activeSlot
-            });
-        }
     }
 
     /// <summary>
@@ -663,14 +642,6 @@ public partial class SettingsViewModel : ObservableObject
         }
         catch { }
 
-        // Sincronizar model slots
-        foreach (var slot in AiModelSlots)
-        {
-            _aiModelConfigService.SetModelForSlot(slot.Slot, slot.ModelId);
-            if (slot.IsActive)
-                _aiModelConfigService.SetActiveSlot(slot.Slot);
-        }
-
         App.ApplyTheme(SelectedTheme);
 
         // Propagate AI settings to the AssistantService BEFORE saving so that when
@@ -678,8 +649,6 @@ public partial class SettingsViewModel : ObservableObject
         _assistantService.ApplySettings(AiProvider, AiModel, AiBaseUrl, AiApiKey, AnthropicAuthMode);
 
         await _settingsService.SaveSettingsAsync(settings);
-
-        CloseRequested?.Invoke(true);
     }
 
     /// <summary>
@@ -749,13 +718,6 @@ public partial class SettingsViewModel : ObservableObject
     private async Task ResetDefaults()
     {
         await _settingsService.ResetToDefaultsAsync();
-
-        // Reset model slots to defaults
-        _aiModelConfigService.SetModelForSlot(AiModelSlot.Sonnet, "sonnet");
-        _aiModelConfigService.SetModelForSlot(AiModelSlot.Opus, "opus");
-        _aiModelConfigService.SetModelForSlot(AiModelSlot.Haiku, "haiku");
-        _aiModelConfigService.SetModelForSlot(AiModelSlot.Agent, "agent");
-        _aiModelConfigService.SetActiveSlot(AiModelSlot.Sonnet);
 
         await InitializeAsync();
     }

@@ -16,7 +16,6 @@ namespace DevWorkspaceHub.Controls;
 /// </summary>
 public partial class CanvasCardControl : UserControl
 {
-    private AgentSelectorViewModel? _agentSelectorVm;
     // ─── Routed events (bubble up to TerminalCanvasView) ────────────────────
 
     public static readonly RoutedEvent CardCloseRequestedEvent =
@@ -208,53 +207,6 @@ public partial class CanvasCardControl : UserControl
         return mainVm?.CanvasViewModel?.IsTiledMode == true;
     }
 
-    // ─── Agent selector ─────────────────────────────────────────────────
-
-    private AgentSelectorViewModel EnsureAgentSelectorVm()
-    {
-        if (_agentSelectorVm is null)
-        {
-            _agentSelectorVm = App.Services.GetService(typeof(AgentSelectorViewModel)) as AgentSelectorViewModel;
-            if (_agentSelectorVm is not null)
-            {
-                AgentGroupsList.ItemsSource = _agentSelectorVm.Groups;
-                SyncAgentDisplay();
-                _agentSelectorVm.PropertyChanged += (_, args) =>
-                {
-                    if (args.PropertyName is nameof(AgentSelectorViewModel.ActiveAgentName) or nameof(AgentSelectorViewModel.ActiveAgentIcon))
-                        SyncAgentDisplay();
-                    if (args.PropertyName == nameof(AgentSelectorViewModel.IsOpen))
-                        AgentPopup.IsOpen = _agentSelectorVm.IsOpen;
-                };
-            }
-        }
-        return _agentSelectorVm!;
-    }
-
-    private void SyncAgentDisplay()
-    {
-        if (_agentSelectorVm is null) return;
-        AgentIconText.Text = _agentSelectorVm.ActiveAgentIcon;
-        AgentNameText.Text = _agentSelectorVm.ActiveAgentName;
-    }
-
-    private void OnAgentSelectorClick(object sender, MouseButtonEventArgs e)
-    {
-        e.Handled = true;
-        var vm = EnsureAgentSelectorVm();
-        AgentPopup.IsOpen = !AgentPopup.IsOpen;
-    }
-
-    private void OnAgentItemClick(object sender, MouseButtonEventArgs e)
-    {
-        e.Handled = true;
-        if (sender is FrameworkElement fe && fe.DataContext is AgentItemViewModel item)
-        {
-            var vm = EnsureAgentSelectorVm();
-            vm.SelectAgentCommand.Execute(item.Definition.Id);
-        }
-    }
-
     // ─── AI context menu handlers ─────────────────────────────────────────
 
     private void RaiseAiAction(AiCardAction action, string? model = null)
@@ -277,7 +229,6 @@ public partial class CanvasCardControl : UserControl
     private void OnAiRunAgain(object s, RoutedEventArgs e) => RaiseAiAction(AiCardAction.RunAgain);
     private void OnAiFixAgain(object s, RoutedEventArgs e) => RaiseAiAction(AiCardAction.FixAgain);
     private void OnAiExplainMore(object s, RoutedEventArgs e) => RaiseAiAction(AiCardAction.ExplainMore);
-    private void OnAiRetryWithOpus(object s, RoutedEventArgs e) => RaiseAiAction(AiCardAction.RetryWithModel, "opus");
 }
 
 // ─── AI action event args ───────────────────────────────────────────────
@@ -291,8 +242,7 @@ public enum AiCardAction
     LaunchModel,
     RunAgain,
     FixAgain,
-    ExplainMore,
-    RetryWithModel
+    ExplainMore
 }
 
 public class AiActionEventArgs : RoutedEventArgs

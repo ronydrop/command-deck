@@ -134,20 +134,6 @@
                     </StackPanel>
                 </Button>
 
-                <!-- Browser toggle -->
-                <Button Grid.Column="4"
-                        Style="{StaticResource GhostButton}"
-                        Command="{Binding NavigateToCommand}"
-                        CommandParameter="{x:Static vm:ViewType.Browser}"
-                        VerticalAlignment="Center"
-                        HorizontalAlignment="Left"
-                        Margin="0,0,4,0"
-                        Padding="10,6">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🌐" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Browser" VerticalAlignment="Center" FontSize="13" />
-                    </StackPanel>
-                </Button>
 
                 <!-- AI Assistant toggle -->
                 <Button Grid.Column="6"

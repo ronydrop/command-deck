@@ -293,7 +293,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
             // Save camera state for return
             _cameraService.SaveSnapshot();
 
-            // Stash free-canvas positions
+            // Stash free-canvas positions so they can be restored later
             foreach (var item in Items)
                 item.StashFreePosition();
 
@@ -302,15 +302,35 @@ public partial class TerminalCanvasViewModel : ObservableObject
         }
         else // Returning to FreeCanvas
         {
-            // Auto-arrange all items using the free canvas layout strategy
-            // instead of restoring old positions (which may be chaotic)
-            RecalculateFreeCanvasLayout();
+            // Restore the positions the user had before switching to tiled
+            foreach (var item in Items)
+                item.RestoreFreePosition();
+
+            // Restore widgets that were hidden in tiled mode
+            foreach (var widget in _workspaceService.Items.OfType<WidgetCanvasItemViewModel>())
+            {
+                if (widget.HasFreePositionStash)
+                    widget.RestoreFreePosition();
+            }
         }
 
         LayoutModeChanged?.Invoke(newValue);
     }
 
     // ─── Commands ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Auto-arranges all items using the appropriate layout strategy for the current mode.
+    /// In Canvas mode uses the free cascade layout; in Tiled mode recalculates the grid.
+    /// </summary>
+    [RelayCommand]
+    private void AutoArrange()
+    {
+        if (IsTiledMode)
+            RecalculateTiledLayout();
+        else
+            RecalculateFreeCanvasLayout();
+    }
 
     [RelayCommand]
     private void ExitFocusMode()

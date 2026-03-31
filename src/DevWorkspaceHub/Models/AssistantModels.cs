@@ -66,9 +66,9 @@ public class AssistantSettings
     public string? OpenAIKey { get; set; }
     public string OpenAIModel { get; set; } = string.Empty;
     public string? AnthropicKey { get; set; }
-    public string AnthropicModel { get; set; } = "claude-sonnet-4-20250514";
+    public string AnthropicModel { get; set; } = "claude-sonnet-4-6-20250627";
     public string? OpenRouterKey { get; set; }
-    public string OpenRouterModel { get; set; } = "anthropic/claude-sonnet-4";
+    public string OpenRouterModel { get; set; } = "anthropic/claude-sonnet-4.6";
     public AnthropicAuthMode AnthropicAuth { get; set; } = AnthropicAuthMode.ApiKey;
     public AssistantProviderType ActiveProvider { get; set; } = AssistantProviderType.None;
 }

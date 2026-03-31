@@ -35,5 +35,5 @@ public enum AiActionSource
     Shortcut,
     RunAgain,
     FixAgain,
-    RetryWithModel
+    RetryAgain
 }

@@ -79,7 +79,7 @@ public static class CommandPaletteRegistrar
                 mainViewModel.NextTerminalCommand.Execute(null);
                 return Task.CompletedTask;
             },
-            Keywords = "terminal proximo next tab switch"
+            Keywords = "terminal próximo next tab switch"
         });
 
         commandService.RegisterCommand(new CommandDefinition
@@ -143,7 +143,7 @@ public static class CommandPaletteRegistrar
                 mainViewModel.NavigateToCommand.Execute(ViewType.Dashboard);
                 return Task.CompletedTask;
             },
-            Keywords = "dashboard painel home inicio"
+            Keywords = "dashboard painel home início"
         });
 
         commandService.RegisterCommand(new CommandDefinition
@@ -167,7 +167,7 @@ public static class CommandPaletteRegistrar
             Category = "Navigation",
             Icon = "\uE713", // Settings icon
             Action = () => mainViewModel.OpenSettingsCommand.ExecuteAsync(null),
-            Keywords = "configuracoes settings preferencias"
+            Keywords = "configurações settings preferências"
         });
 
         // ═══════════════════════════════════════════════════════════════
@@ -217,7 +217,6 @@ public static class CommandPaletteRegistrar
         var terminalSessionService = serviceProvider.GetRequiredService<ITerminalSessionService>();
         var workspaceService = serviceProvider.GetRequiredService<IWorkspaceService>();
         var aiContextService = serviceProvider.GetRequiredService<IAiContextService>();
-        var aiModelConfig = serviceProvider.GetRequiredService<IAiModelConfigService>();
         var aiHistory = serviceProvider.GetRequiredService<IAiSessionHistoryService>();
         var aiLauncher = serviceProvider.GetRequiredService<IAiTerminalLauncher>();
 
@@ -322,7 +321,7 @@ public static class CommandPaletteRegistrar
                 {
                     SessionId = sourceSessionId,
                     Intent = AiPromptIntent.ExplainOutput,
-                    ModelUsed = aiModelConfig.GetActiveModelOrAlias(),
+                    ModelUsed = "default",
                     PromptSent = "(panel explain)",
                     Source = AiActionSource.CommandPalette,
                     CorrelationId = correlationId,
@@ -348,13 +347,11 @@ public static class CommandPaletteRegistrar
 
                 var sourceSessionId = mainViewModel.ActiveTerminal?.Session?.Id ?? "";
                 var correlationId = Guid.NewGuid().ToString("N")[..12];
-                var routing = aiModelConfig.RecommendModel(AiPromptIntent.FixError);
-
                 aiHistory.Record(new AiSessionHistoryEntry
                 {
                     SessionId = sourceSessionId,
                     Intent = AiPromptIntent.FixError,
-                    ModelUsed = routing.ModelOrAlias,
+                    ModelUsed = "default",
                     PromptSent = prompt,
                     Source = AiActionSource.CommandPalette,
                     CorrelationId = correlationId,
@@ -366,7 +363,7 @@ public static class CommandPaletteRegistrar
                     var cli = await aiTerminalService.DetectCliAsync();
                     if (cli.CcAvailable)
                     {
-                        await aiLauncher.LaunchAsync(AiSessionType.CcRun, routing.ModelOrAlias);
+                        await aiLauncher.LaunchAsync(AiSessionType.CcRun);
                         await Task.Delay(1500);
                         var activeSession = mainViewModel.ActiveTerminal?.Session;
                         if (activeSession is not null)
@@ -406,7 +403,7 @@ public static class CommandPaletteRegistrar
                 {
                     SessionId = sourceSessionId,
                     Intent = AiPromptIntent.SendContext,
-                    ModelUsed = aiModelConfig.GetActiveModelOrAlias(),
+                    ModelUsed = "default",
                     PromptSent = prompt,
                     Source = AiActionSource.CommandPalette,
                     CorrelationId = correlationId,
@@ -452,7 +449,7 @@ public static class CommandPaletteRegistrar
                 {
                     SessionId = sourceSessionId,
                     Intent = AiPromptIntent.SuggestCommand,
-                    ModelUsed = aiModelConfig.GetActiveModelOrAlias(),
+                    ModelUsed = "default",
                     PromptSent = prompt ?? "",
                     Source = AiActionSource.CommandPalette,
                     CorrelationId = correlationId,
@@ -460,63 +457,6 @@ public static class CommandPaletteRegistrar
                 });
             },
             Keywords = "ai sugerir comando suggest command gerar"
-        });
-
-        // ─── AI Model Switch commands ─────────────────────────────────
-        commandService.RegisterCommand(new CommandDefinition
-        {
-            Id = "ai.model.use.sonnet",
-            Title = $"AI: Use Sonnet (active slot)",
-            Category = "AI Model",
-            Icon = "\uE8AB",
-            Action = () =>
-            {
-                aiModelConfig.SetActiveSlot(AiModelSlot.Sonnet);
-                return Task.CompletedTask;
-            },
-            Keywords = "ai modelo sonnet trocar switch"
-        });
-
-        commandService.RegisterCommand(new CommandDefinition
-        {
-            Id = "ai.model.use.opus",
-            Title = "AI: Use Opus (active slot)",
-            Category = "AI Model",
-            Icon = "\uE8AB",
-            Action = () =>
-            {
-                aiModelConfig.SetActiveSlot(AiModelSlot.Opus);
-                return Task.CompletedTask;
-            },
-            Keywords = "ai modelo opus trocar switch"
-        });
-
-        commandService.RegisterCommand(new CommandDefinition
-        {
-            Id = "ai.model.use.haiku",
-            Title = "AI: Use Haiku (active slot)",
-            Category = "AI Model",
-            Icon = "\uE8AB",
-            Action = () =>
-            {
-                aiModelConfig.SetActiveSlot(AiModelSlot.Haiku);
-                return Task.CompletedTask;
-            },
-            Keywords = "ai modelo haiku trocar switch rapido fast"
-        });
-
-        commandService.RegisterCommand(new CommandDefinition
-        {
-            Id = "ai.model.use.agent",
-            Title = "AI: Use Agent (active slot)",
-            Category = "AI Model",
-            Icon = "\uE8AB",
-            Action = () =>
-            {
-                aiModelConfig.SetActiveSlot(AiModelSlot.Agent);
-                return Task.CompletedTask;
-            },
-            Keywords = "ai modelo agent trocar switch autonomo"
         });
 
         // ═══════════════════════════════════════════════════════════════

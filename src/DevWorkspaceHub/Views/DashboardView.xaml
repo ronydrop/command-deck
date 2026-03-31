@@ -232,7 +232,7 @@
                     <Border Style="{StaticResource Card}" Margin="0,0,0,12"
                             Visibility="{Binding HasGitInfo, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
-                            <TextBlock Text="Repositorio"
+                            <TextBlock Text="Repositório"
                                        Style="{StaticResource SubheadingText}"
                                        Margin="0,0,0,10" />
 

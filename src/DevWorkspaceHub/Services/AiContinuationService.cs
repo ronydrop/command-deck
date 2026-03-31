@@ -18,12 +18,11 @@ public sealed class AiContinuationService : IAiContinuationService
             AiContinuationType.RunAgain => _historyService.GetLast(sessionId) is not null,
             AiContinuationType.FixAgain => _historyService.GetLastByIntent(sessionId, AiPromptIntent.FixError) is not null,
             AiContinuationType.ExplainMore => _historyService.GetLastByIntent(sessionId, AiPromptIntent.ExplainOutput) is not null,
-            AiContinuationType.RetryWithModel => _historyService.GetLast(sessionId) is { CanRetry: true },
             _ => false
         };
     }
 
-    public AiActionContinuation? BuildContinuation(string sessionId, AiContinuationType type, AiModelSlot? overrideSlot = null)
+    public AiActionContinuation? BuildContinuation(string sessionId, AiContinuationType type)
     {
         return type switch
         {
@@ -42,29 +41,12 @@ public sealed class AiContinuationService : IAiContinuationService
                     ? AiActionContinuation.ExplainMore(sessionId, explain.CorrelationId)
                     : null,
 
-            AiContinuationType.RetryWithModel when overrideSlot.HasValue =>
-                _historyService.GetLast(sessionId) is { } entry
-                    ? AiActionContinuation.RetryWithModel(sessionId, entry.CorrelationId, overrideSlot.Value)
-                    : null,
-
             _ => null
         };
     }
 
     public string? ResolvePaletteCommandId(AiActionContinuation continuation)
     {
-        if (continuation.Type == AiContinuationType.RetryWithModel && continuation.OverrideModelSlot.HasValue)
-        {
-            return continuation.OverrideModelSlot.Value switch
-            {
-                AiModelSlot.Sonnet => "ai.launch.sonnet",
-                AiModelSlot.Opus => "ai.launch.opus",
-                AiModelSlot.Haiku => "ai.launch.haiku",
-                AiModelSlot.Agent => "ai.launch.agent",
-                _ => null
-            };
-        }
-
         return continuation.OriginalIntent switch
         {
             AiPromptIntent.FixError => "ai.fix.error",

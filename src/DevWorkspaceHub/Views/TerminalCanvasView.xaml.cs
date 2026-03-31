@@ -277,17 +277,8 @@ public partial class TerminalCanvasView : UserControl
         Mouse.Capture(null);
         ViewportArea.Cursor = Cursors.Arrow;
         _canvasVm?.SyncCamera(CanvasTranslate.X, CanvasTranslate.Y, CanvasScale.ScaleX);
-
-        double speed = Math.Sqrt(_momentumVelX * _momentumVelX + _momentumVelY * _momentumVelY);
-        if (speed < 50) { _momentumVelX = 0; _momentumVelY = 0; return; }
-
-        _momentumTimer?.Stop();
-        _momentumTimer = new DispatcherTimer(DispatcherPriority.Render)
-        {
-            Interval = TimeSpan.FromMilliseconds(16)
-        };
-        _momentumTimer.Tick += ApplyMomentum;
-        _momentumTimer.Start();
+        _momentumVelX = 0;
+        _momentumVelY = 0;
     }
 
     /// <summary>
@@ -1070,13 +1061,6 @@ public partial class TerminalCanvasView : UserControl
             return;
         }
 
-        if (args.Action == AiCardAction.RetryWithModel)
-        {
-            HandleContinuation(tvm, Models.AiContinuationType.RetryWithModel, 
-                args.ModelOrAlias == "opus" ? Models.AiModelSlot.Opus : Models.AiModelSlot.Sonnet);
-            return;
-        }
-
         if (cmdId is not null)
             ExecutePaletteCommand(cmdId);
     }
@@ -1106,7 +1090,7 @@ public partial class TerminalCanvasView : UserControl
         }
     }
 
-    private void HandleContinuation(TerminalCanvasItemViewModel tvm, Models.AiContinuationType type, Models.AiModelSlot? overrideSlot = null)
+    private void HandleContinuation(TerminalCanvasItemViewModel tvm, Models.AiContinuationType type)
     {
         try
         {
@@ -1116,7 +1100,7 @@ public partial class TerminalCanvasView : UserControl
             var sessionId = tvm.Terminal.Session?.Id;
             if (sessionId is null) return;
 
-            var continuation = continuationService.BuildContinuation(sessionId, type, overrideSlot);
+            var continuation = continuationService.BuildContinuation(sessionId, type);
             if (continuation is null) return;
 
             var cmdId = continuationService.ResolvePaletteCommandId(continuation);

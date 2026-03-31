@@ -305,6 +305,10 @@ public partial class TerminalControl : UserControl
             var (charWidth, lineHeight) = MeasureCharDimensions();
             short columns = (short)Math.Max(40, (int)(ActualWidth / charWidth));
             short rows = (short)Math.Max(10, (int)(ActualHeight / lineHeight));
+
+            // Clear stale output from the initial 120×30 buffer before resizing
+            // to prevent duplicate prompts (initial size → actual size transition)
+            _viewModel.ClearOutputCommand.Execute(null);
             _viewModel.ResizeTerminal(columns, rows);
         }
 
