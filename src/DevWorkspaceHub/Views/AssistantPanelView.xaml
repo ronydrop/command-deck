@@ -8,59 +8,50 @@
              xmlns:conv="clr-namespace:DevWorkspaceHub.Converters"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:AssistantPanelViewModel}"
-             Background="{DynamicResource MantelBgBrush}"
+             Background="{DynamicResource BaseBgBrush}"
              Width="320">
 
     <UserControl.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:NullToVisibilityConverter x:Key="NullToVis" />
-
-        <!-- Converts IsUser bool to HorizontalAlignment: True=Right, False=Left -->
         <BooleanToVisibilityConverter x:Key="BoolToVisWpf" />
 
-        <!-- Message bubble DataTemplate -->
+        <!-- Chat message template -->
         <DataTemplate x:Key="ChatMessageTemplate" DataType="{x:Type models:ChatMessage}">
-            <Grid Margin="8,3">
-                <!-- User message: right-aligned -->
+            <Grid Margin="12,4">
+                <!-- User message -->
                 <Border x:Name="UserBubble"
-                        HorizontalAlignment="Right"
-                        MaxWidth="240"
-                        CornerRadius="8,8,2,8"
-                        Padding="10,7"
-                        Margin="32,0,0,0"
-                        Background="#337C3AED"
+                        HorizontalAlignment="Stretch"
+                        CornerRadius="8"
+                        Padding="12,8"
+                        Margin="24,0,0,0"
+                        Background="#1AFFFFFF"
                         Visibility="Collapsed">
                     <TextBlock Text="{Binding Content}"
                                Foreground="{DynamicResource TextBrush}"
-                               FontSize="12"
+                               FontSize="12.5"
                                TextWrapping="Wrap" />
                 </Border>
 
-                <!-- Assistant message: left-aligned -->
+                <!-- Assistant message -->
                 <Border x:Name="AssistantBubble"
-                        HorizontalAlignment="Left"
-                        MaxWidth="270"
-                        CornerRadius="8,8,8,2"
-                        Padding="10,7"
-                        Margin="0,0,32,0"
-                        Background="{DynamicResource Surface0Brush}"
+                        HorizontalAlignment="Stretch"
+                        CornerRadius="0"
+                        Padding="0,6"
                         Visibility="Collapsed">
                     <StackPanel>
-                        <!-- Actual content (always visible so streaming updates show live) -->
                         <TextBlock Text="{Binding Content}"
                                    Foreground="{DynamicResource SubtextBrush}"
-                                   FontSize="12"
-                                   TextWrapping="Wrap" />
-                        <!-- Streaming indicator (shown while chunks are arriving) -->
+                                   FontSize="12.5"
+                                   TextWrapping="Wrap"
+                                   LineHeight="20" />
+                        <!-- Streaming dots -->
                         <StackPanel Orientation="Horizontal"
-                                    Margin="0,4,0,0"
+                                    Margin="0,6,0,0"
                                     Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVis}}">
-                            <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}"
-                                     Margin="0,0,3,0" Opacity="0.9" />
-                            <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}"
-                                     Margin="0,0,3,0" Opacity="0.6" />
-                            <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentBrush}"
-                                     Opacity="0.3" />
+                            <Ellipse Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,0" Opacity="0.9" />
+                            <Ellipse Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,0" Opacity="0.5" />
+                            <Ellipse Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Opacity="0.2" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -81,130 +72,260 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <!-- Header -->
+            <!-- Tab bar -->
             <RowDefinition Height="Auto" />
-            <!-- Provider badge -->
+            <!-- Input area (top, like Cursor) -->
             <RowDefinition Height="Auto" />
             <!-- Chat messages -->
             <RowDefinition Height="*" />
-            <!-- Quick action buttons -->
-            <RowDefinition Height="Auto" />
-            <!-- Input area -->
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════════
-             HEADER
+             TAB BAR (Cursor-style)
              ═══════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="0"
                 Background="{DynamicResource MantelBgBrush}"
                 BorderBrush="{DynamicResource Surface0Brush}"
                 BorderThickness="0,0,0,1"
-                Padding="12,10">
-            <Grid>
+                Padding="4,0">
+            <Grid Height="36">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- AI icon -->
-                <Border Grid.Column="0"
-                        Width="28" Height="28"
-                        CornerRadius="6"
-                        Background="{DynamicResource AccentBrush}"
-                        Margin="0,0,8,0">
-                    <TextBlock Text="AI"
-                               Foreground="White"
-                               FontSize="10"
-                               FontWeight="Bold"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center" />
-                </Border>
-
-                <!-- Title -->
-                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="Assistente IA"
-                               Style="{StaticResource SubheadingText}"
-                               FontSize="13"
-                               Margin="0" />
+                <!-- Active tab -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{DynamicResource Surface0Brush}"
+                            CornerRadius="6,6,0,0"
+                            Padding="10,5,6,5"
+                            Margin="4,4,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource TerminalIcon}"
+                                  Stroke="{DynamicResource SubtextBrush}"
+                                  StrokeThickness="1.2"
+                                  Width="12" Height="12"
+                                  Stretch="Uniform"
+                                  Margin="0,0,6,0"
+                                  VerticalAlignment="Center" />
+                            <TextBlock Text="Chat"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="12"
+                                       VerticalAlignment="Center" />
+                            <!-- Close tab -->
+                            <Button Style="{StaticResource IconButton}"
+                                    Width="18" Height="18"
+                                    Margin="6,0,0,0"
+                                    Command="{Binding ClearHistoryCommand}"
+                                    ToolTip="Limpar chat"
+                                    Opacity="0.5">
+                                <Path Data="{StaticResource CloseIcon}"
+                                      Stroke="{DynamicResource SubtextBrush}"
+                                      StrokeThickness="1.2"
+                                      Width="8" Height="8"
+                                      Stretch="Uniform" />
+                            </Button>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
-                <!-- Clear history button -->
-                <Button Grid.Column="2"
-                        Style="{StaticResource IconButton}"
-                        Width="26" Height="26"
-                        Command="{Binding ClearHistoryCommand}"
-                        ToolTip="Limpar histórico">
-                    <Path Data="{StaticResource TrashIcon}"
-                          Style="{StaticResource IconPathSmall}" />
-                </Button>
-
-                <!-- Close button — command binding is set from MainWindow via Tag property trick -->
-                <Button Grid.Column="3"
-                        Style="{StaticResource IconButton}"
-                        Width="26" Height="26"
-                        Command="{Binding DataContext.ToggleAIPanelCommand,
-                                  RelativeSource={RelativeSource AncestorType=Window}}"
-                        ToolTip="Fechar painel (Ctrl+I)">
-                    <Path Data="{StaticResource CloseIcon}"
-                          Style="{StaticResource IconPathSmall}" />
-                </Button>
+                <!-- Tab bar actions -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="0,0,4,0">
+                    <!-- New chat -->
+                    <Button Style="{StaticResource IconButton}"
+                            Width="26" Height="26"
+                            Command="{Binding ClearHistoryCommand}"
+                            ToolTip="Novo chat"
+                            Margin="0,0,2,0">
+                        <Path Data="{StaticResource PlusIcon}"
+                              Stroke="{DynamicResource SubtextBrush}"
+                              StrokeThickness="1.5"
+                              Width="12" Height="12"
+                              Stretch="Uniform" />
+                    </Button>
+                    <!-- Close panel -->
+                    <Button Style="{StaticResource IconButton}"
+                            Width="26" Height="26"
+                            Command="{Binding DataContext.ToggleAIPanelCommand,
+                                      RelativeSource={RelativeSource AncestorType=Window}}"
+                            ToolTip="Fechar painel (Ctrl+I)">
+                        <Path Data="{StaticResource CloseIcon}"
+                              Stroke="{DynamicResource SubtextBrush}"
+                              StrokeThickness="1.5"
+                              Width="10" Height="10"
+                              Stretch="Uniform" />
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
         <!-- ═══════════════════════════════════════════════════════════════
-             PROVIDER BADGE
+             INPUT AREA (Cursor-style: top position, multiline box)
              ═══════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="1"
-                Background="{DynamicResource Surface0Brush}"
-                Padding="12,6">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+                Background="{DynamicResource BaseBgBrush}"
+                Padding="10,10,10,6">
+            <StackPanel>
+                <!-- Input box with rounded border -->
+                <Border Background="{DynamicResource Surface0Brush}"
+                        BorderBrush="{DynamicResource Surface1Brush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="2">
 
-                <!-- Status dot -->
-                <Ellipse Grid.Column="0"
-                         Width="7" Height="7"
-                         Margin="0,0,6,0"
-                         VerticalAlignment="Center">
-                    <Ellipse.Style>
-                        <Style TargetType="Ellipse">
-                            <Setter Property="Fill" Value="{DynamicResource AccentRedBrush}" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsProviderAvailable}" Value="True">
-                                    <Setter Property="Fill" Value="{DynamicResource AccentGreenBrush}" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Ellipse.Style>
-                </Ellipse>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-                <!-- Provider info text -->
-                <TextBlock Grid.Column="1"
-                           Text="{Binding ProviderInfo}"
-                           Style="{StaticResource CaptionText}"
-                           VerticalAlignment="Center" />
+                        <!-- Text input -->
+                        <TextBox Grid.Row="0"
+                                 x:Name="ChatInput"
+                                 Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Foreground="{DynamicResource TextBrush}"
+                                 CaretBrush="{DynamicResource TextBrush}"
+                                 FontSize="13"
+                                 Padding="10,10,10,6"
+                                 MinHeight="60"
+                                 MaxHeight="140"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Tag="Pergunte algo, / para comandos...">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter"
+                                            Command="{Binding SendMessageCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
 
-                <!-- Provider badge (configured via Settings screen) -->
-                <Border Grid.Column="2"
-                        CornerRadius="4"
-                        Background="{DynamicResource Surface1Brush}"
-                        Padding="8,3"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="{Binding SelectedProviderLabel}"
-                               Style="{StaticResource CaptionText}"
-                               FontSize="11" />
+                        <!-- Bottom toolbar inside the input box -->
+                        <Grid Grid.Row="1" Margin="6,0,6,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Provider/mode selector pill -->
+                            <Border Grid.Column="0"
+                                    CornerRadius="5"
+                                    Background="{DynamicResource Surface1Brush}"
+                                    Padding="8,3"
+                                    Margin="0,0,6,0"
+                                    VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- Status dot -->
+                                    <Ellipse Width="6" Height="6"
+                                             Margin="0,0,5,0"
+                                             VerticalAlignment="Center">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{DynamicResource AccentRedBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsProviderAvailable}" Value="True">
+                                                        <Setter Property="Fill" Value="{DynamicResource AccentGreenBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Text="{Binding SelectedProviderLabel}"
+                                               Foreground="{DynamicResource SubtextBrush}"
+                                               FontSize="11"
+                                               FontWeight="Medium"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Model name pill -->
+                            <Border Grid.Column="1"
+                                    CornerRadius="5"
+                                    Background="Transparent"
+                                    Padding="4,3"
+                                    VerticalAlignment="Center"
+                                    Visibility="{Binding IsProviderAvailable, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="{Binding ProviderInfo}"
+                                           Foreground="{DynamicResource Overlay0Brush}"
+                                           FontSize="10.5"
+                                           VerticalAlignment="Center" />
+                            </Border>
+
+                            <!-- Quick actions: Explain Output -->
+                            <Button Grid.Column="3"
+                                    Style="{StaticResource IconButton}"
+                                    Width="26" Height="26"
+                                    Command="{Binding ExplainOutputCommand}"
+                                    ToolTip="Explicar Output do Terminal"
+                                    Margin="0,0,2,0">
+                                <Path Data="{StaticResource TerminalIcon}"
+                                      Stroke="{DynamicResource Overlay0Brush}"
+                                      StrokeThickness="1.3"
+                                      Width="13" Height="13"
+                                      Stretch="Uniform" />
+                            </Button>
+
+                            <!-- Send button -->
+                            <Grid Grid.Column="4">
+                                <!-- Send -->
+                                <Button Style="{StaticResource IconButton}"
+                                        Width="28" Height="28"
+                                        Command="{Binding SendMessageCommand}"
+                                        ToolTip="Enviar (Enter)"
+                                        Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis},
+                                                     ConverterParameter=Invert}">
+                                    <Border Width="24" Height="24"
+                                            CornerRadius="6"
+                                            Background="{DynamicResource AccentBrush}">
+                                        <Path Data="{StaticResource ChevronRightIcon}"
+                                              Stroke="White"
+                                              StrokeThickness="2"
+                                              Width="10" Height="10"
+                                              Stretch="Uniform"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                                    </Border>
+                                </Button>
+                                <!-- Cancel -->
+                                <Button Style="{StaticResource IconButton}"
+                                        Width="28" Height="28"
+                                        Command="{Binding CancelRequestCommand}"
+                                        ToolTip="Cancelar"
+                                        Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
+                                    <Border Width="24" Height="24"
+                                            CornerRadius="6"
+                                            Background="{DynamicResource AccentRedBrush}">
+                                        <Path Data="{StaticResource StopIcon}"
+                                              Stroke="White"
+                                              StrokeThickness="1.5"
+                                              Width="10" Height="10"
+                                              Stretch="Uniform"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                                    </Border>
+                                </Button>
+                            </Grid>
+                        </Grid>
+                    </Grid>
                 </Border>
-            </Grid>
+
+                <!-- Status text below input -->
+                <TextBlock Text="{Binding StatusText}"
+                           Foreground="{DynamicResource Overlay0Brush}"
+                           FontSize="10.5"
+                           Margin="4,6,0,0"
+                           TextTrimming="CharacterEllipsis"
+                           Visibility="{Binding StatusText, Converter={StaticResource NullToVis}}" />
+            </StackPanel>
         </Border>
 
         <!-- ═══════════════════════════════════════════════════════════════
-             CHAT MESSAGES
+             CHAT MESSAGES (below input, scrollable)
              ═══════════════════════════════════════════════════════════════ -->
         <ScrollViewer Grid.Row="2"
                       x:Name="ChatScrollViewer"
@@ -212,156 +333,82 @@
                       HorizontalScrollBarVisibility="Disabled"
                       Background="{DynamicResource BaseBgBrush}"
                       Padding="0,4">
-            <StackPanel>
+            <Grid>
                 <!-- Empty state -->
                 <StackPanel HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Margin="16,40"
+                            VerticalAlignment="Top"
+                            Margin="16,48"
                             Visibility="{Binding Messages.Count, Converter={StaticResource NullToVis}, ConverterParameter=Invert}">
-                    <Border Width="48" Height="48"
-                            CornerRadius="12"
+                    <Border Width="40" Height="40"
+                            CornerRadius="10"
                             Background="{DynamicResource Surface0Brush}"
                             HorizontalAlignment="Center"
                             Margin="0,0,0,12">
                         <TextBlock Text="AI"
                                    Foreground="{DynamicResource AccentBrush}"
-                                   FontSize="16"
+                                   FontSize="14"
                                    FontWeight="Bold"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center" />
                     </Border>
-                    <TextBlock Text="Assistente IA"
-                               Style="{StaticResource SubheadingText}"
+                    <TextBlock Text="Como posso ajudar?"
+                               Foreground="{DynamicResource TextBrush}"
+                               FontSize="15"
+                               FontWeight="Medium"
                                HorizontalAlignment="Center"
-                               FontSize="14"
-                               Margin="0,0,0,4" />
-                    <TextBlock Text="Use os botões abaixo para&#x0a;analisar o terminal ou&#x0a;fazer uma pergunta."
-                               Style="{StaticResource BodyText}"
+                               Margin="0,0,0,8" />
+                    <TextBlock Foreground="{DynamicResource Overlay0Brush}"
+                               FontSize="11.5"
                                TextAlignment="Center"
+                               TextWrapping="Wrap"
                                HorizontalAlignment="Center"
-                               TextWrapping="Wrap" />
+                               LineHeight="18">
+                        <Run Text="Pergunte sobre o terminal," />
+                        <LineBreak />
+                        <Run Text="peça sugestoes de comandos" />
+                        <LineBreak />
+                        <Run Text="ou explique erros." />
+                    </TextBlock>
+
+                    <!-- Quick action chips (empty state) -->
+                    <WrapPanel HorizontalAlignment="Center" Margin="0,16,0,0">
+                        <Button Style="{StaticResource GhostButton}"
+                                Command="{Binding ExplainOutputCommand}"
+                                Margin="2" Padding="10,5"
+                                FontSize="11">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource TerminalIcon}"
+                                      Stroke="{DynamicResource SubtextBrush}"
+                                      StrokeThickness="1.2"
+                                      Width="11" Height="11"
+                                      Stretch="Uniform"
+                                      Margin="0,0,5,0" />
+                                <TextBlock Text="Explicar Output" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource GhostButton}"
+                                Command="{Binding SuggestCommandCommand}"
+                                Margin="2" Padding="10,5"
+                                FontSize="11">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource SearchIcon}"
+                                      Stroke="{DynamicResource SubtextBrush}"
+                                      StrokeThickness="1.2"
+                                      Width="11" Height="11"
+                                      Stretch="Uniform"
+                                      Margin="0,0,5,0" />
+                                <TextBlock Text="Sugerir Comando" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
                 </StackPanel>
 
                 <!-- Messages list -->
                 <ItemsControl ItemsSource="{Binding Messages}"
-                              ItemTemplate="{StaticResource ChatMessageTemplate}" />
-            </StackPanel>
+                              ItemTemplate="{StaticResource ChatMessageTemplate}"
+                              Visibility="{Binding Messages.Count, Converter={StaticResource NullToVis}}" />
+            </Grid>
         </ScrollViewer>
-
-        <!-- ═══════════════════════════════════════════════════════════════
-             QUICK ACTION BUTTONS
-             ═══════════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="3"
-                Background="{DynamicResource Surface0Brush}"
-                BorderBrush="{DynamicResource Surface1Brush}"
-                BorderThickness="0,1,0,0"
-                Padding="8,6">
-            <StackPanel>
-                <TextBlock Text="Ações rápidas"
-                           Style="{StaticResource CaptionText}"
-                           Margin="0,0,0,4" />
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="4" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <Button Grid.Column="0"
-                            Style="{StaticResource GhostButton}"
-                            Command="{Binding ExplainOutputCommand}"
-                            Padding="6,5"
-                            HorizontalContentAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource TerminalIcon}"
-                                  Style="{StaticResource IconPathSmall}"
-                                  Margin="0,0,4,0" />
-                            <TextBlock Text="Explicar Output"
-                                       FontSize="11"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button Grid.Column="2"
-                            Style="{StaticResource GhostButton}"
-                            Command="{Binding SuggestCommandCommand}"
-                            Padding="6,5"
-                            HorizontalContentAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource SearchIcon}"
-                                  Style="{StaticResource IconPathSmall}"
-                                  Margin="0,0,4,0" />
-                            <TextBlock Text="Sugerir Comando"
-                                       FontSize="11"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                </Grid>
-            </StackPanel>
-        </Border>
-
-        <!-- ═══════════════════════════════════════════════════════════════
-             INPUT AREA
-             ═══════════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="4"
-                Background="{DynamicResource MantelBgBrush}"
-                BorderBrush="{DynamicResource Surface0Brush}"
-                BorderThickness="0,1,0,0"
-                Padding="8">
-            <StackPanel>
-                <!-- Status text -->
-                <TextBlock Text="{Binding StatusText}"
-                           Style="{StaticResource CaptionText}"
-                           Margin="2,0,0,4"
-                           TextTrimming="CharacterEllipsis" />
-
-                <!-- Input row -->
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="4" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBox Grid.Column="0"
-                             Style="{StaticResource DarkTextBox}"
-                             Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
-                             Tag="Digite uma pergunta..."
-                             Padding="8,6"
-                             FontSize="12"
-                             AcceptsReturn="False"
-                             ToolTip="Digite sua pergunta ou descrição do comando">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Enter"
-                                        Command="{Binding SendMessageCommand}" />
-                        </TextBox.InputBindings>
-                    </TextBox>
-
-                    <!-- Send / Cancel button -->
-                    <Button Grid.Column="2"
-                            Style="{StaticResource AccentButton}"
-                            Command="{Binding SendMessageCommand}"
-                            Padding="10,6"
-                            Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis},
-                                         ConverterParameter=Invert}">
-                        <Path Data="{StaticResource ChevronRightIcon}"
-                              Style="{StaticResource IconPathSmall}"
-                              Stroke="White" />
-                    </Button>
-
-                    <Button Grid.Column="2"
-                            Style="{StaticResource DangerButton}"
-                            Command="{Binding CancelRequestCommand}"
-                            Padding="10,6"
-                            ToolTip="Cancelar"
-                            Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
-                        <Path Data="{StaticResource StopIcon}"
-                              Style="{StaticResource IconPathSmall}"
-                              Stroke="White" />
-                    </Button>
-                </Grid>
-            </StackPanel>
-        </Border>
 
     </Grid>
 </UserControl>

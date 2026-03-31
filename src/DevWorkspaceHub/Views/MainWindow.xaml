@@ -322,7 +322,9 @@
             <!-- Backdrop -->
             <Border Background="#80000000" />
             <!-- Dialog -->
-            <Border Background="{DynamicResource BaseBgBrush}"
+            <Border Background="{DynamicResource GlassBgBrush}"
+                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                    BorderThickness="1"
                     CornerRadius="12"
                     Width="500"
                     MaxHeight="650"
@@ -330,7 +332,7 @@
                     HorizontalAlignment="Center"
                     Padding="0">
                 <Border.Effect>
-                    <DropShadowEffect ShadowDepth="0" BlurRadius="30" Opacity="0.5" />
+                    <DropShadowEffect ShadowDepth="0" BlurRadius="40" Opacity="0.6" Color="#1a1a2e" />
                 </Border.Effect>
                 <views:ProjectEditView DataContext="{Binding ProjectEditViewModel}" />
             </Border>

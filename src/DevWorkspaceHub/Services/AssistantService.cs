@@ -79,6 +79,7 @@ public sealed class AssistantService : IAssistantService
             {
                 AssistantProviderType.OpenAI => _settings.OpenAIModel,
                 AssistantProviderType.Anthropic => _settings.AnthropicModel,
+                AssistantProviderType.OpenRouter => _settings.OpenRouterModel,
                 _ => _settings.OllamaModel
             };
             _ = _db.SaveAssistantPreferencesAsync(found.ProviderName, model);
@@ -94,6 +95,7 @@ public sealed class AssistantService : IAssistantService
         {
             "OpenAI" => AssistantProviderType.OpenAI,
             "Anthropic" => AssistantProviderType.Anthropic,
+            "OpenRouter" => AssistantProviderType.OpenRouter,
             _ => AssistantProviderType.Ollama
         };
 
@@ -110,6 +112,9 @@ public sealed class AssistantService : IAssistantService
                     break;
                 case AssistantProviderType.OpenAI:
                     _settings.OpenAIModel = prefs.Value.model;
+                    break;
+                case AssistantProviderType.OpenRouter:
+                    _settings.OpenRouterModel = prefs.Value.model;
                     break;
                 default:
                     _settings.OllamaModel = prefs.Value.model;
@@ -185,16 +190,17 @@ public sealed class AssistantService : IAssistantService
     // ─── Settings bridge ──────────────────────────────────────────────────
 
     /// <inheritdoc/>
-    public void ApplySettings(string provider, string model, string baseUrl, string apiKey)
+    public void ApplySettings(string provider, string model, string baseUrl, string apiKey, string? anthropicAuthMode = null)
     {
         // Map the Settings-screen provider string to the enum
         var providerType = provider?.ToLowerInvariant() switch
         {
-            "openai"    => AssistantProviderType.OpenAI,
-            "anthropic" => AssistantProviderType.Anthropic,
-            "local"     => AssistantProviderType.Ollama,
-            "ollama"    => AssistantProviderType.Ollama,
-            _           => AssistantProviderType.None
+            "openai"     => AssistantProviderType.OpenAI,
+            "anthropic"  => AssistantProviderType.Anthropic,
+            "openrouter" => AssistantProviderType.OpenRouter,
+            "local"      => AssistantProviderType.Ollama,
+            "ollama"     => AssistantProviderType.Ollama,
+            _            => AssistantProviderType.None
         };
 
         // Update the shared AssistantSettings object (singleton, used by providers)
@@ -207,6 +213,13 @@ public sealed class AssistantService : IAssistantService
             case AssistantProviderType.Anthropic:
                 _settings.AnthropicModel = !string.IsNullOrWhiteSpace(model) ? model : _settings.AnthropicModel;
                 _settings.AnthropicKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _settings.AnthropicKey;
+                _settings.AnthropicAuth = anthropicAuthMode == "claude_oauth"
+                    ? AnthropicAuthMode.ClaudeOAuth
+                    : AnthropicAuthMode.ApiKey;
+                break;
+            case AssistantProviderType.OpenRouter:
+                _settings.OpenRouterModel = !string.IsNullOrWhiteSpace(model) ? model : _settings.OpenRouterModel;
+                _settings.OpenRouterKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _settings.OpenRouterKey;
                 break;
             case AssistantProviderType.Ollama:
                 _settings.OllamaModel = !string.IsNullOrWhiteSpace(model) ? model : _settings.OllamaModel;
@@ -228,6 +241,7 @@ public sealed class AssistantService : IAssistantService
                 {
                     AssistantProviderType.OpenAI => _settings.OpenAIModel,
                     AssistantProviderType.Anthropic => _settings.AnthropicModel,
+                    AssistantProviderType.OpenRouter => _settings.OpenRouterModel,
                     _ => _settings.OllamaModel
                 };
                 _ = _db.SaveAssistantPreferencesAsync(found.ProviderName, modelName);
@@ -245,6 +259,7 @@ public sealed class AssistantService : IAssistantService
             AssistantProviderType.Ollama => "Ollama",
             AssistantProviderType.OpenAI => "OpenAI",
             AssistantProviderType.Anthropic => "Anthropic",
+            AssistantProviderType.OpenRouter => "OpenRouter",
             _ => null
         };
 

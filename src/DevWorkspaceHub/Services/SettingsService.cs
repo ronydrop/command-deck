@@ -100,6 +100,12 @@ public partial class AppSettings : ObservableObject
     private string _aiBaseUrl = string.Empty;
 
     /// <summary>
+    /// Anthropic auth mode: "apikey" or "claude_oauth".
+    /// </summary>
+    [ObservableProperty]
+    private string _anthropicAuthMode = "apikey";
+
+    /// <summary>
     /// Whether the AI assistant panel is visible in the UI.
     /// </summary>
     [ObservableProperty]
@@ -183,7 +189,7 @@ public partial class AppSettings : ObservableObject
 /// <summary>
 /// Service for loading and saving application settings.
 /// </summary>
-public class SettingsService : ISettingsService
+public class SettingsService : ISettingsService, IDisposable
 {
     private readonly string _settingsFilePath;
     private AppSettings? _settings;
@@ -236,9 +242,9 @@ public class SettingsService : ISettingsService
         await _lock.WaitAsync();
         try
         {
-            _settings = settings;
             var json = JsonSerializer.Serialize(settings, JsonOptions);
             await File.WriteAllTextAsync(_settingsFilePath, json);
+            _settings = settings;  // Only cache after successful write
             SettingsChanged?.Invoke(settings);
         }
         finally
@@ -254,6 +260,12 @@ public class SettingsService : ISettingsService
     {
         var defaults = new AppSettings();
         await SaveSettingsAsync(defaults);
+    }
+
+    public void Dispose()
+    {
+        _lock.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private async Task<AppSettings> LoadSettingsAsync()

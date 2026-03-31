@@ -74,7 +74,9 @@ public partial class TerminalControl : UserControl
                 Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
                 {
                     _scrollPending = false;
-                    OutputArea.ScrollToEnd();
+                    var sv = GetScrollViewer(OutputArea);
+                    if (sv != null && sv.ExtentHeight > sv.ViewportHeight)
+                        OutputArea.ScrollToEnd();
                     UpdateCursorPosition();
                 });
             };
@@ -213,23 +215,80 @@ public partial class TerminalControl : UserControl
     }
 
     /// <summary>
-    /// Positions the cursor overlay at the end of the last character in the document.
+    /// Finds the internal ScrollViewer of a RichTextBox using the visual tree.
+    /// </summary>
+    private static ScrollViewer? GetScrollViewer(DependencyObject obj)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
+        {
+            var child = VisualTreeHelper.GetChild(obj, i);
+            if (child is ScrollViewer sv) return sv;
+            var result = GetScrollViewer(child);
+            if (result != null) return result;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Positions the cursor overlay based on the parser's cursor column.
+    /// Uses character width measurement for accurate column-based positioning.
+    /// Falls back to document-end positioning if column-based calculation fails.
     /// </summary>
     private void UpdateCursorPosition()
     {
         try
         {
+            // Get the Y position from the last line in the document
             var end = OutputArea.Document.ContentEnd;
             var rect = end.GetCharacterRect(LogicalDirection.Backward);
             if (rect == Rect.Empty) return;
 
-            // Transform from RichTextBox coordinates to CursorCanvas coordinates
             var transform = OutputArea.TransformToVisual(CursorCanvas);
-            var origin = transform.Transform(new Point(rect.Right, rect.Top));
+            double lineHeight = Math.Max(2, rect.Height);
 
+            // Calculate X from cursor column and character width
+            if (_viewModel != null)
+            {
+                var (charWidth, _) = MeasureCharDimensions();
+                int cursorCol = _viewModel.CursorColumn;
+
+                // Get the start of the last line (Y from document end, X from left margin)
+                var lineStart = end;
+                // Walk backward to find start of the last line
+                var pointer = end.GetPositionAtOffset(0, LogicalDirection.Backward);
+                while (pointer != null)
+                {
+                    var prev = pointer.GetPositionAtOffset(-1, LogicalDirection.Backward);
+                    if (prev == null) break;
+                    var context = prev.GetPointerContext(LogicalDirection.Forward);
+                    if (context == TextPointerContext.Text)
+                    {
+                        char[] buf = new char[1];
+                        prev.GetTextInRun(LogicalDirection.Forward, buf, 0, 1);
+                        if (buf[0] == '\n') { lineStart = pointer; break; }
+                    }
+                    pointer = prev;
+                }
+
+                var lineStartRect = lineStart.GetCharacterRect(LogicalDirection.Forward);
+                if (lineStartRect != Rect.Empty)
+                {
+                    var lineOrigin = transform.Transform(new Point(lineStartRect.Left, lineStartRect.Top));
+                    double cursorX = lineOrigin.X + cursorCol * charWidth;
+                    double cursorY = lineOrigin.Y;
+
+                    Canvas.SetLeft(CursorBlock, cursorX);
+                    Canvas.SetTop(CursorBlock, cursorY);
+                    CursorBlock.Height = lineHeight;
+                    return;
+                }
+            }
+
+            // Fallback: position at document end
+            var origin = transform.Transform(new Point(rect.Right, rect.Top));
             Canvas.SetLeft(CursorBlock, origin.X);
             Canvas.SetTop(CursorBlock, origin.Y);
-            CursorBlock.Height = Math.Max(2, rect.Height);
+            CursorBlock.Height = lineHeight;
         }
         catch { }
     }

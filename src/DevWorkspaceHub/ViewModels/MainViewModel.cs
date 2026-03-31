@@ -29,6 +29,7 @@ public partial class MainViewModel : ObservableObject
     private readonly CanvasItemFactory _canvasItemFactory;
     private readonly IAiTerminalLauncher _aiLauncher;
     private readonly SemaphoreSlim _projectSwitchLock = new(1, 1);
+    private readonly Dictionary<TerminalViewModel, System.ComponentModel.PropertyChangedEventHandler> _terminalPropertyHandlers = new();
 
     // ─── Sub ViewModels ──────────────────────────────────────────────────────
 
@@ -190,10 +191,10 @@ public partial class MainViewModel : ObservableObject
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[RunCommand] {ex}"); }
         };
 
-        // Wire up workspace switch
+        // Wire up workspace switch — full orchestration with terminal restoration
         WorkspaceTree.WorkspaceSwitchRequested += async workspaceId =>
         {
-            try { await _workspaceService.SwitchWorkspaceAsync(workspaceId); }
+            try { await SwitchWorkspaceAsync(workspaceId); }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[WorkspaceSwitch] {ex}"); }
         };
 
@@ -312,6 +313,89 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Switches to a different workspace: disposes current terminals, loads target layout,
+    /// and restores terminal sessions (similar to SwitchProjectAsync).
+    /// </summary>
+    private async Task SwitchWorkspaceAsync(string workspaceId)
+    {
+        // Clean up handler references for current terminals
+        foreach (var t in Terminals.ToList())
+        {
+            if (_terminalPropertyHandlers.TryGetValue(t, out var handler))
+            {
+                t.PropertyChanged -= handler;
+                _terminalPropertyHandlers.Remove(t);
+            }
+        }
+        Terminals.Clear();
+        ActiveTerminal = null;
+        ActiveTerminalCount = 0;
+
+        // Service handles: save current state, dispose canvas terminals, load target, fire ActiveWorkspaceChanged
+        await _workspaceService.SwitchWorkspaceAsync(workspaceId);
+
+        // Restore canvas items from the loaded workspace
+        var workspace = _workspaceService.CurrentWorkspace;
+        if (workspace?.Items is { Count: > 0 })
+        {
+            // Restore camera position
+            if (workspace.Camera is not null)
+                CanvasViewModel.SyncCamera(workspace.Camera.OffsetX, workspace.Camera.OffsetY, workspace.Camera.Zoom);
+
+            // Restore terminal items with limited parallelism
+            var terminalItems = workspace.Items.Where(i => i.Type == CanvasItemType.Terminal).ToList();
+            var semaphore = new SemaphoreSlim(3, 3);
+            var initTasks = new List<Task>();
+
+            foreach (var itemModel in terminalItems)
+            {
+                var shellType = itemModel.Metadata.TryGetValue("shellType", out var st)
+                    && Enum.TryParse<ShellType>(st, true, out var parsed)
+                        ? parsed
+                        : CurrentProject?.DefaultShell ?? ShellType.PowerShell;
+
+                var workDir = itemModel.Metadata.TryGetValue("workingDirectory", out var wd)
+                    ? wd
+                    : CurrentProject?.Path;
+
+                var terminalVm = _terminalVmFactory();
+                Terminals.Add(terminalVm);
+
+                var vm = terminalVm;
+                initTasks.Add(Task.Run(async () =>
+                {
+                    await semaphore.WaitAsync();
+                    try { await vm.InitializeAsync(shellType, workDir, CurrentProject?.Id); }
+                    finally { semaphore.Release(); }
+                }));
+
+                var canvasItem = _canvasItemFactory.CreateTerminalItemFromModel(terminalVm, itemModel);
+                _workspaceService.AddRestoredItem(canvasItem);
+
+                if (!WorkspaceTree.HasNodeForCanvasItem(canvasItem.Model.Id))
+                    _ = WorkspaceTree.RegisterTerminalAsync(canvasItem.Title, canvasItem.Model.Id, CurrentProject?.Id);
+
+                // Wire title sync handler
+                var capturedItem = canvasItem;
+                System.ComponentModel.PropertyChangedEventHandler titleHandler = async (_, args) =>
+                {
+                    if (args.PropertyName == nameof(TerminalCanvasItemViewModel.Title))
+                        await WorkspaceTree.SyncTerminalTitleAsync(capturedItem.Model.Id, capturedItem.Title);
+                };
+                terminalVm.PropertyChanged += titleHandler;
+                _terminalPropertyHandlers[terminalVm] = titleHandler;
+            }
+
+            // TODO: restore widget items (Git, Process, Note, etc.) if needed in the future
+
+            await Task.WhenAll(initTasks);
+
+            ActiveTerminal = Terminals.FirstOrDefault();
+            ActiveTerminalCount = Terminals.Count;
+        }
+    }
+
+    /// <summary>
     /// Creates a new terminal tab.
     /// </summary>
     [RelayCommand]
@@ -340,11 +424,13 @@ public partial class MainViewModel : ObservableObject
 
             // Sync title changes to workspace tree when shell updates via OSC sequences
             var capturedItem = addedItem;
-            terminalVm.PropertyChanged += async (_, args) =>
+            System.ComponentModel.PropertyChangedEventHandler handler = async (_, args) =>
             {
                 if (args.PropertyName == nameof(TerminalCanvasItemViewModel.Title))
                     await WorkspaceTree.SyncTerminalTitleAsync(capturedItem.Model.Id, capturedItem.Title);
             };
+            terminalVm.PropertyChanged += handler;
+            _terminalPropertyHandlers[terminalVm] = handler;
         }
 
         ShellTypeDisplay = shellType.GetDisplayName();
@@ -392,6 +478,13 @@ public partial class MainViewModel : ObservableObject
         {
             _workspaceService.RemoveItem(canvasItem.Model.Id);
             _ = WorkspaceTree.UnregisterCanvasItemAsync(canvasItem.Model.Id);
+        }
+
+        // Unsubscribe PropertyChanged handler to prevent memory leak
+        if (_terminalPropertyHandlers.TryGetValue(terminal, out var handler))
+        {
+            terminal.PropertyChanged -= handler;
+            _terminalPropertyHandlers.Remove(terminal);
         }
 
         int index = Terminals.IndexOf(terminal);
@@ -533,9 +626,16 @@ public partial class MainViewModel : ObservableObject
             ProjectSwitchMessage = $"Fechando terminais…";
             StatusBarText = $"Switching to {project.Name}… closing terminals";
 
-            // 2. Kill all terminals
+            // 2. Clean up property handlers and kill all terminals
             foreach (var t in Terminals.ToList())
+            {
+                if (_terminalPropertyHandlers.TryGetValue(t, out var h))
+                {
+                    t.PropertyChanged -= h;
+                    _terminalPropertyHandlers.Remove(t);
+                }
                 t.Dispose();
+            }
             Terminals.Clear();
             ActiveTerminal = null;
             ActiveTerminalCount = 0;
@@ -726,8 +826,51 @@ public partial class MainViewModel : ObservableObject
             Execute = () => OpenSettingsCommand.Execute(null)
         });
 
-        // Dynamic: one command per open terminal
-        _workspaceService.Items.CollectionChanged += (_, _) => RefreshTerminalCommands();
+        // Dynamic: one command per open terminal (incremental updates)
+        _workspaceService.Items.CollectionChanged += OnWorkspaceItemsChanged;
+    }
+
+    private void OnWorkspaceItemsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        switch (e.Action)
+        {
+            case System.Collections.Specialized.NotifyCollectionChangedAction.Add:
+                if (e.NewItems != null)
+                {
+                    foreach (var item in e.NewItems.OfType<TerminalCanvasItemViewModel>())
+                        RegisterTerminalCommand(item);
+                }
+                break;
+            case System.Collections.Specialized.NotifyCollectionChangedAction.Remove:
+                if (e.OldItems != null)
+                {
+                    foreach (var item in e.OldItems.OfType<TerminalCanvasItemViewModel>())
+                        _commandPaletteService.Unregister($"terminal.focus.{item.Model.Id}");
+                }
+                break;
+            default:
+                RefreshTerminalCommands();
+                break;
+        }
+    }
+
+    private void RegisterTerminalCommand(TerminalCanvasItemViewModel tvm)
+    {
+        var captured = tvm;
+        _commandPaletteService.Register(new Models.CommandDefinitionModel
+        {
+            Id = $"terminal.focus.{captured.Model.Id}",
+            Title = $"Focar: {captured.Title}",
+            Subtitle = captured.Terminal.Session?.WorkingDirectory,
+            Category = Models.CommandCategory.Terminal,
+            IconKey = "TerminalIcon",
+            Priority = 50,
+            Execute = () =>
+            {
+                CanvasViewModel.RequestFocus(captured);
+                CurrentView = ViewType.Terminal;
+            }
+        });
     }
 
     private void RefreshTerminalCommands()
@@ -741,23 +884,7 @@ public partial class MainViewModel : ObservableObject
 
         // Re-register one per terminal
         foreach (var tvm in _workspaceService.TerminalItems)
-        {
-            var captured = tvm;
-            _commandPaletteService.Register(new Models.CommandDefinitionModel
-            {
-                Id = $"terminal.focus.{captured.Model.Id}",
-                Title = $"Focar: {captured.Title}",
-                Subtitle = captured.Terminal.Session?.WorkingDirectory,
-                Category = Models.CommandCategory.Terminal,
-                IconKey = "TerminalIcon",
-                Priority = 50,
-                Execute = () =>
-                {
-                    CanvasViewModel.RequestFocus(captured);
-                    CurrentView = ViewType.Terminal;
-                }
-            });
-        }
+            RegisterTerminalCommand(tvm);
     }
 
     private async Task RunCommandInNewTerminalAsync(string command)
@@ -769,6 +896,14 @@ public partial class MainViewModel : ObservableObject
             await Task.Delay(500);
             await ActiveTerminal.ExecuteCommandAsync(command);
         }
+    }
+
+    partial void OnIsAIPanelOpenChanged(bool value)
+    {
+        if (value)
+            _ = AssistantPanel.OnPanelOpenedAsync();
+        else
+            AssistantPanel.OnPanelClosed();
     }
 
     partial void OnCurrentViewChanged(ViewType oldValue, ViewType newValue)

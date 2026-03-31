@@ -172,12 +172,15 @@ public class TerminalService : ITerminalService, IDisposable
 
     public void Dispose()
     {
-        // Run cleanup on the thread pool to avoid deadlocking a SynchronizationContext
-        // (e.g. WPF UI thread). By this point OnExit already closed sessions, so
-        // this call is typically a fast no-op.
+        if (_sessions.IsEmpty)
+        {
+            GC.SuppressFinalize(this);
+            return;
+        }
+
         try
         {
-            Task.Run(CloseAllSessionsAsync).GetAwaiter().GetResult();
+            Task.Run(CloseAllSessionsAsync).Wait(TimeSpan.FromSeconds(3));
         }
         catch { }
 

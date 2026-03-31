@@ -21,6 +21,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IUpdateService _updateService;
     private readonly IAssistantService _assistantService;
     private readonly ITerminalBackgroundService _terminalBackgroundService;
+    private readonly IClaudeOAuthService _claudeOAuthService;
 
     // ─── Aparência ────────────────────────────────────────────────────────────
 
@@ -106,6 +107,15 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _aiApiKey = string.Empty;
+
+    [ObservableProperty]
+    private string _anthropicAuthMode = "apikey";
+
+    [ObservableProperty]
+    private bool _isClaudeCodeDetected;
+
+    [ObservableProperty]
+    private string _claudeSubscriptionInfo = string.Empty;
 
     // ─── Notificações ────────────────────────────────────────────────────────
 
@@ -293,7 +303,7 @@ public partial class SettingsViewModel : ObservableObject
 
     public IReadOnlyList<string> AvailableAiProviders { get; } = new[]
     {
-        "none", "anthropic", "openai", "local"
+        "none", "anthropic", "openai", "openrouter", "local"
     };
 
     public ObservableCollection<AiSlotItemViewModel> AiModelSlots { get; } = new();
@@ -304,7 +314,14 @@ public partial class SettingsViewModel : ObservableObject
     public bool IsOpenAiProvider => AiProvider == "openai";
     public bool IsAnthropicProvider => AiProvider == "anthropic";
     public bool IsLocalProvider => AiProvider == "local";
-    public bool IsApiKeyProvider => IsOpenAiProvider || IsAnthropicProvider;
+    public bool IsOpenRouterProvider => AiProvider == "openrouter";
+    public bool IsApiKeyProvider => IsOpenAiProvider || IsOpenRouterProvider || (IsAnthropicProvider && AnthropicAuthMode == "apikey");
+    public bool IsAnthropicOAuthMode => IsAnthropicProvider && AnthropicAuthMode == "claude_oauth";
+
+    public IReadOnlyList<string> AvailableAnthropicAuthModes { get; } = new[]
+    {
+        "apikey", "claude_oauth"
+    };
 
     partial void OnAiProviderChanged(string value)
     {
@@ -313,6 +330,30 @@ public partial class SettingsViewModel : ObservableObject
         OnPropertyChanged(nameof(IsAnthropicProvider));
         OnPropertyChanged(nameof(IsLocalProvider));
         OnPropertyChanged(nameof(IsApiKeyProvider));
+        OnPropertyChanged(nameof(IsAnthropicOAuthMode));
+    }
+
+    partial void OnAnthropicAuthModeChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsApiKeyProvider));
+        OnPropertyChanged(nameof(IsAnthropicOAuthMode));
+        _ = DetectClaudeCodeAsync();
+    }
+
+    private async Task DetectClaudeCodeAsync()
+    {
+        IsClaudeCodeDetected = _claudeOAuthService.IsClaudeCodeInstalled;
+        if (IsClaudeCodeDetected)
+        {
+            var creds = await _claudeOAuthService.LoadCredentialsAsync();
+            ClaudeSubscriptionInfo = creds is not null
+                ? $"Claude {creds.SubscriptionType?.ToUpperInvariant() ?? "?"}"
+                : "Credenciais não encontradas";
+        }
+        else
+        {
+            ClaudeSubscriptionInfo = "Claude Code não detectado";
+        }
     }
 
     /// <summary>
@@ -326,7 +367,8 @@ public partial class SettingsViewModel : ObservableObject
         ISecretStorageService secretStorageService,
         IUpdateService updateService,
         IAssistantService assistantService,
-        ITerminalBackgroundService terminalBackgroundService)
+        ITerminalBackgroundService terminalBackgroundService,
+        IClaudeOAuthService claudeOAuthService)
     {
         _settingsService = settingsService;
         _aiModelConfigService = aiModelConfigService;
@@ -334,6 +376,7 @@ public partial class SettingsViewModel : ObservableObject
         _updateService = updateService;
         _assistantService = assistantService;
         _terminalBackgroundService = terminalBackgroundService;
+        _claudeOAuthService = claudeOAuthService;
         AppVersion = _updateService.CurrentVersion;
     }
 
@@ -377,6 +420,7 @@ public partial class SettingsViewModel : ObservableObject
         AiBaseUrl = settings.AiBaseUrl;
         AiMaxContextMessages = settings.AiMaxContextMessages;
         AiAssistantVisible = settings.AiAssistantVisible;
+        AnthropicAuthMode = settings.AnthropicAuthMode;
 
         // Notificações
         NotificationsEnabled = settings.NotificationsEnabled;
@@ -408,7 +452,12 @@ public partial class SettingsViewModel : ObservableObject
         // API key (from secure storage — load based on provider)
         try
         {
-            var secretName = AiProvider == "anthropic" ? "ai_anthropic_api_key" : "ai_openai_api_key";
+            var secretName = AiProvider switch
+            {
+                "anthropic" => "ai_anthropic_api_key",
+                "openrouter" => "ai_openrouter_api_key",
+                _ => "ai_openai_api_key"
+            };
             AiApiKey = await _secretStorageService.RetrieveSecretAsync(secretName) ?? string.Empty;
         }
         catch
@@ -488,6 +537,7 @@ public partial class SettingsViewModel : ObservableObject
         settings.AiBaseUrl = AiBaseUrl;
         settings.AiMaxContextMessages = AiMaxContextMessages;
         settings.AiAssistantVisible = AiAssistantVisible;
+        settings.AnthropicAuthMode = AnthropicAuthMode;
 
         // Notificações
         settings.NotificationsEnabled = NotificationsEnabled;
@@ -523,6 +573,8 @@ public partial class SettingsViewModel : ObservableObject
                 await _secretStorageService.StoreSecretAsync("ai_openai_api_key", AiApiKey);
             else if (AiProvider == "anthropic" && !string.IsNullOrWhiteSpace(AiApiKey))
                 await _secretStorageService.StoreSecretAsync("ai_anthropic_api_key", AiApiKey);
+            else if (AiProvider == "openrouter" && !string.IsNullOrWhiteSpace(AiApiKey))
+                await _secretStorageService.StoreSecretAsync("ai_openrouter_api_key", AiApiKey);
         }
         catch { }
 
@@ -538,7 +590,7 @@ public partial class SettingsViewModel : ObservableObject
 
         // Propagate AI settings to the AssistantService BEFORE saving so that when
         // SettingsChanged fires the assistant is already configured with the new values.
-        _assistantService.ApplySettings(AiProvider, AiModel, AiBaseUrl, AiApiKey);
+        _assistantService.ApplySettings(AiProvider, AiModel, AiBaseUrl, AiApiKey, AnthropicAuthMode);
 
         await _settingsService.SaveSettingsAsync(settings);
 

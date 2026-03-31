@@ -53,9 +53,13 @@ public partial class WorkspaceTreeViewModel : ObservableObject
         Rebuild();
     }
 
-    private void OnWorkspaceServiceActiveChanged(WorkspaceModel workspace)
+    private async void OnWorkspaceServiceActiveChanged(WorkspaceModel workspace)
     {
         ActiveWorkspace = workspace;
+        SearchQuery = string.Empty;
+        await _treeService.LoadAsync();
+        Rebuild();
+        await RefreshWorkspaceListAsync();
     }
 
     // ─── Commands ─────────────────────────────────────────────────────────────
@@ -142,7 +146,7 @@ public partial class WorkspaceTreeViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task SwitchWorkspace(WorkspaceModel? workspace)
+    private void SwitchWorkspace(WorkspaceModel? workspace)
     {
         if (workspace is null || workspace.Id == ActiveWorkspace?.Id) return;
         IsWorkspaceSelectorOpen = false;

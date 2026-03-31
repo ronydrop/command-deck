@@ -9,7 +9,7 @@ using Microsoft.Web.WebView2.Wpf;
 
 namespace DevWorkspaceHub.ViewModels;
 
-public partial class BrowserViewModel : ObservableObject
+public partial class BrowserViewModel : ObservableObject, IDisposable
 {
     private readonly IBrowserRuntimeService _browserRuntime;
     private readonly ILocalAppSessionService _localAppSession;
@@ -99,23 +99,13 @@ public partial class BrowserViewModel : ObservableObject
 
         var runtime = (BrowserRuntimeService)_browserRuntime;
         runtime.StateChanged += OnStateChanged;
-        runtime.TitleChanged += title => PageTitle = title;
-        runtime.UrlChanged += url =>
-        {
-            Url = url;
-            AddressBarText = url;
-            CanGoBack = _browserRuntime.CanGoBack;
-            CanGoForward = _browserRuntime.CanGoForward;
-        };
+        runtime.TitleChanged += OnTitleChanged;
+        runtime.UrlChanged += OnRuntimeUrlChanged;
 
         _domSelection.ElementSelected += OnElementSelected;
-        _domSelection.PickerActivated += () => IsPickerActive = true;
-        _domSelection.PickerDeactivated += () => IsPickerActive = false;
-        _domSelection.PickerCancelled += () =>
-        {
-            IsPickerActive = false;
-            StatusText = IsServerRunning ? $"Conectado — localhost:{DetectedPort}" : "Desconectado";
-        };
+        _domSelection.PickerActivated += OnPickerActivated;
+        _domSelection.PickerDeactivated += OnPickerDeactivated;
+        _domSelection.PickerCancelled += OnPickerCancelled;
     }
 
     public void SetWebView(WebView2 webView)
@@ -402,6 +392,26 @@ URL: {el.Url}
 """;
     }
 
+    private void OnTitleChanged(string title) => PageTitle = title;
+
+    private void OnRuntimeUrlChanged(string url)
+    {
+        Url = url;
+        AddressBarText = url;
+        CanGoBack = _browserRuntime.CanGoBack;
+        CanGoForward = _browserRuntime.CanGoForward;
+    }
+
+    private void OnPickerActivated() => IsPickerActive = true;
+
+    private void OnPickerDeactivated() => IsPickerActive = false;
+
+    private void OnPickerCancelled()
+    {
+        IsPickerActive = false;
+        StatusText = IsServerRunning ? $"Conectado — localhost:{DetectedPort}" : "Desconectado";
+    }
+
     private void OnStateChanged(BrowserSessionState state)
     {
         System.Windows.Application.Current?.Dispatcher.Invoke(() =>
@@ -423,5 +433,18 @@ URL: {el.Url}
             CanGoBack = _browserRuntime.CanGoBack;
             CanGoForward = _browserRuntime.CanGoForward;
         });
+    }
+
+    public void Dispose()
+    {
+        var runtime = (BrowserRuntimeService)_browserRuntime;
+        runtime.StateChanged -= OnStateChanged;
+        runtime.TitleChanged -= OnTitleChanged;
+        runtime.UrlChanged -= OnRuntimeUrlChanged;
+
+        _domSelection.ElementSelected -= OnElementSelected;
+        _domSelection.PickerActivated -= OnPickerActivated;
+        _domSelection.PickerDeactivated -= OnPickerDeactivated;
+        _domSelection.PickerCancelled -= OnPickerCancelled;
     }
 }

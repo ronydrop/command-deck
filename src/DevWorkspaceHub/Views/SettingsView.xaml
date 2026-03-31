@@ -13,6 +13,7 @@
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:NullToVisibilityConverter x:Key="NullToVis" />
         <conv:StringToVisibilityConverter x:Key="StringToVis" />
+        <conv:InverseStringToVisibilityConverter x:Key="InvStringToVis" />
     </UserControl.Resources>
 
     <Grid Margin="24,24" MaxWidth="1800" HorizontalAlignment="Center">
@@ -69,106 +70,144 @@
                 <!-- ─── Card: Wallpaper do Canvas ────────────────────── -->
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
-                        <TextBlock Text="Wallpaper do Canvas" Style="{StaticResource SubheadingText}"
-                                   Margin="0,0,0,4" />
+                        <!-- Header com icone -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Path Data="M4 5C4 3.89543 4.89543 3 6 3H14L20 9V19C20 20.1046 19.1046 21 18 21H6C4.89543 21 4 20.1046 4 19V5Z M14 3V9H20 M9 13L11 17L13 13L15 17"
+                                  Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.5"
+                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Width="20" Height="20" Stretch="Uniform"
+                                  VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Text="Wallpaper do Canvas" Style="{StaticResource SubheadingText}" Margin="0" />
+                        </StackPanel>
                         <TextBlock Text="Imagem de fundo na area de terminais"
-                                   Style="{StaticResource CaptionText}"
-                                   Margin="0,0,0,12" />
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
+                                   Style="{StaticResource CaptionText}" Margin="0,0,0,16" />
 
-                            <!-- Imagem -->
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Imagem"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Center" />
-                            <Grid Grid.Row="0" Grid.Column="1" Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0"
-                                         Style="{StaticResource DarkTextBox}"
-                                         Text="{Binding CanvasWallpaperPath, UpdateSourceTrigger=PropertyChanged}"
-                                         Tag="Nenhuma imagem selecionada"
-                                         IsReadOnly="True"
-                                         Margin="0,0,6,0" />
-                                <Button Grid.Column="1"
-                                        Style="{StaticResource GhostButton}"
-                                        Content="Procurar..."
-                                        Command="{Binding BrowseWallpaperCommand}"
-                                        Padding="10,6"
-                                        Margin="0,0,4,0" />
-                                <Button Grid.Column="2"
-                                        Style="{StaticResource DangerButton}"
-                                        Content="Limpar"
-                                        Command="{Binding ClearWallpaperCommand}"
-                                        Padding="10,6"
-                                        Visibility="{Binding CanvasWallpaperPath, Converter={StaticResource StringToVis}}" />
-                            </Grid>
-
-                            <!-- Opacidade -->
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Opacidade"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Center" />
-                            <Grid Grid.Row="1" Grid.Column="1" Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="50" />
-                                </Grid.ColumnDefinitions>
-                                <Slider Grid.Column="0"
-                                        Minimum="0" Maximum="1"
-                                        Value="{Binding CanvasWallpaperOpacity}"
-                                        TickFrequency="0.05"
-                                        IsSnapToTickEnabled="True"
-                                        VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1"
-                                           Style="{StaticResource CaptionText}"
-                                           VerticalAlignment="Center"
-                                           HorizontalAlignment="Right">
-                                    <TextBlock.Text>
-                                        <Binding Path="CanvasWallpaperOpacity" StringFormat="{}{0:P0}" />
-                                    </TextBlock.Text>
-                                </TextBlock>
-                            </Grid>
-
-                            <!-- Modo de Ajuste -->
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Ajuste"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Center" />
-                            <ComboBox Grid.Row="2" Grid.Column="1"
-                                      Style="{StaticResource DarkComboBox}"
-                                      ItemsSource="{Binding AvailableStretchModes}"
-                                      SelectedItem="{Binding CanvasWallpaperStretch}"
-                                      Margin="0,0,0,10">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-
-                            <!-- Preview -->
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Preview"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Top"
-                                       Visibility="{Binding CanvasWallpaperPath, Converter={StaticResource StringToVis}}" />
-                            <Border Grid.Row="3" Grid.Column="1"
-                                    CornerRadius="6"
-                                    Background="{DynamicResource Surface0Brush}"
-                                    Height="120"
-                                    ClipToBounds="True"
-                                    Visibility="{Binding CanvasWallpaperPath, Converter={StaticResource StringToVis}}">
+                        <!-- Drop zone / Preview area -->
+                        <Border CornerRadius="10" ClipToBounds="True" Margin="0,0,0,16"
+                                MinHeight="160" MaxHeight="200"
+                                Background="{DynamicResource Surface0Brush}"
+                                BorderBrush="{DynamicResource GlassBorderBrush}"
+                                BorderThickness="1.5">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CanvasWallpaperPath, Converter={StaticResource StringToVis}}" Value="Collapsed">
+                                            <Setter Property="BorderBrush">
+                                                <Setter.Value>
+                                                    <VisualBrush TileMode="Tile" Viewport="0,0,12,12" ViewportUnits="Absolute"
+                                                                 Viewbox="0,0,12,12" ViewboxUnits="Absolute">
+                                                        <VisualBrush.Visual>
+                                                            <Grid Width="12" Height="12">
+                                                                <Path Data="M0,0 L12,0" Stroke="{DynamicResource SubtextBrush}" StrokeThickness="1.5"
+                                                                      StrokeDashArray="3,3" Opacity="0.4" />
+                                                            </Grid>
+                                                        </VisualBrush.Visual>
+                                                    </VisualBrush>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <!-- Preview da imagem quando selecionada -->
                                 <Image Source="{Binding CanvasWallpaperPath}"
                                        Stretch="UniformToFill"
-                                       Opacity="{Binding CanvasWallpaperOpacity}" />
-                            </Border>
-                        </Grid>
+                                       Opacity="{Binding CanvasWallpaperOpacity}"
+                                       Visibility="{Binding CanvasWallpaperPath, Converter={StaticResource StringToVis}}" />
+
+                                <!-- Empty state -->
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                            Visibility="{Binding CanvasWallpaperPath, Converter={StaticResource InvStringToVis}}">
+                                    <Path Data="M4 16L8 12L12 16M14 14L16 12L20 16M6 20H18C19.1046 20 20 19.1046 20 18V6C20 4.89543 19.1046 4 18 4H6C4.89543 4 4 4.89543 4 6V18C4 19.1046 4.89543 20 6 20Z M14.5 9.5C14.5 10.3284 13.8284 11 13 11C12.1716 11 11.5 10.3284 11.5 9.5C11.5 8.67157 12.1716 8 13 8C13.8284 8 14.5 8.67157 14.5 9.5Z"
+                                          Stroke="{DynamicResource SubtextBrush}" StrokeThickness="1.5"
+                                          StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          Width="40" Height="40" Stretch="Uniform" Opacity="0.4"
+                                          HorizontalAlignment="Center" Margin="0,0,0,10" />
+                                    <TextBlock Text="Nenhuma imagem selecionada"
+                                               Style="{StaticResource CaptionText}" Opacity="0.5"
+                                               HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                    <Button Style="{StaticResource AccentButton}"
+                                            Content="Escolher Imagem"
+                                            Command="{Binding BrowseWallpaperCommand}"
+                                            HorizontalAlignment="Center"
+                                            Padding="20,8" FontSize="12" />
+                                </StackPanel>
+
+                                <!-- Botoes sobre a imagem quando selecionada -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right"
+                                            Margin="8"
+                                            Visibility="{Binding CanvasWallpaperPath, Converter={StaticResource StringToVis}}">
+                                    <Button Style="{StaticResource GhostButton}"
+                                            Content="Trocar" FontSize="11"
+                                            Command="{Binding BrowseWallpaperCommand}"
+                                            Padding="12,5" Margin="0,0,4,0">
+                                        <Button.Background>
+                                            <SolidColorBrush Color="#000000" Opacity="0.6" />
+                                        </Button.Background>
+                                    </Button>
+                                    <Button Style="{StaticResource DangerButton}"
+                                            Content="Remover" FontSize="11"
+                                            Command="{Binding ClearWallpaperCommand}"
+                                            Padding="12,5">
+                                        <Button.Background>
+                                            <SolidColorBrush Color="#000000" Opacity="0.6" />
+                                        </Button.Background>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Controles agrupados -->
+                        <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8"
+                                Padding="14,10" Margin="0,0,0,4"
+                                Visibility="{Binding CanvasWallpaperPath, Converter={StaticResource StringToVis}}">
+                            <StackPanel>
+                                <!-- Opacidade -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="44" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Opacidade" Style="{StaticResource CaptionText}"
+                                               VerticalAlignment="Center" Opacity="0.7" />
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                                            Value="{Binding CanvasWallpaperOpacity}"
+                                            TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                            VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <Border Grid.Column="2" Background="{DynamicResource Surface1Brush}"
+                                            CornerRadius="4" Padding="4,2" HorizontalAlignment="Center">
+                                        <TextBlock Style="{StaticResource CaptionText}"
+                                                   HorizontalAlignment="Center" FontFamily="{StaticResource MonoFont}"
+                                                   FontSize="11">
+                                            <TextBlock.Text>
+                                                <Binding Path="CanvasWallpaperOpacity" StringFormat="{}{0:P0}" />
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Ajuste -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Ajuste" Style="{StaticResource CaptionText}"
+                                               VerticalAlignment="Center" Opacity="0.7" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                              ItemsSource="{Binding AvailableStretchModes}"
+                                              SelectedItem="{Binding CanvasWallpaperStretch}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Border>
 
@@ -214,233 +253,318 @@
                 <!-- ─── Card: Fundo dos Terminais ────────────────────── -->
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
-                        <TextBlock Text="Fundo dos Terminais" Style="{StaticResource SubheadingText}"
-                                   Margin="0,0,0,4" />
-                        <TextBlock Text="Personalize o fundo dentro dos terminais"
-                                   Style="{StaticResource CaptionText}" Margin="0,0,0,12" />
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" /> <!-- Image picker -->
-                                <RowDefinition Height="Auto" /> <!-- Opacity -->
-                                <RowDefinition Height="Auto" /> <!-- Blur -->
-                                <RowDefinition Height="Auto" /> <!-- Overlay toggle -->
-                                <RowDefinition Height="Auto" /> <!-- Overlay opacity -->
-                                <RowDefinition Height="Auto" /> <!-- Brightness -->
-                                <RowDefinition Height="Auto" /> <!-- Contrast -->
-                                <RowDefinition Height="Auto" /> <!-- Stretch -->
-                                <RowDefinition Height="Auto" /> <!-- Preview -->
-                                <RowDefinition Height="Auto" /> <!-- Status -->
-                                <RowDefinition Height="Auto" /> <!-- Reset -->
-                            </Grid.RowDefinitions>
+                        <!-- Header com icone -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Path Data="{StaticResource TerminalIcon}"
+                                  Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.5"
+                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Width="20" Height="20" Stretch="Uniform"
+                                  VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Text="Fundo dos Terminais" Style="{StaticResource SubheadingText}" Margin="0" />
+                        </StackPanel>
+                        <TextBlock Text="Personalize o fundo dentro de cada terminal"
+                                   Style="{StaticResource CaptionText}" Margin="0,0,0,16" />
 
-                            <!-- Imagem -->
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Imagem"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Center" />
-                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
-                                <Button Content="Selecionar..."
-                                        Style="{StaticResource GhostButton}"
-                                        Command="{Binding BrowseTerminalWallpaperCommand}"
-                                        Margin="0,0,8,0" Padding="12,6" />
-                                <Button Content="Limpar"
-                                        Style="{StaticResource GhostButton}"
-                                        Command="{Binding ClearTerminalWallpaperCommand}"
-                                        Padding="12,6"
-                                        Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}" />
-                            </StackPanel>
-
-                            <!-- Opacidade -->
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Opacidade"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Center" />
-                            <Grid Grid.Row="1" Grid.Column="1" Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="50" />
-                                </Grid.ColumnDefinitions>
-                                <Slider Grid.Column="0"
-                                        Minimum="0" Maximum="1"
-                                        Value="{Binding TerminalWallpaperOpacity}"
-                                        TickFrequency="0.05" IsSnapToTickEnabled="True"
-                                        VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1"
-                                           Style="{StaticResource CaptionText}"
-                                           VerticalAlignment="Center" HorizontalAlignment="Right">
-                                    <TextBlock.Text>
-                                        <Binding Path="TerminalWallpaperOpacity" StringFormat="{}{0:P0}" />
-                                    </TextBlock.Text>
-                                </TextBlock>
-                            </Grid>
-
-                            <!-- Desfoque -->
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Desfoque"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Center" />
-                            <Grid Grid.Row="2" Grid.Column="1" Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="50" />
-                                </Grid.ColumnDefinitions>
-                                <Slider Grid.Column="0"
-                                        Minimum="0" Maximum="30"
-                                        Value="{Binding TerminalWallpaperBlurRadius}"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1"
-                                           Style="{StaticResource CaptionText}"
-                                           VerticalAlignment="Center" HorizontalAlignment="Right">
-                                    <TextBlock.Text>
-                                        <Binding Path="TerminalWallpaperBlurRadius" StringFormat="{}{0:F0}px" />
-                                    </TextBlock.Text>
-                                </TextBlock>
-                            </Grid>
-
-                            <!-- Overlay -->
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Overlay"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Center" />
-                            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
-                                <RadioButton Content="Escuro" GroupName="TerminalOverlay"
-                                             IsChecked="{Binding TerminalWallpaperDarkOverlay}"
-                                             Foreground="{DynamicResource TextBrush}"
-                                             VerticalAlignment="Center" Margin="0,0,16,0" />
-                                <RadioButton Content="Claro" GroupName="TerminalOverlay"
-                                             Foreground="{DynamicResource TextBrush}"
-                                             VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <!-- Overlay Opacidade -->
-                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Overlay Opacidade"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Center" />
-                            <Grid Grid.Row="4" Grid.Column="1" Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="50" />
-                                </Grid.ColumnDefinitions>
-                                <Slider Grid.Column="0"
-                                        Minimum="0" Maximum="1"
-                                        Value="{Binding TerminalWallpaperOverlayOpacity}"
-                                        TickFrequency="0.05" IsSnapToTickEnabled="True"
-                                        VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1"
-                                           Style="{StaticResource CaptionText}"
-                                           VerticalAlignment="Center" HorizontalAlignment="Right">
-                                    <TextBlock.Text>
-                                        <Binding Path="TerminalWallpaperOverlayOpacity" StringFormat="{}{0:P0}" />
-                                    </TextBlock.Text>
-                                </TextBlock>
-                            </Grid>
-
-                            <!-- Brilho -->
-                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Brilho"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Center" />
-                            <Grid Grid.Row="5" Grid.Column="1" Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="50" />
-                                </Grid.ColumnDefinitions>
-                                <Slider Grid.Column="0"
-                                        Minimum="0.5" Maximum="1.5"
-                                        Value="{Binding TerminalWallpaperBrightness}"
-                                        TickFrequency="0.05" IsSnapToTickEnabled="True"
-                                        VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1"
-                                           Style="{StaticResource CaptionText}"
-                                           VerticalAlignment="Center" HorizontalAlignment="Right">
-                                    <TextBlock.Text>
-                                        <Binding Path="TerminalWallpaperBrightness" StringFormat="{}{0:F2}" />
-                                    </TextBlock.Text>
-                                </TextBlock>
-                            </Grid>
-
-                            <!-- Contraste -->
-                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Contraste"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Center" />
-                            <Grid Grid.Row="6" Grid.Column="1" Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="50" />
-                                </Grid.ColumnDefinitions>
-                                <Slider Grid.Column="0"
-                                        Minimum="0.5" Maximum="1.5"
-                                        Value="{Binding TerminalWallpaperContrast}"
-                                        TickFrequency="0.05" IsSnapToTickEnabled="True"
-                                        VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1"
-                                           Style="{StaticResource CaptionText}"
-                                           VerticalAlignment="Center" HorizontalAlignment="Right">
-                                    <TextBlock.Text>
-                                        <Binding Path="TerminalWallpaperContrast" StringFormat="{}{0:F2}" />
-                                    </TextBlock.Text>
-                                </TextBlock>
-                            </Grid>
-
-                            <!-- Esticamento -->
-                            <TextBlock Grid.Row="7" Grid.Column="0" Text="Ajuste"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Center" />
-                            <ComboBox Grid.Row="7" Grid.Column="1"
-                                      Style="{StaticResource DarkComboBox}"
-                                      ItemsSource="{Binding AvailableStretchModes}"
-                                      SelectedItem="{Binding TerminalWallpaperStretch}"
-                                      Margin="0,0,0,10">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-
-                            <!-- Preview -->
-                            <TextBlock Grid.Row="8" Grid.Column="0" Text="Preview"
-                                       Style="{StaticResource BodyText}" VerticalAlignment="Top"
+                        <!-- Preview / Drop zone grande -->
+                        <Border CornerRadius="10" ClipToBounds="True" Margin="0,0,0,16"
+                                MinHeight="180" MaxHeight="220"
+                                Background="{DynamicResource Surface0Brush}"
+                                BorderBrush="{DynamicResource GlassBorderBrush}"
+                                BorderThickness="1.5">
+                            <Grid>
+                                <!-- Preview com overlay quando tem imagem -->
+                                <Image Source="{Binding TerminalWallpaperPath}"
+                                       Stretch="UniformToFill"
+                                       Opacity="{Binding TerminalWallpaperOpacity}"
                                        Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}" />
-                            <Border Grid.Row="8" Grid.Column="1"
-                                    CornerRadius="6"
-                                    Background="{DynamicResource Surface0Brush}"
-                                    Height="120"
-                                    ClipToBounds="True"
-                                    Margin="0,0,0,10"
-                                    Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}">
-                                <Grid>
-                                    <Image Source="{Binding TerminalWallpaperPath}"
-                                           Stretch="UniformToFill"
-                                           Opacity="{Binding TerminalWallpaperOpacity}" />
-                                    <Rectangle Opacity="{Binding TerminalWallpaperOverlayOpacity}">
-                                        <Rectangle.Style>
-                                            <Style TargetType="Rectangle">
-                                                <Setter Property="Fill" Value="#000000" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding TerminalWallpaperDarkOverlay}" Value="False">
-                                                        <Setter Property="Fill" Value="#FFFFFF" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Rectangle.Style>
-                                    </Rectangle>
-                                    <TextBlock Text="Terminal Preview" Foreground="{DynamicResource TextBrush}"
-                                               FontFamily="{StaticResource MonoFont}" FontSize="12"
-                                               VerticalAlignment="Center" HorizontalAlignment="Center"
-                                               Opacity="0.7" />
+                                <Rectangle Opacity="{Binding TerminalWallpaperOverlayOpacity}"
+                                           Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}">
+                                    <Rectangle.Style>
+                                        <Style TargetType="Rectangle">
+                                            <Setter Property="Fill" Value="#000000" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding TerminalWallpaperDarkOverlay}" Value="False">
+                                                    <Setter Property="Fill" Value="#FFFFFF" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Rectangle.Style>
+                                </Rectangle>
+
+                                <!-- Fake terminal text no preview -->
+                                <StackPanel VerticalAlignment="Center" Margin="20,16"
+                                            Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}">
+                                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                               Foreground="{DynamicResource AccentBrush}" Opacity="0.8"
+                                               Text="~/projects/devworkspacehub" Margin="0,0,0,2" />
+                                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                               Foreground="{DynamicResource TextBrush}" Opacity="0.6"
+                                               Text="$ dotnet build" Margin="0,0,0,2" />
+                                    <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                               Foreground="{DynamicResource SubtextBrush}" Opacity="0.5"
+                                               Text="Build succeeded. 0 Warning(s) 0 Error(s)" />
+                                </StackPanel>
+
+                                <!-- Empty state -->
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                            Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource InvStringToVis}}">
+                                    <Path Data="{StaticResource TerminalIcon}"
+                                          Stroke="{DynamicResource SubtextBrush}" StrokeThickness="1.5"
+                                          StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          Width="40" Height="40" Stretch="Uniform" Opacity="0.3"
+                                          HorizontalAlignment="Center" Margin="0,0,0,10" />
+                                    <TextBlock Text="Nenhuma imagem de fundo"
+                                               Style="{StaticResource CaptionText}" Opacity="0.5"
+                                               HorizontalAlignment="Center" Margin="0,0,0,6" />
+                                    <Button Style="{StaticResource AccentButton}"
+                                            Content="Escolher Imagem"
+                                            Command="{Binding BrowseTerminalWallpaperCommand}"
+                                            HorizontalAlignment="Center"
+                                            Padding="20,8" FontSize="12" />
+                                </StackPanel>
+
+                                <!-- Botoes flutuantes sobre a imagem -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right"
+                                            Margin="8"
+                                            Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}">
+                                    <Button Style="{StaticResource GhostButton}"
+                                            Content="Trocar" FontSize="11"
+                                            Command="{Binding BrowseTerminalWallpaperCommand}"
+                                            Padding="12,5" Margin="0,0,4,0">
+                                        <Button.Background>
+                                            <SolidColorBrush Color="#000000" Opacity="0.6" />
+                                        </Button.Background>
+                                    </Button>
+                                    <Button Style="{StaticResource DangerButton}"
+                                            Content="Remover" FontSize="11"
+                                            Command="{Binding ClearTerminalWallpaperCommand}"
+                                            Padding="12,5">
+                                        <Button.Background>
+                                            <SolidColorBrush Color="#000000" Opacity="0.6" />
+                                        </Button.Background>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Status de erro -->
+                        <TextBlock Text="{Binding TerminalWallpaperStatusText}"
+                                   Foreground="#F38BA8"
+                                   Style="{StaticResource CaptionText}"
+                                   Margin="0,0,0,8"
+                                   Visibility="{Binding TerminalWallpaperStatusText, Converter={StaticResource StringToVis}}" />
+
+                        <!-- ── Grupo: Imagem ── -->
+                        <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8"
+                                Padding="14,10" Margin="0,0,0,8"
+                                Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="IMAGEM" Style="{StaticResource CaptionText}"
+                                           FontSize="10" FontWeight="SemiBold" Opacity="0.5"
+                                           Margin="0,0,0,10" />
+
+                                <!-- Opacidade -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="44" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Opacidade" Style="{StaticResource CaptionText}"
+                                               VerticalAlignment="Center" Opacity="0.7" />
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                                            Value="{Binding TerminalWallpaperOpacity}"
+                                            TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                            VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <Border Grid.Column="2" Background="{DynamicResource Surface1Brush}"
+                                            CornerRadius="4" Padding="4,2" HorizontalAlignment="Center">
+                                        <TextBlock Style="{StaticResource CaptionText}"
+                                                   HorizontalAlignment="Center" FontFamily="{StaticResource MonoFont}"
+                                                   FontSize="11">
+                                            <TextBlock.Text>
+                                                <Binding Path="TerminalWallpaperOpacity" StringFormat="{}{0:P0}" />
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </Border>
                                 </Grid>
-                            </Border>
 
-                            <!-- Status -->
-                            <TextBlock Grid.Row="9" Grid.Column="1"
-                                       Text="{Binding TerminalWallpaperStatusText}"
-                                       Foreground="#F38BA8"
-                                       Style="{StaticResource CaptionText}"
-                                       Margin="0,0,0,10"
-                                       Visibility="{Binding TerminalWallpaperStatusText, Converter={StaticResource StringToVis}}" />
+                                <!-- Desfoque -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="44" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Desfoque" Style="{StaticResource CaptionText}"
+                                               VerticalAlignment="Center" Opacity="0.7" />
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="30"
+                                            Value="{Binding TerminalWallpaperBlurRadius}"
+                                            TickFrequency="1" IsSnapToTickEnabled="True"
+                                            VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <Border Grid.Column="2" Background="{DynamicResource Surface1Brush}"
+                                            CornerRadius="4" Padding="4,2" HorizontalAlignment="Center">
+                                        <TextBlock Style="{StaticResource CaptionText}"
+                                                   HorizontalAlignment="Center" FontFamily="{StaticResource MonoFont}"
+                                                   FontSize="11">
+                                            <TextBlock.Text>
+                                                <Binding Path="TerminalWallpaperBlurRadius" StringFormat="{}{0:F0}px" />
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </Border>
+                                </Grid>
 
-                            <!-- Reset -->
-                            <Button Grid.Row="10" Grid.Column="1"
-                                    Content="Restaurar Padrão"
-                                    Style="{StaticResource GhostButton}"
-                                    Command="{Binding ClearTerminalWallpaperCommand}"
-                                    HorizontalAlignment="Left"
-                                    Padding="16,6"
-                                    Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}" />
-                        </Grid>
+                                <!-- Ajuste -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Ajuste" Style="{StaticResource CaptionText}"
+                                               VerticalAlignment="Center" Opacity="0.7" />
+                                    <ComboBox Grid.Column="1" Style="{StaticResource DarkComboBox}"
+                                              ItemsSource="{Binding AvailableStretchModes}"
+                                              SelectedItem="{Binding TerminalWallpaperStretch}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ── Grupo: Overlay e Cor ── -->
+                        <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8"
+                                Padding="14,10" Margin="0,0,0,8"
+                                Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="OVERLAY" Style="{StaticResource CaptionText}"
+                                           FontSize="10" FontWeight="SemiBold" Opacity="0.5"
+                                           Margin="0,0,0,10" />
+
+                                <!-- Modo do overlay -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Modo" Style="{StaticResource CaptionText}"
+                                               VerticalAlignment="Center" Opacity="0.7" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <RadioButton GroupName="TerminalOverlay"
+                                                     IsChecked="{Binding TerminalWallpaperDarkOverlay}"
+                                                     VerticalAlignment="Center" Margin="0,0,4,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="12" Height="12" Fill="#1E1E2E" Stroke="{DynamicResource GlassBorderBrush}" StrokeThickness="1" Margin="0,0,5,0" />
+                                                <TextBlock Text="Escuro" Foreground="{DynamicResource TextBrush}" FontSize="12" />
+                                            </StackPanel>
+                                        </RadioButton>
+                                        <RadioButton GroupName="TerminalOverlay"
+                                                     VerticalAlignment="Center" Margin="16,0,0,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="12" Height="12" Fill="#FFFFFF" Stroke="{DynamicResource GlassBorderBrush}" StrokeThickness="1" Margin="0,0,5,0" />
+                                                <TextBlock Text="Claro" Foreground="{DynamicResource TextBrush}" FontSize="12" />
+                                            </StackPanel>
+                                        </RadioButton>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Overlay Opacidade -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="44" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Intensidade" Style="{StaticResource CaptionText}"
+                                               VerticalAlignment="Center" Opacity="0.7" />
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="1"
+                                            Value="{Binding TerminalWallpaperOverlayOpacity}"
+                                            TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                            VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <Border Grid.Column="2" Background="{DynamicResource Surface1Brush}"
+                                            CornerRadius="4" Padding="4,2" HorizontalAlignment="Center">
+                                        <TextBlock Style="{StaticResource CaptionText}"
+                                                   HorizontalAlignment="Center" FontFamily="{StaticResource MonoFont}"
+                                                   FontSize="11">
+                                            <TextBlock.Text>
+                                                <Binding Path="TerminalWallpaperOverlayOpacity" StringFormat="{}{0:P0}" />
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </Border>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ── Grupo: Ajustes Finos ── -->
+                        <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8"
+                                Padding="14,10" Margin="0,0,0,8"
+                                Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="AJUSTES" Style="{StaticResource CaptionText}"
+                                           FontSize="10" FontWeight="SemiBold" Opacity="0.5"
+                                           Margin="0,0,0,10" />
+
+                                <!-- Brilho -->
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="44" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Brilho" Style="{StaticResource CaptionText}"
+                                               VerticalAlignment="Center" Opacity="0.7" />
+                                    <Slider Grid.Column="1" Minimum="0.5" Maximum="1.5"
+                                            Value="{Binding TerminalWallpaperBrightness}"
+                                            TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                            VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <Border Grid.Column="2" Background="{DynamicResource Surface1Brush}"
+                                            CornerRadius="4" Padding="4,2" HorizontalAlignment="Center">
+                                        <TextBlock Style="{StaticResource CaptionText}"
+                                                   HorizontalAlignment="Center" FontFamily="{StaticResource MonoFont}"
+                                                   FontSize="11">
+                                            <TextBlock.Text>
+                                                <Binding Path="TerminalWallpaperBrightness" StringFormat="{}{0:F2}" />
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Contraste -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="44" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Contraste" Style="{StaticResource CaptionText}"
+                                               VerticalAlignment="Center" Opacity="0.7" />
+                                    <Slider Grid.Column="1" Minimum="0.5" Maximum="1.5"
+                                            Value="{Binding TerminalWallpaperContrast}"
+                                            TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                            VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <Border Grid.Column="2" Background="{DynamicResource Surface1Brush}"
+                                            CornerRadius="4" Padding="4,2" HorizontalAlignment="Center">
+                                        <TextBlock Style="{StaticResource CaptionText}"
+                                                   HorizontalAlignment="Center" FontFamily="{StaticResource MonoFont}"
+                                                   FontSize="11">
+                                            <TextBlock.Text>
+                                                <Binding Path="TerminalWallpaperContrast" StringFormat="{}{0:F2}" />
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </Border>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Restaurar padrao -->
+                        <Button Content="Restaurar Padrao"
+                                Style="{StaticResource GhostButton}"
+                                Command="{Binding ClearTerminalWallpaperCommand}"
+                                HorizontalAlignment="Left"
+                                Padding="16,6" FontSize="11" Opacity="0.7"
+                                Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}" />
                     </StackPanel>
                 </Border>
 
@@ -671,6 +795,8 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
                             <!-- Provedor -->
@@ -688,33 +814,69 @@
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
 
+                            <!-- Autenticação Anthropic (visível quando provider = anthropic) -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Autenticação"
+                                       Style="{StaticResource BodyText}" VerticalAlignment="Center"
+                                       Visibility="{Binding IsAnthropicProvider, Converter={StaticResource BoolToVis}}" />
+                            <ComboBox Grid.Row="1" Grid.Column="1"
+                                      Style="{StaticResource DarkComboBox}"
+                                      ItemsSource="{Binding AvailableAnthropicAuthModes}"
+                                      SelectedItem="{Binding AnthropicAuthMode}"
+                                      Margin="0,0,0,10"
+                                      Visibility="{Binding IsAnthropicProvider, Converter={StaticResource BoolToVis}}" />
+
+                            <!-- Claude Code Status (visível quando OAuth selecionado) -->
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Claude Code"
+                                       Style="{StaticResource BodyText}" VerticalAlignment="Center"
+                                       Visibility="{Binding IsAnthropicOAuthMode, Converter={StaticResource BoolToVis}}" />
+                            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal"
+                                        VerticalAlignment="Center"
+                                        Margin="0,0,0,10"
+                                        Visibility="{Binding IsAnthropicOAuthMode, Converter={StaticResource BoolToVis}}">
+                                <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="{DynamicResource AccentRedBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsClaudeCodeDetected}" Value="True">
+                                                    <Setter Property="Fill" Value="{DynamicResource AccentGreenBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <TextBlock Text="{Binding ClaudeSubscriptionInfo}"
+                                           Style="{StaticResource BodyText}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+
                             <!-- Modelo (visível quando AI habilitado) -->
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Modelo"
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Modelo"
                                        Style="{StaticResource BodyText}" VerticalAlignment="Center"
                                        Visibility="{Binding IsAiEnabled, Converter={StaticResource BoolToVis}}" />
-                            <TextBox Grid.Row="1" Grid.Column="1"
+                            <TextBox Grid.Row="3" Grid.Column="1"
                                      Style="{StaticResource DarkTextBox}"
                                      Text="{Binding AiModel, UpdateSourceTrigger=PropertyChanged}"
-                                     Tag="gpt-4o-mini"
+                                     Tag="claude-haiku-4-5-20251001"
                                      Margin="0,0,0,10"
                                      Visibility="{Binding IsAiEnabled, Converter={StaticResource BoolToVis}}" />
 
                             <!-- URL Base (visível quando provider = local) -->
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="URL Base"
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="URL Base"
                                        Style="{StaticResource BodyText}" VerticalAlignment="Center"
                                        Visibility="{Binding IsLocalProvider, Converter={StaticResource BoolToVis}}" />
-                            <TextBox Grid.Row="2" Grid.Column="1"
+                            <TextBox Grid.Row="4" Grid.Column="1"
                                      Style="{StaticResource DarkTextBox}"
                                      Text="{Binding AiBaseUrl, UpdateSourceTrigger=PropertyChanged}"
                                      Tag="http://localhost:11434"
                                      Margin="0,0,0,10"
                                      Visibility="{Binding IsLocalProvider, Converter={StaticResource BoolToVis}}" />
 
-                            <!-- Chave API (visível quando provider = openai ou anthropic) -->
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Chave API"
+                            <!-- Chave API (visível quando provider = openai ou anthropic+apikey) -->
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Chave API"
                                        Style="{StaticResource BodyText}" VerticalAlignment="Center"
                                        Visibility="{Binding IsApiKeyProvider, Converter={StaticResource BoolToVis}}" />
-                            <PasswordBox Grid.Row="3" Grid.Column="1"
+                            <PasswordBox Grid.Row="5" Grid.Column="1"
                                          Style="{StaticResource DarkPasswordBox}"
                                          helpers:PasswordBoxHelper.BoundPassword="{Binding AiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          Tag="sk-ant-... ou sk-..."
@@ -722,10 +884,10 @@
                                          Visibility="{Binding IsApiKeyProvider, Converter={StaticResource BoolToVis}}" />
 
                             <!-- Máximo de Mensagens (visível quando AI habilitado) -->
-                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Mensagens de Contexto"
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Mensagens de Contexto"
                                        Style="{StaticResource BodyText}" VerticalAlignment="Center"
                                        Visibility="{Binding IsAiEnabled, Converter={StaticResource BoolToVis}}" />
-                            <TextBox Grid.Row="4" Grid.Column="1"
+                            <TextBox Grid.Row="6" Grid.Column="1"
                                      Style="{StaticResource DarkTextBox}"
                                      Text="{Binding AiMaxContextMessages, UpdateSourceTrigger=PropertyChanged}"
                                      Tag="20"
@@ -733,7 +895,7 @@
                                      Visibility="{Binding IsAiEnabled, Converter={StaticResource BoolToVis}}" />
 
                             <!-- Assistente Visível -->
-                            <CheckBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2"
+                            <CheckBox Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
                                       Content="Mostrar painel do assistente"
                                       IsChecked="{Binding AiAssistantVisible}" />
                         </Grid>

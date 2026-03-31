@@ -15,34 +15,48 @@ public class GitService : IGitService
     private const int CommandTimeoutMs = 5000;
     private static readonly TimeSpan GitInfoCacheDuration = TimeSpan.FromSeconds(10);
 
-    // Per-path cache of GitInfo results to avoid redundant spawns during rapid calls
-    private readonly ConcurrentDictionary<string, (GitInfo? Info, DateTime Timestamp)> _gitInfoCache = new();
+    // Per-path cache of GitInfo results using Lazy to prevent duplicate git spawns
+    private readonly ConcurrentDictionary<string, Lazy<Task<(GitInfo? Info, DateTime Timestamp)>>> _gitInfoCache = new();
 
     public async Task<GitInfo?> GetGitInfoAsync(string repositoryPath)
     {
-        // Return cached result if still fresh
         var normalizedPath = Path.GetFullPath(repositoryPath);
-        if (_gitInfoCache.TryGetValue(normalizedPath, out var cached)
-            && DateTime.UtcNow - cached.Timestamp < GitInfoCacheDuration)
-        {
-            return cached.Info;
-        }
 
-        if (!await IsGitRepositoryAsync(repositoryPath))
+        var lazyEntry = _gitInfoCache.GetOrAdd(normalizedPath, path => new Lazy<Task<(GitInfo? Info, DateTime Timestamp)>>(
+            () => FetchGitInfoCoreAsync(path)));
+
+        var entry = await lazyEntry.Value;
+        if (DateTime.UtcNow - entry.Timestamp < GitInfoCacheDuration)
+            return entry.Info;
+
+        // Cache expired - remove and re-fetch
+        _gitInfoCache.TryRemove(normalizedPath, out _);
+        lazyEntry = _gitInfoCache.GetOrAdd(normalizedPath, path => new Lazy<Task<(GitInfo? Info, DateTime Timestamp)>>(
+            () => FetchGitInfoCoreAsync(path)));
+        entry = await lazyEntry.Value;
+        return entry.Info;
+    }
+
+    /// <summary>
+    /// Core method that spawns git processes and builds a GitInfo result.
+    /// Called exclusively through the Lazy cache to prevent duplicate spawns.
+    /// </summary>
+    private async Task<(GitInfo? Info, DateTime Timestamp)> FetchGitInfoCoreAsync(string normalizedPath)
+    {
+        if (!await IsGitRepositoryAsync(normalizedPath))
         {
-            _gitInfoCache[normalizedPath] = (null, DateTime.UtcNow);
-            return null;
+            return (null, DateTime.UtcNow);
         }
 
         var gitInfo = new GitInfo();
 
         // Run all independent git commands in parallel
-        var branchTask = RunGitCommandAsync(repositoryPath, "branch --show-current");
-        var logTask = RunGitCommandAsync(repositoryPath, "log -1 --format=\"%h|%s|%cr\"");
-        var statusTask = RunGitCommandAsync(repositoryPath, "status --porcelain");
-        var aheadBehindTask = RunGitCommandAsync(repositoryPath, "rev-list --left-right --count @{upstream}...HEAD");
-        var stashTask = RunGitCommandAsync(repositoryPath, "stash list");
-        var remoteTask = RunGitCommandAsync(repositoryPath, "remote");
+        var branchTask = RunGitCommandAsync(normalizedPath, "branch --show-current");
+        var logTask = RunGitCommandAsync(normalizedPath, "log -1 --format=\"%h|%s|%cr\"");
+        var statusTask = RunGitCommandAsync(normalizedPath, "status --porcelain");
+        var aheadBehindTask = RunGitCommandAsync(normalizedPath, "rev-list --left-right --count @{upstream}...HEAD");
+        var stashTask = RunGitCommandAsync(normalizedPath, "stash list");
+        var remoteTask = RunGitCommandAsync(normalizedPath, "remote");
 
         await Task.WhenAll(branchTask, logTask, statusTask, aheadBehindTask, stashTask, remoteTask);
 
@@ -55,7 +69,7 @@ public class GitService : IGitService
             {
                 // Detached HEAD state — need a follow-up call
                 gitInfo.IsDetachedHead = true;
-                var headRef = await RunGitCommandAsync(repositoryPath, "rev-parse --short HEAD");
+                var headRef = await RunGitCommandAsync(normalizedPath, "rev-parse --short HEAD");
                 gitInfo.Branch = headRef?.Trim() ?? "HEAD";
             }
             else
@@ -109,10 +123,7 @@ public class GitService : IGitService
         // Determine overall status
         gitInfo.RepoStatus = DetermineRepoStatus(gitInfo);
 
-        // Cache the result
-        _gitInfoCache[normalizedPath] = (gitInfo, DateTime.UtcNow);
-
-        return gitInfo;
+        return (gitInfo, DateTime.UtcNow);
     }
 
     public async Task<string?> GetCurrentBranchAsync(string repositoryPath)

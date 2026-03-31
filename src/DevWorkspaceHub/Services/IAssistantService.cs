@@ -79,7 +79,7 @@ public interface IAssistantService : IDisposable
     /// Applies AI settings from the Settings screen to the assistant provider configuration.
     /// Maps provider string ("openai"/"local"/"none") to the correct provider type and updates model/url/key.
     /// </summary>
-    void ApplySettings(string provider, string model, string baseUrl, string apiKey);
+    void ApplySettings(string provider, string model, string baseUrl, string apiKey, string? anthropicAuthMode = null);
 
     /// <summary>
     /// Initializes the service and all registered providers.

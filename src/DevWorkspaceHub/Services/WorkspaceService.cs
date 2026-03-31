@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using DevWorkspaceHub.Models;
 using DevWorkspaceHub.ViewModels;
@@ -21,6 +22,9 @@ public class WorkspaceService : IWorkspaceService
     private double _currentRowHeight = 0;
     private const double LayoutPadding = 24;
     private const double LayoutMaxWidth = 1800; // wrap column after this X
+
+    private readonly SemaphoreSlim _switchLock = new(1, 1);
+    private CancellationTokenSource? _autoSaveCts;
 
     public ObservableCollection<CanvasItemViewModel> Items { get; } = new();
     public ObservableCollection<TerminalCanvasItemViewModel> TerminalItems { get; } = new();
@@ -52,6 +56,7 @@ public class WorkspaceService : IWorkspaceService
             ActiveTerminal = item;
 
         WorkspaceChanged?.Invoke();
+        ScheduleAutoSave();
         return item;
     }
 
@@ -63,6 +68,7 @@ public class WorkspaceService : IWorkspaceService
 
         Items.Add(item);
         WorkspaceChanged?.Invoke();
+        ScheduleAutoSave();
         return item;
     }
 
@@ -86,6 +92,7 @@ public class WorkspaceService : IWorkspaceService
             item.ZIndex = _nextZIndex++;
             Items.Add(item);
             WorkspaceChanged?.Invoke();
+            ScheduleAutoSave();
         }
         else
         {
@@ -110,6 +117,7 @@ public class WorkspaceService : IWorkspaceService
         }
 
         WorkspaceChanged?.Invoke();
+        ScheduleAutoSave();
     }
 
     // ─── Move / Resize ──────────────────────────────────────────────────────────
@@ -121,6 +129,7 @@ public class WorkspaceService : IWorkspaceService
         vm.X = x;
         vm.Y = y;
         WorkspaceChanged?.Invoke();
+        ScheduleAutoSave();
     }
 
     public void ResizeItem(string itemId, double width, double height)
@@ -130,6 +139,7 @@ public class WorkspaceService : IWorkspaceService
         vm.Width = Math.Max(320, width);
         vm.Height = Math.Max(220, height);
         WorkspaceChanged?.Invoke();
+        ScheduleAutoSave();
     }
 
     // ─── Z-Order ────────────────────────────────────────────────────────────────
@@ -139,6 +149,8 @@ public class WorkspaceService : IWorkspaceService
         var vm = Items.FirstOrDefault(i => i.Model.Id == itemId);
         if (vm is null) return;
         vm.ZIndex = _nextZIndex++;
+        WorkspaceChanged?.Invoke();
+        ScheduleAutoSave();
     }
 
     // ─── Focus ──────────────────────────────────────────────────────────────────
@@ -153,6 +165,13 @@ public class WorkspaceService : IWorkspaceService
 
     public void ClearAll()
     {
+        // Dispose terminal sessions (ConPTY) to avoid orphaned processes
+        foreach (var terminal in TerminalItems.ToList())
+        {
+            try { terminal.Terminal?.Dispose(); }
+            catch { /* best-effort cleanup */ }
+        }
+
         Items.Clear();
         TerminalItems.Clear();
         ActiveTerminal = null;
@@ -165,7 +184,10 @@ public class WorkspaceService : IWorkspaceService
 
     public void AddRestoredItem(CanvasItemViewModel item)
     {
-        item.ZIndex = _nextZIndex++;
+        // Preserve original ZIndex from saved layout; track highest for new items
+        if (item.ZIndex >= _nextZIndex)
+            _nextZIndex = item.ZIndex + 1;
+
         Items.Add(item);
 
         if (item is TerminalCanvasItemViewModel tvm)
@@ -213,25 +235,33 @@ public class WorkspaceService : IWorkspaceService
 
     public async Task SwitchWorkspaceAsync(string workspaceId)
     {
-        // Save current state before switching
-        await SaveCurrentAsync();
+        await _switchLock.WaitAsync();
+        try
+        {
+            // Save current state before switching
+            await SaveCurrentAsync();
 
-        // Load the target workspace
-        var target = await _persistence.LoadWorkspaceAsync(workspaceId);
-        if (target is null)
-            throw new InvalidOperationException($"Workspace '{workspaceId}' not found.");
+            // Load the target workspace
+            var target = await _persistence.LoadWorkspaceAsync(workspaceId);
+            if (target is null)
+                throw new InvalidOperationException($"Workspace '{workspaceId}' not found.");
 
-        // Set it as active
-        await _persistence.SetActiveWorkspaceAsync(workspaceId);
-        target.IsActive = true;
-        target.LastAccessedAt = DateTime.UtcNow;
+            // Set it as active
+            await _persistence.SetActiveWorkspaceAsync(workspaceId);
+            target.IsActive = true;
+            target.LastAccessedAt = DateTime.UtcNow;
 
-        // Clear current canvas
-        ClearAll();
+            // Clear current canvas (disposes terminal sessions)
+            ClearAll();
 
-        // Update current reference
-        CurrentWorkspace = target;
-        ActiveWorkspaceChanged?.Invoke(target);
+            // Update current reference
+            CurrentWorkspace = target;
+            ActiveWorkspaceChanged?.Invoke(target);
+        }
+        finally
+        {
+            _switchLock.Release();
+        }
     }
 
     public async Task<IReadOnlyList<WorkspaceModel>> ListWorkspacesAsync()
@@ -281,11 +311,42 @@ public class WorkspaceService : IWorkspaceService
     {
         if (CurrentWorkspace is null) return;
 
-        CurrentWorkspace.Camera = new CameraStateModel(); // will be set by TerminalCanvasViewModel
+        // Camera is kept up-to-date via UpdateCamera() calls from TerminalCanvasViewModel
         CurrentWorkspace.Items = Items.Select(i => i.Model).ToList();
         CurrentWorkspace.LastAccessedAt = DateTime.UtcNow;
 
         await _persistence.SaveWorkspaceAsync(CurrentWorkspace);
+    }
+
+    public void UpdateCamera(CameraStateModel camera)
+    {
+        if (CurrentWorkspace is not null)
+            CurrentWorkspace.Camera = camera;
+    }
+
+    /// <summary>
+    /// Schedules an auto-save after a short debounce period.
+    /// Called internally after canvas mutations to prevent data loss on crash.
+    /// </summary>
+    private void ScheduleAutoSave()
+    {
+        _autoSaveCts?.Cancel();
+        _autoSaveCts = new CancellationTokenSource();
+        var token = _autoSaveCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(3000, token);
+                if (!token.IsCancellationRequested)
+                    await SaveCurrentAsync();
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AutoSave] {ex.Message}");
+            }
+        }, token);
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────────

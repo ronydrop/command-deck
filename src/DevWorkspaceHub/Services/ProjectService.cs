@@ -8,7 +8,7 @@ namespace DevWorkspaceHub.Services;
 /// <summary>
 /// Manages development projects with JSON persistence in AppData.
 /// </summary>
-public class ProjectService : IProjectService
+public class ProjectService : IProjectService, IDisposable
 {
     private readonly string _projectsFilePath;
     private List<Project> _projects = new();
@@ -274,6 +274,12 @@ public class ProjectService : IProjectService
         ProjectType.Docker => "\uE7B8",
         _ => "\uE74E"
     };
+
+    public void Dispose()
+    {
+        _lock.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     private async Task LoadProjectsAsync()
     {

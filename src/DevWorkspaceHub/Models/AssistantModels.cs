@@ -49,7 +49,14 @@ public enum AssistantProviderType
     None,
     Ollama,
     OpenAI,
-    Anthropic
+    Anthropic,
+    OpenRouter
+}
+
+public enum AnthropicAuthMode
+{
+    ApiKey,
+    ClaudeOAuth
 }
 
 public class AssistantSettings
@@ -60,5 +67,8 @@ public class AssistantSettings
     public string OpenAIModel { get; set; } = string.Empty;
     public string? AnthropicKey { get; set; }
     public string AnthropicModel { get; set; } = "claude-sonnet-4-20250514";
+    public string? OpenRouterKey { get; set; }
+    public string OpenRouterModel { get; set; } = "anthropic/claude-sonnet-4";
+    public AnthropicAuthMode AnthropicAuth { get; set; } = AnthropicAuthMode.ApiKey;
     public AssistantProviderType ActiveProvider { get; set; } = AssistantProviderType.None;
 }

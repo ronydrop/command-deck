@@ -51,6 +51,16 @@ public class AnsiParser
     private bool _isStrikethrough;
     private bool _isInverse;
 
+    // ─── Line Buffer for cursor-aware rendering ────────────────────────────
+
+    private readonly TerminalLineBuffer _lineBuffer = new(120);
+
+    /// <summary>Number of committed inlines (before current line) in the Paragraph.</summary>
+    private int _committedInlineCount;
+
+    /// <summary>Current cursor column position within the active line.</summary>
+    public int CursorColumn => _lineBuffer.CursorCol;
+
     private readonly Color _defaultForeground = Color.FromRgb(0xCD, 0xD6, 0xF4);
     private readonly Color _defaultBackground = Color.FromRgb(0x1E, 0x1E, 0x2E);
 
@@ -301,13 +311,14 @@ public class AnsiParser
     }
 
     /// <summary>
-    /// Renders plain text (with control chars like \r, \n, \x08) directly into a Paragraph.
-    /// Handles carriage return (\r) by clearing the current line's inlines so subsequent
-    /// text overwrites instead of appending.
+    /// Renders plain text (with control chars like \r, \n, \x08) into a Paragraph
+    /// using the line buffer for cursor-aware rendering.
     /// </summary>
     private void RenderTextToDocument(string text, Paragraph paragraph)
     {
-        var sb = new StringBuilder(text.Length);
+        var fg = _isInverse ? _background : _foreground;
+        var bg = _isInverse ? _foreground : _background;
+        if (_isDim) fg = Color.FromArgb(178, fg.R, fg.G, fg.B);
 
         for (int i = 0; i < text.Length; i++)
         {
@@ -315,90 +326,99 @@ public class AnsiParser
 
             if (c == '\r')
             {
-                // \r\n → normal newline
                 if (i + 1 < text.Length && text[i + 1] == '\n')
                 {
-                    sb.Append('\n');
+                    // \r\n → commit current line, start new line
+                    CommitCurrentLine(paragraph);
+                    paragraph.Inlines.Add(new Run("\n"));
+                    _committedInlineCount = paragraph.Inlines.Count;
+                    _lineBuffer.Clear();
                     i++; // skip \n
                 }
                 else
                 {
-                    // Standalone \r → discard pending text, clear current line
-                    // (the line will be redrawn by subsequent text from the shell)
-                    sb.Clear();
-                    ClearCurrentLine(paragraph);
+                    // Standalone \r → cursor to column 0 (line will be overwritten)
+                    _lineBuffer.CarriageReturn();
                 }
             }
-            else if (c == '\x08') // Backspace
+            else if (c == '\n')
             {
-                if (sb.Length > 0)
-                {
-                    sb.Length--;
-                }
-                else
-                {
-                    // Remove last char from the paragraph's last Run
-                    var lastInline = paragraph.Inlines.LastInline;
-                    if (lastInline is Run lastRun)
-                    {
-                        var t = lastRun.Text;
-                        if (t.Length > 1)
-                            lastRun.Text = t[..^1];
-                        else
-                            paragraph.Inlines.Remove(lastInline);
-                    }
-                }
+                CommitCurrentLine(paragraph);
+                paragraph.Inlines.Add(new Run("\n"));
+                _committedInlineCount = paragraph.Inlines.Count;
+                _lineBuffer.Clear();
             }
-            else if (c == '\n' || c == '\t' || !char.IsControl(c))
+            else if (c == '\x08') // Backspace — move cursor left (NOT delete)
             {
-                sb.Append(c);
+                _lineBuffer.Backspace();
             }
-            // Other control chars are skipped
+            else if (c == '\t')
+            {
+                // Expand tab to next multiple of 8
+                int nextTab = ((_lineBuffer.CursorCol / 8) + 1) * 8;
+                while (_lineBuffer.CursorCol < nextTab)
+                    _lineBuffer.Write(' ', fg, bg, _isBold, _isItalic, _isUnderline);
+            }
+            else if (!char.IsControl(c))
+            {
+                _lineBuffer.Write(c, fg, bg, _isBold, _isItalic, _isUnderline);
+            }
         }
 
-        if (sb.Length > 0)
-            paragraph.Inlines.Add(CreateRun(sb.ToString()));
+        // Flush current line buffer to display (replaceable zone)
+        FlushCurrentLine(paragraph);
     }
 
     /// <summary>
-    /// Removes all inlines on the current line (everything after the last \n).
-    /// Used when \r (carriage return) is received to allow overwriting.
+    /// Commits the current line buffer content as permanent inlines (no longer replaceable).
+    /// Called before a newline to "freeze" the current line.
     /// </summary>
-    private static void ClearCurrentLine(Paragraph paragraph)
+    private void CommitCurrentLine(Paragraph paragraph)
     {
-        // Collect inlines to remove (walking backward from the end)
-        var toRemove = new List<Inline>();
-        var current = paragraph.Inlines.LastInline;
+        // Remove the replaceable current-line inlines
+        RemoveCurrentLineInlines(paragraph);
 
-        while (current != null)
-        {
-            if (current is Run run && run.Text.Contains('\n'))
-            {
-                // Keep text up to and including the last \n
-                int lastNewline = run.Text.LastIndexOf('\n');
-                if (lastNewline == run.Text.Length - 1)
-                {
-                    // \n is the very last char — keep this Run entirely
-                    break;
-                }
-                // Trim: keep up to \n, discard the rest
-                run.Text = run.Text[..(lastNewline + 1)];
-                break;
-            }
+        // Add the buffer content as permanent inlines
+        var runs = _lineBuffer.FlushToInlines();
+        foreach (var run in runs)
+            paragraph.Inlines.Add(run);
 
-            toRemove.Add(current);
-            current = current.PreviousInline;
-        }
-
-        foreach (var inline in toRemove)
-            paragraph.Inlines.Remove(inline);
+        // Update committed count to include these new inlines
+        _committedInlineCount = paragraph.Inlines.Count;
     }
 
     /// <summary>
-    /// Processes a CSI sequence with direct access to the Paragraph for erase operations.
+    /// Flushes the current line buffer to display, replacing the temporary
+    /// current-line inlines with fresh Runs from the buffer.
+    /// </summary>
+    private void FlushCurrentLine(Paragraph paragraph)
+    {
+        // Remove old current-line inlines (everything after committed zone)
+        RemoveCurrentLineInlines(paragraph);
+
+        // Add new Runs from the buffer
+        var runs = _lineBuffer.FlushToInlines();
+        foreach (var run in runs)
+            paragraph.Inlines.Add(run);
+    }
+
+    /// <summary>
+    /// Removes all inlines after the committed zone (the replaceable current line).
+    /// </summary>
+    private void RemoveCurrentLineInlines(Paragraph paragraph)
+    {
+        while (paragraph.Inlines.Count > _committedInlineCount)
+            paragraph.Inlines.Remove(paragraph.Inlines.LastInline);
+    }
+
+    /// <summary>
+    /// Processes a CSI sequence with direct access to the Paragraph for erase operations
+    /// and cursor movement via the line buffer.
     /// </summary>
     private void ProcessCsiWithDocument(string paramString, char finalChar, Paragraph paragraph)
     {
+        int n = string.IsNullOrEmpty(paramString) ? 1 : int.TryParse(paramString, out int p) ? p : 1;
+
         switch (finalChar)
         {
             case 'm':
@@ -407,26 +427,60 @@ public class AnsiParser
 
             case 'J': // Erase in Display
             {
-                int mode = string.IsNullOrEmpty(paramString) ? 0 : int.TryParse(paramString, out int p) ? p : 0;
+                int mode = string.IsNullOrEmpty(paramString) ? 0 : (int.TryParse(paramString, out int jp) ? jp : 0);
                 if (mode is 2 or 3)
+                {
                     paragraph.Inlines.Clear();
+                    _committedInlineCount = 0;
+                    _lineBuffer.Clear();
+                }
                 break;
             }
 
             case 'K': // Erase in Line
             {
-                int mode = string.IsNullOrEmpty(paramString) ? 0 : int.TryParse(paramString, out int p) ? p : 0;
-                if (mode is 1 or 2)
-                    ClearCurrentLine(paragraph);
-                // mode 0 (erase to end of line) is no-op in append-only model
+                int mode = string.IsNullOrEmpty(paramString) ? 0 : (int.TryParse(paramString, out int kp) ? kp : 0);
+                _lineBuffer.EraseLine(mode);
+                FlushCurrentLine(paragraph);
                 break;
             }
 
-            // Cursor movement — not fully supported in append-only model
-            case 'A': case 'B': case 'C': case 'D':
-            case 'H': case 'f':
-            case 'S': case 'T':
-            case 'L': case 'M': case 'P': case '@':
+            case 'C': // Cursor Forward
+                _lineBuffer.MoveCursorRight(n);
+                break;
+
+            case 'D': // Cursor Back
+                _lineBuffer.MoveCursorLeft(n);
+                break;
+
+            case 'G': // Cursor Horizontal Absolute (1-based)
+                _lineBuffer.MoveCursorToColumn(n - 1);
+                break;
+
+            case 'P': // Delete Characters
+                _lineBuffer.DeleteChars(n);
+                FlushCurrentLine(paragraph);
+                break;
+
+            case '@': // Insert Characters
+                _lineBuffer.InsertChars(n);
+                FlushCurrentLine(paragraph);
+                break;
+
+            case 'H': case 'f': // Cursor Position (row;col)
+            {
+                // Extract column from "row;col" params (both 1-based)
+                var parts = (paramString ?? "").Split(';');
+                int col = parts.Length >= 2 && int.TryParse(parts[1], out int c) ? c : 1;
+                _lineBuffer.MoveCursorToColumn(col - 1);
+                break;
+            }
+
+            // Cursor Up/Down — no-op (would need multi-line buffer)
+            case 'A': case 'B':
+            // Scroll, insert/delete lines — no-op
+            case 'S': case 'T': case 'L': case 'M':
+            // Save/restore cursor, scrolling region — no-op
             case 's': case 'u': case 'r':
                 break;
         }
@@ -446,6 +500,25 @@ public class AnsiParser
         _isStrikethrough = false;
         _isInverse = false;
         _pendingInput = string.Empty;
+        _committedInlineCount = 0;
+        _lineBuffer.Clear();
+    }
+
+    /// <summary>
+    /// Adjusts the committed inline count after scrollback trimming removes inlines
+    /// from the front of the Paragraph.
+    /// </summary>
+    public void AdjustCommittedCount(int removedCount)
+    {
+        _committedInlineCount = Math.Max(0, _committedInlineCount - removedCount);
+    }
+
+    /// <summary>
+    /// Resizes the line buffer to match the terminal width.
+    /// </summary>
+    public void SetColumns(int columns)
+    {
+        _lineBuffer.SetWidth(columns);
     }
 
     // ─── Private Methods ────────────────────────────────────────────────────

@@ -17,15 +17,17 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
     private readonly HttpClient _httpClient;
     private readonly ISecretStorageService? _secretStorage;
     private readonly ISettingsService? _settingsService;
+    private readonly IClaudeOAuthService? _oauthService;
     private readonly AssistantSettings _settings;
 
     private bool _isInitialized;
     private bool _isDisposed;
     private CancellationTokenSource? _currentCts;
 
-    private const string DefaultModel = "claude-sonnet-4-20250514";
+    private const string DefaultModel = "claude-haiku-4-5-20251001";
     private const string DefaultBaseUrl = "https://api.anthropic.com";
     private const string ApiVersion = "2023-06-01";
+    private const string OAuthBetaHeader = "oauth-2025-04-20";
     private const string ApiKeySecretName = "ai_anthropic_api_key";
 
     private string? _apiKey;
@@ -36,16 +38,24 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
     public string Name => "anthropic";
     public string DisplayName => "Claude (Anthropic)";
     public bool IsAvailable => true;
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey) || !string.IsNullOrWhiteSpace(_settings.AnthropicKey);
+
+    public bool IsConfigured =>
+        _settings.AnthropicAuth == AnthropicAuthMode.ClaudeOAuth
+            ? (_oauthService?.IsClaudeCodeInstalled ?? false)
+            : (!string.IsNullOrWhiteSpace(_apiKey) || !string.IsNullOrWhiteSpace(_settings.AnthropicKey));
+
+    private bool IsOAuthMode => _settings.AnthropicAuth == AnthropicAuthMode.ClaudeOAuth;
 
     public AnthropicProvider(
         ISecretStorageService? secretStorage = null,
         ISettingsService? settingsService = null,
-        AssistantSettings? settings = null)
+        AssistantSettings? settings = null,
+        IClaudeOAuthService? oauthService = null)
     {
         _secretStorage = secretStorage;
         _settingsService = settingsService;
         _settings = settings ?? new AssistantSettings();
+        _oauthService = oauthService;
         _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
     }
 
@@ -89,7 +99,12 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
             await InitializeAsync();
 
         if (!IsConfigured)
-            return AssistantResponse.Failed("Anthropic provider não configurado. Defina uma API key nas Configurações.");
+        {
+            var hint = IsOAuthMode
+                ? "Claude Code não encontrado. Instale o Claude Code ou use uma API key."
+                : "Anthropic provider não configurado. Defina uma API key nas Configurações.";
+            return AssistantResponse.Failed(hint);
+        }
 
         _currentCts?.Cancel();
         _currentCts = new CancellationTokenSource();
@@ -97,15 +112,13 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
 
         try
         {
-            var apiKeyToUse = !string.IsNullOrWhiteSpace(_settings.AnthropicKey) ? _settings.AnthropicKey : _apiKey;
             var modelToUse = !string.IsNullOrWhiteSpace(_settings.AnthropicModel) ? _settings.AnthropicModel : _model;
 
             var (systemPrompt, userMessages) = SplitMessages(messages);
             var requestBody = BuildRequestBody(modelToUse, systemPrompt, userMessages, stream: false);
 
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl.TrimEnd('/')}/v1/messages");
-            request.Headers.Add("x-api-key", apiKeyToUse);
-            request.Headers.Add("anthropic-version", ApiVersion);
+            await ConfigureRequestAuthAsync(request);
             request.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
 
             using var response = await _httpClient.SendAsync(request, token);
@@ -141,15 +154,15 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
         if (!_isInitialized)
             await InitializeAsync();
 
-        var apiKey = !string.IsNullOrWhiteSpace(_settings.AnthropicKey) ? _settings.AnthropicKey : _apiKey;
-        var model = !string.IsNullOrWhiteSpace(_settings.AnthropicModel) ? _settings.AnthropicModel : _model;
-
-        if (string.IsNullOrWhiteSpace(apiKey))
+        if (!IsConfigured)
         {
-            yield return "Configure uma API key da Anthropic nas Configurações.";
+            yield return IsOAuthMode
+                ? "Claude Code não encontrado. Instale o Claude Code ou use uma API key."
+                : "Configure uma API key da Anthropic nas Configurações.";
             yield break;
         }
 
+        var model = !string.IsNullOrWhiteSpace(_settings.AnthropicModel) ? _settings.AnthropicModel : _model;
         if (string.IsNullOrWhiteSpace(model)) model = DefaultModel;
 
         // Separate system from user/assistant messages
@@ -179,8 +192,7 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
         var json = JsonSerializer.Serialize(bodyObj);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl.TrimEnd('/')}/v1/messages");
-        request.Headers.Add("x-api-key", apiKey);
-        request.Headers.Add("anthropic-version", ApiVersion);
+        await ConfigureRequestAuthAsync(request);
         request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
         HttpResponseMessage? response = null;
@@ -286,6 +298,28 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
         _isDisposed = true;
         CancelCurrentRequest();
         _httpClient.Dispose();
+    }
+
+    // ─── Auth configuration ────────────────────────────────────────────────
+
+    private async Task ConfigureRequestAuthAsync(HttpRequestMessage request)
+    {
+        if (IsOAuthMode)
+        {
+            var oauthToken = await (_oauthService?.GetValidAccessTokenAsync() ?? Task.FromResult<string?>(null));
+            if (string.IsNullOrEmpty(oauthToken))
+                throw new InvalidOperationException("Falha ao obter token OAuth do Claude Code.");
+
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", oauthToken);
+            request.Headers.Add("anthropic-beta", OAuthBetaHeader);
+        }
+        else
+        {
+            var apiKeyToUse = !string.IsNullOrWhiteSpace(_settings.AnthropicKey) ? _settings.AnthropicKey : _apiKey;
+            request.Headers.Add("x-api-key", apiKeyToUse);
+        }
+
+        request.Headers.Add("anthropic-version", ApiVersion);
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────

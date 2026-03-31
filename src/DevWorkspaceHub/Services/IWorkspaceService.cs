@@ -90,6 +90,9 @@ public interface IWorkspaceService
     /// <summary>Saves the current workspace canvas state to persistence.</summary>
     Task SaveCurrentAsync();
 
+    /// <summary>Updates the in-memory camera state for the current workspace (persisted on next save).</summary>
+    void UpdateCamera(CameraStateModel camera);
+
     /// <summary>Fired when the active workspace changes.</summary>
     event Action<WorkspaceModel>? ActiveWorkspaceChanged;
 }

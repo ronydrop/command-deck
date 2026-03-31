@@ -60,6 +60,9 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _statusText = "Starting...";
 
+    /// <summary>Current cursor column position from the ANSI parser's line buffer.</summary>
+    public int CursorColumn => _ansiParser.CursorColumn;
+
     // ─── Terminal Background ────────────────────────────────────────────────
 
     [ObservableProperty]
@@ -95,7 +98,7 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
         {
             FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
             FontSize = 14,
-            PagePadding = new Thickness(8),
+            PagePadding = new Thickness(8, 0, 8, 0),
             Background = Brushes.Transparent,
             Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4))
         };
@@ -182,6 +185,7 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     {
         if (Session == null) return;
         _terminalService.Resize(Session.Id, columns, rows);
+        _ansiParser.SetColumns(columns);
     }
 
     /// <summary>
@@ -276,16 +280,26 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
 
     private void TrimScrollback()
     {
-        if (_currentParagraph.Inlines.Count > _maxScrollbackLines)
+        var count = _currentParagraph.Inlines.Count;
+        // Only trim when significantly over the limit (125%), trim down to 75%
+        // This reduces trim frequency while keeping memory bounded
+        var trimThreshold = (int)(_maxScrollbackLines * 1.25);
+        if (count <= trimThreshold) return;
+
+        var targetCount = (int)(_maxScrollbackLines * 0.75);
+        var toRemove = count - targetCount;
+        var inlinesToRemove = new List<System.Windows.Documents.Inline>(toRemove);
+        var current = _currentParagraph.Inlines.FirstInline;
+        for (int i = 0; i < toRemove && current != null; i++)
         {
-            var toRemove = _currentParagraph.Inlines.Count - _maxScrollbackLines;
-            for (int i = 0; i < toRemove; i++)
-            {
-                var first = _currentParagraph.Inlines.FirstInline;
-                if (first == null) break;
-                _currentParagraph.Inlines.Remove(first);
-            }
+            inlinesToRemove.Add(current);
+            current = current.NextInline;
         }
+        foreach (var inline in inlinesToRemove)
+            _currentParagraph.Inlines.Remove(inline);
+
+        // Adjust committed inline count after trimming from the front
+        _ansiParser.AdjustCommittedCount(toRemove);
     }
 
     // ─── Background Sync ────────────────────────────────────────────────────

@@ -115,7 +115,7 @@
                 <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.45" />
             </Border.BorderBrush>
             <Border.Effect>
-                <BlurEffect Radius="10" />
+                <BlurEffect Radius="5" />
             </Border.Effect>
         </Border>
 
@@ -148,22 +148,26 @@
             <!-- Drop shadow — glass elevated shadow with visible depth -->
             <Border.Effect>
                 <DropShadowEffect x:Name="CardShadow"
-                                  BlurRadius="20"
-                                  ShadowDepth="4"
-                                  Opacity="0.20"
+                                  BlurRadius="12"
+                                  ShadowDepth="3"
+                                  Opacity="0.18"
                                   Color="#000000" />
             </Border.Effect>
+
+            <Border.CacheMode>
+                <BitmapCache />
+            </Border.CacheMode>
 
             <!-- Hover triggers: intensify shadow + show glow border -->
             <Border.Triggers>
                 <EventTrigger RoutedEvent="Mouse.MouseEnter">
                     <BeginStoryboard>
                         <Storyboard>
-                            <!-- Shadow BlurRadius 20 → 32 (lift effect) -->
+                            <!-- Shadow BlurRadius 12 → 20 (lift effect) -->
                             <DoubleAnimation
                                 Storyboard.TargetName="CardShadow"
                                 Storyboard.TargetProperty="BlurRadius"
-                                To="32"
+                                To="20"
                                 Duration="0:0:0.18" />
                             <!-- Shadow Opacity 0.20 → 0.30 -->
                             <DoubleAnimation
@@ -171,11 +175,11 @@
                                 Storyboard.TargetProperty="Opacity"
                                 To="0.30"
                                 Duration="0:0:0.18" />
-                            <!-- Shadow ShadowDepth 4 → 8 (card lifts up) -->
+                            <!-- Shadow ShadowDepth 3 → 6 (card lifts up) -->
                             <DoubleAnimation
                                 Storyboard.TargetName="CardShadow"
                                 Storyboard.TargetProperty="ShadowDepth"
-                                To="8"
+                                To="6"
                                 Duration="0:0:0.18" />
                             <!-- GlowBorder Opacity 0 → 1 -->
                             <DoubleAnimation
@@ -189,23 +193,23 @@
                 <EventTrigger RoutedEvent="Mouse.MouseLeave">
                     <BeginStoryboard>
                         <Storyboard>
-                            <!-- Shadow BlurRadius 32 → 20 -->
+                            <!-- Shadow BlurRadius 20 → 12 -->
                             <DoubleAnimation
                                 Storyboard.TargetName="CardShadow"
                                 Storyboard.TargetProperty="BlurRadius"
-                                To="20"
+                                To="12"
                                 Duration="0:0:0.22" />
-                            <!-- Shadow Opacity 0.30 → 0.20 -->
+                            <!-- Shadow Opacity 0.30 → 0.18 -->
                             <DoubleAnimation
                                 Storyboard.TargetName="CardShadow"
                                 Storyboard.TargetProperty="Opacity"
-                                To="0.20"
+                                To="0.18"
                                 Duration="0:0:0.22" />
-                            <!-- Shadow ShadowDepth 8 → 4 (card settles down) -->
+                            <!-- Shadow ShadowDepth 6 → 3 (card settles down) -->
                             <DoubleAnimation
                                 Storyboard.TargetName="CardShadow"
                                 Storyboard.TargetProperty="ShadowDepth"
-                                To="4"
+                                To="3"
                                 Duration="0:0:0.22" />
                             <!-- GlowBorder Opacity 1 → 0 -->
                             <DoubleAnimation

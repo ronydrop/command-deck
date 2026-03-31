@@ -128,21 +128,31 @@ public class ProcessMonitorService : IProcessMonitorService, IDisposable
         }
     }
 
+    private TimeSpan _monitorInterval;
+
     public void StartMonitoring(TimeSpan interval)
     {
         StopMonitoring();
-        _monitorTimer = new Timer(async _ =>
+        _monitorInterval = interval;
+        _monitorTimer = new Timer(OnMonitorTimerTick, null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+    }
+
+    private async void OnMonitorTimerTick(object? state)
+    {
+        try
         {
-            try
-            {
-                var processes = await GetRunningProcessesAsync();
-                ProcessesUpdated?.Invoke(processes);
-            }
-            catch
-            {
-                // Ignore monitoring errors
-            }
-        }, null, TimeSpan.Zero, interval);
+            var processes = await GetRunningProcessesAsync();
+            ProcessesUpdated?.Invoke(processes);
+        }
+        catch
+        {
+            // Ignore monitoring errors
+        }
+        finally
+        {
+            try { _monitorTimer?.Change(_monitorInterval, Timeout.InfiniteTimeSpan); }
+            catch (ObjectDisposedException) { }
+        }
     }
 
     public void StopMonitoring()

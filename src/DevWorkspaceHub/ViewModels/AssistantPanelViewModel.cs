@@ -20,6 +20,7 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
     private readonly INotificationService _notificationService;
     private readonly ISettingsService _settingsService;
     private readonly ISecretStorageService _secretStorageService;
+    private readonly IClaudeOAuthService _claudeOAuthService;
     private CancellationTokenSource? _cts;
     private readonly DispatcherTimer _availabilityTimer;
 
@@ -64,20 +65,22 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
         IWorkspaceService workspaceService,
         INotificationService notificationService,
         ISettingsService settingsService,
-        ISecretStorageService secretStorageService)
+        ISecretStorageService secretStorageService,
+        IClaudeOAuthService claudeOAuthService)
     {
         _assistant = assistant;
         _workspaceService = workspaceService;
         _notificationService = notificationService;
         _settingsService = settingsService;
         _secretStorageService = secretStorageService;
+        _claudeOAuthService = claudeOAuthService;
 
         _availabilityTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(60)
         };
         _availabilityTimer.Tick += (_, _) => _ = RefreshProviderInfoAsync();
-        _availabilityTimer.Start();
+        // Timer starts only when panel is opened (via OnPanelOpenedAsync)
 
         // Listen for settings changes (e.g. user changed AI provider in Settings screen)
         _settingsService.SettingsChanged += OnSettingsChanged;
@@ -117,12 +120,20 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
             var sb = new StringBuilder();
             try
             {
+                var lastUiUpdate = DateTime.UtcNow;
+                loadingMsg.IsStreaming = true;
                 await foreach (var chunk in _assistant.StreamChatAsync(history, ct))
                 {
                     sb.Append(chunk);
-                    loadingMsg.Content = sb.ToString();
-                    loadingMsg.IsStreaming = true;
+                    var now = DateTime.UtcNow;
+                    if ((now - lastUiUpdate).TotalMilliseconds >= 80)
+                    {
+                        loadingMsg.Content = sb.ToString();
+                        lastUiUpdate = now;
+                    }
                 }
+                // Final update to ensure all content is shown
+                loadingMsg.Content = sb.ToString();
             }
             catch (OperationCanceledException)
             {
@@ -279,6 +290,7 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
         {
             AssistantProviderType.OpenAI => "OpenAI",
             AssistantProviderType.Anthropic => "Claude",
+            AssistantProviderType.OpenRouter => "OpenRouter",
             AssistantProviderType.Ollama => "Local",
             _ => "Nenhum"
         };
@@ -304,11 +316,12 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
 
             SelectedProvider = providerSetting switch
             {
-                "openai"    => AssistantProviderType.OpenAI,
-                "anthropic" => AssistantProviderType.Anthropic,
-                "local"     => AssistantProviderType.Ollama,
-                "ollama"    => AssistantProviderType.Ollama,
-                _           => AssistantProviderType.None
+                "openai"     => AssistantProviderType.OpenAI,
+                "anthropic"  => AssistantProviderType.Anthropic,
+                "openrouter" => AssistantProviderType.OpenRouter,
+                "local"      => AssistantProviderType.Ollama,
+                "ollama"     => AssistantProviderType.Ollama,
+                _            => AssistantProviderType.None
             };
 
             if (SelectedProvider == AssistantProviderType.None)
@@ -323,14 +336,37 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
             var provider = _assistant.ActiveProvider;
             var providerName = provider?.ProviderName ?? "IA";
             var available = await Task.Run(() => provider?.IsAvailable ?? false);
+
+            // For Anthropic OAuth, check if Claude Code is installed and token is valid
+            var isOAuthMode = SelectedProvider == AssistantProviderType.Anthropic
+                && settings.AnthropicAuthMode == "claude_oauth";
+
+            if (isOAuthMode)
+            {
+                available = _claudeOAuthService.IsClaudeCodeInstalled;
+                if (available)
+                {
+                    var token = await _claudeOAuthService.GetValidAccessTokenAsync();
+                    available = !string.IsNullOrEmpty(token);
+                }
+            }
+
             IsProviderAvailable = available;
             _lastAvailabilityCheck = DateTime.UtcNow;
 
             var modelName = !string.IsNullOrWhiteSpace(settings.AiModel) ? settings.AiModel : "padrão";
 
-            ProviderInfo = available
-                ? $"{providerName} • {modelName} • Online"
-                : $"{providerName} • Indisponível";
+            if (isOAuthMode && available)
+            {
+                var sub = _claudeOAuthService.GetSubscriptionType();
+                ProviderInfo = $"Claude ({sub ?? "OAuth"}) • {modelName}";
+            }
+            else
+            {
+                ProviderInfo = available
+                    ? $"{providerName} • {modelName} • Online"
+                    : $"{providerName} • Indisponível";
+            }
 
             StatusText = available
                 ? "Pronto"
@@ -338,6 +374,7 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
                 {
                     AssistantProviderType.Ollama => "Ollama indisponível. Execute 'ollama serve' para iniciar.",
                     AssistantProviderType.Anthropic => "Anthropic indisponível. Verifique sua API key nas Configurações.",
+                    AssistantProviderType.OpenRouter => "OpenRouter indisponível. Verifique sua API key nas Configurações.",
                     _ => "OpenAI indisponível. Verifique sua API key nas Configurações."
                 };
         }
@@ -355,7 +392,16 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
     /// </summary>
     public async Task OnPanelOpenedAsync()
     {
+        _availabilityTimer.Start();
         await RefreshProviderInfoAsync(force: true);
+    }
+
+    /// <summary>
+    /// Call when the AI assistant panel is closed to stop unnecessary polling.
+    /// </summary>
+    public void OnPanelClosed()
+    {
+        _availabilityTimer.Stop();
     }
 
     /// <summary>
@@ -372,6 +418,7 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
                 AssistantProviderType.Ollama => "Verifique se o Ollama está em execução: 'ollama serve'",
                 AssistantProviderType.OpenAI => "Verifique sua API key do OpenAI nas Configurações.",
                 AssistantProviderType.Anthropic => "Verifique sua API key da Anthropic nas Configurações.",
+                AssistantProviderType.OpenRouter => "Verifique sua API key do OpenRouter nas Configurações.",
                 _ => "Configure um provider nas Configurações (Ctrl+,)."
             };
             StatusText = hint;
@@ -397,7 +444,7 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
                 "IA respondeu",
                 NotificationType.Success,
                 NotificationSource.AI,
-                message: _assistant.ActiveProvider.ProviderName);
+                message: _assistant.ActiveProvider?.ProviderName ?? "IA");
         }
         catch (OperationCanceledException)
         {
@@ -480,9 +527,14 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
         {
             var apiKey = string.Empty;
             var providerLower = settings.AiProvider?.ToLowerInvariant() ?? "none";
-            if (providerLower is "openai" or "anthropic")
+            if (providerLower is "openai" or "anthropic" or "openrouter")
             {
-                var secretName = providerLower == "anthropic" ? "ai_anthropic_api_key" : "ai_openai_api_key";
+                var secretName = providerLower switch
+                {
+                    "anthropic" => "ai_anthropic_api_key",
+                    "openrouter" => "ai_openrouter_api_key",
+                    _ => "ai_openai_api_key"
+                };
                 try
                 {
                     apiKey = await _secretStorageService.RetrieveSecretAsync(secretName) ?? string.Empty;

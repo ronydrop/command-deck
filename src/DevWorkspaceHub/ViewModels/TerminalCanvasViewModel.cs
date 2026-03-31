@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DevWorkspaceHub.Models;
@@ -29,6 +30,8 @@ public partial class TerminalCanvasViewModel : ObservableObject
     private readonly ISettingsService _settingsService;
     private readonly TiledLayoutStrategy _tiledStrategy;
     private readonly FreeCanvasLayoutStrategy _freeStrategy;
+    private DispatcherTimer? _layoutDebounceTimer;
+    private const int LayoutDebounceMs = 50;
 
     /// <summary>Mini-map overlay ViewModel — bound by MiniMapControl in the XAML.</summary>
     public MiniMapViewModel MiniMap { get; }
@@ -175,7 +178,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
     {
         ViewportWidth = width;
         ViewportHeight = height;
-        if (IsTiledMode) RecalculateTiledLayout();
+        ScheduleTiledLayoutRecalculation();
     }
 
     /// <summary>
@@ -245,9 +248,34 @@ public partial class TerminalCanvasViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Schedules a tiled layout recalculation with debounce to prevent thrashing.
+    /// Multiple rapid calls within the debounce window coalesce into a single recalculation.
+    /// </summary>
+    private void ScheduleTiledLayoutRecalculation()
+    {
+        if (!IsTiledMode) return;
+
+        if (_layoutDebounceTimer == null)
+        {
+            _layoutDebounceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(LayoutDebounceMs)
+            };
+            _layoutDebounceTimer.Tick += (_, _) =>
+            {
+                _layoutDebounceTimer.Stop();
+                RecalculateTiledLayout();
+            };
+        }
+
+        _layoutDebounceTimer.Stop();
+        _layoutDebounceTimer.Start();
+    }
+
     private void OnItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (IsTiledMode) RecalculateTiledLayout();
+        ScheduleTiledLayoutRecalculation();
     }
 
     // ─── Layout mode partial callbacks ──────────────────────────────────────
@@ -407,6 +435,14 @@ public partial class TerminalCanvasViewModel : ObservableObject
         CameraOffsetY = _cameraService.Current.OffsetY;
         CameraZoom = _cameraService.Current.Zoom;
         ZoomPercent = (int)Math.Round(_cameraService.Current.Zoom * 100);
+
+        // Keep workspace model in sync so SaveCurrentAsync() persists the real camera state
+        _workspaceService.UpdateCamera(new CameraStateModel
+        {
+            OffsetX = _cameraService.Current.OffsetX,
+            OffsetY = _cameraService.Current.OffsetY,
+            Zoom = _cameraService.Current.Zoom
+        });
     }
 
     // ─── Persistence helpers ─────────────────────────────────────────────────

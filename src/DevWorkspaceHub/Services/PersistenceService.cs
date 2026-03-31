@@ -167,17 +167,31 @@ public sealed partial class PersistenceService : IPersistenceService
 
     public async Task SetActiveWorkspaceAsync(string id)
     {
-        await using var deactivate = CreateCommand();
-        deactivate.CommandText = "UPDATE workspaces SET is_active = 0 WHERE is_active = 1;";
-        await deactivate.ExecuteNonQueryAsync();
+        await EnsureConnectionAsync();
+        await using var transaction = _connection!.BeginTransaction();
+        try
+        {
+            await using var deactivate = CreateCommand();
+            deactivate.Transaction = transaction;
+            deactivate.CommandText = "UPDATE workspaces SET is_active = 0 WHERE is_active = 1;";
+            await deactivate.ExecuteNonQueryAsync();
 
-        await using var activate = CreateCommand();
-        activate.CommandText = @"
-            UPDATE workspaces SET is_active = 1, last_accessed_at = $now
-            WHERE id = $id;";
-        activate.Parameters.AddWithValue("$id", id);
-        activate.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("o"));
-        await activate.ExecuteNonQueryAsync();
+            await using var activate = CreateCommand();
+            activate.Transaction = transaction;
+            activate.CommandText = @"
+                UPDATE workspaces SET is_active = 1, last_accessed_at = $now
+                WHERE id = $id;";
+            activate.Parameters.AddWithValue("$id", id);
+            activate.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("o"));
+            await activate.ExecuteNonQueryAsync();
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<bool> DeleteWorkspaceAsync(string id)

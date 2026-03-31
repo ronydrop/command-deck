@@ -80,6 +80,7 @@ public partial class App : Application
         // ─── AI Assistant services ───────────────────────────────────────
         services.AddSingleton<HttpClient>(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(30) });
         services.AddSingleton<AssistantSettings>();
+        services.AddSingleton<IClaudeOAuthService, ClaudeOAuthService>();
         services.AddSingleton<IAssistantProvider>(sp => new OllamaProvider(
             sp.GetRequiredService<HttpClient>(),
             sp.GetRequiredService<AssistantSettings>()));
@@ -90,6 +91,10 @@ public partial class App : Application
         services.AddSingleton<IAssistantProvider>(sp => new AnthropicProvider(
             sp.GetService<ISecretStorageService>(),
             sp.GetService<ISettingsService>(),
+            sp.GetRequiredService<AssistantSettings>(),
+            sp.GetService<IClaudeOAuthService>()));
+        services.AddSingleton<IAssistantProvider>(sp => new OpenRouterProvider(
+            sp.GetService<ISecretStorageService>(),
             sp.GetRequiredService<AssistantSettings>()));
         services.AddSingleton<IAssistantService, AssistantService>();
 
@@ -183,15 +188,15 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // Initialize SQLite database and run pending migrations
+        // Initialize SQLite database and run pending migrations (with timeout to avoid hanging)
         try
         {
             var persistence = _serviceProvider!.GetRequiredService<IPersistenceService>();
-            Task.Run(() => persistence.InitAsync()).GetAwaiter().GetResult();
+            Task.Run(() => persistence.InitAsync()).Wait(TimeSpan.FromSeconds(10));
 
             // One-time migration from JSON files to SQLite
             var migration = _serviceProvider!.GetRequiredService<MigrationService>();
-            Task.Run(() => migration.MigrateAsync()).GetAwaiter().GetResult();
+            Task.Run(() => migration.MigrateAsync()).Wait(TimeSpan.FromSeconds(10));
         }
         catch (Exception ex)
         {
@@ -206,9 +211,13 @@ public partial class App : Application
             var settingsService = _serviceProvider!.GetService<ISettingsService>();
             if (settingsService != null)
             {
-                var settings = Task.Run(() => settingsService.GetSettingsAsync()).GetAwaiter().GetResult();
-                if (!string.IsNullOrEmpty(settings.ThemeName))
-                    ApplyTheme(settings.ThemeName);
+                var settingsTask = Task.Run(() => settingsService.GetSettingsAsync());
+                if (settingsTask.Wait(TimeSpan.FromSeconds(5)))
+                {
+                    var settings = settingsTask.Result;
+                    if (!string.IsNullOrEmpty(settings.ThemeName))
+                        ApplyTheme(settings.ThemeName);
+                }
             }
         }
         catch { }
@@ -253,9 +262,14 @@ public partial class App : Application
                 var secretStorage = _serviceProvider!.GetRequiredService<ISecretStorageService>();
                 var apiKey = string.Empty;
                 var providerLower = appSettings.AiProvider?.ToLowerInvariant() ?? "none";
-                var secretName = providerLower == "anthropic" ? "ai_anthropic_api_key" : "ai_openai_api_key";
+                var secretName = providerLower switch
+                {
+                    "anthropic" => "ai_anthropic_api_key",
+                    "openrouter" => "ai_openrouter_api_key",
+                    _ => "ai_openai_api_key"
+                };
                 try { apiKey = await secretStorage.RetrieveSecretAsync(secretName) ?? string.Empty; } catch { }
-                assistantService.ApplySettings(appSettings.AiProvider, appSettings.AiModel, appSettings.AiBaseUrl, apiKey);
+                assistantService.ApplySettings(appSettings.AiProvider, appSettings.AiModel, appSettings.AiBaseUrl, apiKey, appSettings.AnthropicAuthMode);
             }
             catch (Exception ex2)
             {
@@ -283,26 +297,27 @@ public partial class App : Application
     {
         if (_serviceProvider != null)
         {
+            // Save current project workspace layout before shutdown (with timeout)
             try
             {
-                // Save current project workspace layout before shutdown
                 var mainVm = _serviceProvider.GetService<MainViewModel>();
                 if (mainVm != null)
-                    Task.Run(() => mainVm.CanvasViewModel.SaveCurrentLayoutAsync()).GetAwaiter().GetResult();
+                    Task.Run(() => mainVm.CanvasViewModel.SaveCurrentLayoutAsync()).Wait(TimeSpan.FromSeconds(3));
             }
             catch { }
 
+            // Close all terminal sessions before shutdown (with timeout)
             try
             {
-                // Close all terminal sessions before shutdown
                 var terminalService = _serviceProvider.GetService<ITerminalService>();
-                terminalService?.CloseAllSessionsAsync().GetAwaiter().GetResult();
+                if (terminalService != null)
+                    Task.Run(() => terminalService.CloseAllSessionsAsync()).Wait(TimeSpan.FromSeconds(3));
             }
             catch { }
 
+            // Persist window state (with timeout)
             try
             {
-                // Persist window state
                 var settingsService = _serviceProvider.GetService<ISettingsService>();
                 if (settingsService != null && MainWindow != null)
                 {
@@ -316,7 +331,7 @@ public partial class App : Application
                         settings.WindowHeight = h;
                         settings.IsMaximized = max;
                         await settingsService.SaveSettingsAsync(settings);
-                    }).GetAwaiter().GetResult();
+                    }).Wait(TimeSpan.FromSeconds(3));
                 }
             }
             catch { }

@@ -261,7 +261,20 @@ public static class ConPtyHelper
         }
 
         // Initialize the process thread attribute list
-        var attributeList = CreateProcessAttributeList(pseudoConsoleHandle);
+        IntPtr attributeList;
+        try
+        {
+            attributeList = CreateProcessAttributeList(pseudoConsoleHandle);
+        }
+        catch
+        {
+            ClosePseudoConsole(pseudoConsoleHandle);
+            pipeInputRead.Dispose();
+            pipeInputWrite.Dispose();
+            pipeOutputRead.Dispose();
+            pipeOutputWrite.Dispose();
+            throw;
+        }
 
         // Set up startup info
         var startupInfo = new STARTUPINFOEX

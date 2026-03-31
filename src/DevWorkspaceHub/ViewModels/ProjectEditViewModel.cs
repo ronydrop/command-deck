@@ -38,7 +38,7 @@ public partial class ProjectEditViewModel : ObservableObject
     private string _newStartupCommand = string.Empty;
 
     [ObservableProperty]
-    private string _dialogTitle = "Add Project";
+    private string _dialogTitle = "Adicionar Projeto";
 
     [ObservableProperty]
     private bool _isValid;
@@ -87,7 +87,7 @@ public partial class ProjectEditViewModel : ObservableObject
     {
         _isEditing = false;
         _originalId = null;
-        DialogTitle = "Add Project";
+        DialogTitle = "Adicionar Projeto";
         Name = string.Empty;
         Path = string.Empty;
         DefaultShell = ShellType.WSL;
@@ -105,7 +105,7 @@ public partial class ProjectEditViewModel : ObservableObject
     {
         _isEditing = true;
         _originalId = project.Id;
-        DialogTitle = "Edit Project";
+        DialogTitle = "Editar Projeto";
         Name = project.Name;
         Path = project.Path;
         DefaultShell = project.DefaultShell;
@@ -221,21 +221,21 @@ public partial class ProjectEditViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(Name))
         {
-            ErrorMessage = "Project name is required.";
+            ErrorMessage = "O nome do projeto é obrigatório.";
             IsValid = false;
             return;
         }
 
         if (string.IsNullOrWhiteSpace(Path))
         {
-            ErrorMessage = "Project path is required.";
+            ErrorMessage = "O caminho do projeto é obrigatório.";
             IsValid = false;
             return;
         }
 
         if (!System.IO.Directory.Exists(Path))
         {
-            ErrorMessage = "Project path does not exist.";
+            ErrorMessage = "O caminho do projeto não existe.";
             IsValid = false;
             return;
         }
