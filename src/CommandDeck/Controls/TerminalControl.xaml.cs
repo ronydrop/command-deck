@@ -81,6 +81,19 @@ public partial class TerminalControl : UserControl
                 });
             };
             OutputArea.TextChanged += _scrollHandler;
+
+            // If the control is already loaded but the session was not started
+            // (OnLoaded fired before DataContext was set), start it now.
+            if (IsLoaded && ActualWidth > 0 && ActualHeight > 0)
+            {
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, async () =>
+                {
+                    var (cw, lh) = MeasureCharDimensions();
+                    short columns = (short)Math.Max(40, (int)(ActualWidth / cw));
+                    short rows = (short)Math.Max(10, (int)(ActualHeight / lh));
+                    await _viewModel.StartSessionAsync(columns, rows);
+                });
+            }
         }
     }
 
@@ -233,63 +246,53 @@ public partial class TerminalControl : UserControl
 
     /// <summary>
     /// Positions the cursor overlay based on the parser's cursor column.
-    /// Uses character width measurement for accurate column-based positioning.
-    /// Falls back to document-end positioning if column-based calculation fails.
+    /// Computes X from the document's left content edge + cursorCol * charWidth,
+    /// and Y from the last line in the document.
     /// </summary>
     private void UpdateCursorPosition()
     {
         try
         {
-            // Get the Y position from the last line in the document
             var end = OutputArea.Document.ContentEnd;
             var rect = end.GetCharacterRect(LogicalDirection.Backward);
             if (rect == Rect.Empty) return;
 
             var transform = OutputArea.TransformToVisual(CursorCanvas);
+            var (charWidth, _) = MeasureCharDimensions();
             double lineHeight = Math.Max(2, rect.Height);
 
-            // Calculate X from cursor column and character width
             if (_viewModel != null)
             {
-                var (charWidth, _) = MeasureCharDimensions();
                 int cursorCol = _viewModel.CursorColumn;
 
-                // Get the start of the last line (Y from document end, X from left margin)
-                var lineStart = end;
-                // Walk backward to find start of the last line
-                var pointer = end.GetPositionAtOffset(0, LogicalDirection.Backward);
-                while (pointer != null)
-                {
-                    var prev = pointer.GetPositionAtOffset(-1, LogicalDirection.Backward);
-                    if (prev == null) break;
-                    var context = prev.GetPointerContext(LogicalDirection.Forward);
-                    if (context == TextPointerContext.Text)
-                    {
-                        char[] buf = new char[1];
-                        prev.GetTextInRun(LogicalDirection.Forward, buf, 0, 1);
-                        if (buf[0] == '\n') { lineStart = pointer; break; }
-                    }
-                    pointer = prev;
-                }
+                // X: compute from the fixed left content edge.
+                // Use ContentStart to find where column 0 begins (includes padding + PagePadding).
+                var startRect = OutputArea.Document.ContentStart
+                    .GetCharacterRect(LogicalDirection.Forward);
+                double baselineX = startRect != Rect.Empty
+                    ? startRect.Left
+                    : OutputArea.Padding.Left + OutputArea.Document.PagePadding.Left;
 
-                var lineStartRect = lineStart.GetCharacterRect(LogicalDirection.Forward);
-                if (lineStartRect != Rect.Empty)
-                {
-                    var lineOrigin = transform.Transform(new Point(lineStartRect.Left, lineStartRect.Top));
-                    double cursorX = lineOrigin.X + cursorCol * charWidth;
-                    double cursorY = lineOrigin.Y;
+                double cursorX = baselineX + cursorCol * charWidth;
 
-                    Canvas.SetLeft(CursorBlock, cursorX);
-                    Canvas.SetTop(CursorBlock, cursorY);
-                    CursorBlock.Height = lineHeight;
-                    return;
-                }
+                // Y: use the end of the document (last line).
+                // Check Forward direction to handle empty lines after \n correctly.
+                var forwardRect = end.GetCharacterRect(LogicalDirection.Forward);
+                double cursorY = (forwardRect != Rect.Empty && forwardRect.Top > rect.Top)
+                    ? forwardRect.Top
+                    : rect.Top;
+
+                var origin = transform.Transform(new Point(cursorX, cursorY));
+                Canvas.SetLeft(CursorBlock, origin.X);
+                Canvas.SetTop(CursorBlock, origin.Y);
+                CursorBlock.Height = lineHeight;
+                return;
             }
 
             // Fallback: position at document end
-            var origin = transform.Transform(new Point(rect.Right, rect.Top));
-            Canvas.SetLeft(CursorBlock, origin.X);
-            Canvas.SetTop(CursorBlock, origin.Y);
+            var fallback = transform.Transform(new Point(rect.Right, rect.Top));
+            Canvas.SetLeft(CursorBlock, fallback.X);
+            Canvas.SetTop(CursorBlock, fallback.Y);
             CursorBlock.Height = lineHeight;
         }
         catch { }

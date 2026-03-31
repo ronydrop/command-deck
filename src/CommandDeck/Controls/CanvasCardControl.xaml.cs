@@ -110,7 +110,7 @@ public partial class CanvasCardControl : UserControl
     }
 
     // Grid snap size in world units (Shift+drag)
-    private const double SnapGrid = 20;
+    private const double SnapGrid = 80;
 
     private void OnTitleBarMouseMove(object sender, MouseEventArgs e)
     {

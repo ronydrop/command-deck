@@ -190,7 +190,7 @@
                     </Grid.RowDefinitions>
 
                     <!-- Sidebar Header -->
-                    <StackPanel Grid.Row="0" Margin="16,20,16,8" HorizontalAlignment="Stretch">
+                    <StackPanel Grid.Row="0" Margin="16,20,16,2" HorizontalAlignment="Stretch">
                         <TextBlock Text="Command Deck"
                                    Style="{StaticResource SubheadingText}"
                                    FontSize="26"
@@ -206,7 +206,7 @@
                     <!-- Separator -->
                     <Separator Grid.Row="2"
                                Style="{StaticResource DarkSeparator}"
-                               Margin="12,4,12,0" />
+                               Margin="12,0,12,0" />
 
                     <!-- Project List View -->
                     <views:ProjectListView Grid.Row="3"
