@@ -317,13 +317,13 @@
                       Style="{StaticResource IconPathSmall}"/>
             </Button>
 
-            <!-- Create new workspace button -->
+            <!-- Toggle workspace selector popup -->
             <Button Grid.Column="2"
                     Style="{StaticResource GhostButton}"
-                    Command="{Binding CreateWorkspaceCommand}"
+                    Command="{Binding ToggleWorkspaceSelectorCommand}"
                     Padding="4"
                     Width="24" Height="24"
-                    ToolTip="Novo Workspace"
+                    ToolTip="Gerenciar Workspaces"
                     Margin="2,0,0,0">
                 <Grid>
                     <Path Data="{StaticResource FolderIcon}"
@@ -362,10 +362,26 @@
                     <DropShadowEffect ShadowDepth="2" BlurRadius="12" Opacity="0.3"/>
                 </Border.Effect>
                 <StackPanel>
-                    <TextBlock Text="Workspaces"
-                               Style="{StaticResource CaptionText}"
-                               FontSize="10"
-                               Margin="8,4,8,6"/>
+                    <Grid Margin="8,4,8,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Workspaces"
+                                   Style="{StaticResource CaptionText}"
+                                   FontSize="10"
+                                   VerticalAlignment="Center"/>
+                        <Button Grid.Column="1"
+                                Style="{StaticResource GhostButton}"
+                                Command="{Binding CreateWorkspaceCommand}"
+                                Padding="2"
+                                Width="18" Height="18"
+                                ToolTip="Novo Workspace">
+                            <Path Data="{StaticResource PlusIcon}"
+                                  Style="{StaticResource IconPathSmall}"
+                                  Width="10" Height="10"/>
+                        </Button>
+                    </Grid>
                     <ItemsControl ItemsSource="{Binding Workspaces}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>

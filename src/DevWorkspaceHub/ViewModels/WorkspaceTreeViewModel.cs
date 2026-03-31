@@ -64,23 +64,37 @@ public partial class WorkspaceTreeViewModel : ObservableObject
 
     // ─── Commands ─────────────────────────────────────────────────────────────
 
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task AddGroup()
     {
-        var node = _treeService.AddGroup("Novo Grupo");
-        await _treeService.SaveAsync();
-        Rebuild();
-        // Auto-select the new node and enter edit mode
-        SelectAndEdit(node.Id);
+        try
+        {
+            var node = _treeService.AddGroup("Novo Grupo");
+            await _treeService.SaveAsync();
+            Rebuild();
+            // Auto-select the new node and enter edit mode
+            SelectAndEdit(node.Id);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WorkspaceTree] AddGroup failed: {ex}");
+        }
     }
 
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task DeleteSelected()
     {
-        if (SelectedNode is null) return;
-        _treeService.Remove(SelectedNode.Model.Id);
-        await _treeService.SaveAsync();
-        Rebuild();
+        try
+        {
+            if (SelectedNode is null) return;
+            _treeService.Remove(SelectedNode.Model.Id);
+            await _treeService.SaveAsync();
+            Rebuild();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WorkspaceTree] DeleteSelected failed: {ex}");
+        }
     }
 
     [RelayCommand]
@@ -138,11 +152,20 @@ public partial class WorkspaceTreeViewModel : ObservableObject
 
     // ─── Workspace Management ──────────────────────────────────────────────────
 
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task CreateWorkspace()
     {
-        var ws = await _workspaceService.CreateWorkspaceAsync("Novo Workspace");
-        await RefreshWorkspaceListAsync();
+        try
+        {
+            var ws = await _workspaceService.CreateWorkspaceAsync("Novo Workspace");
+            await RefreshWorkspaceListAsync();
+            // Open the selector popup so the user sees the new workspace
+            IsWorkspaceSelectorOpen = true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WorkspaceTree] CreateWorkspace failed: {ex}");
+        }
     }
 
     [RelayCommand]
@@ -153,12 +176,19 @@ public partial class WorkspaceTreeViewModel : ObservableObject
         WorkspaceSwitchRequested?.Invoke(workspace.Id);
     }
 
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task DeleteWorkspace(WorkspaceModel? workspace)
     {
-        if (workspace is null || workspace.Id == ActiveWorkspace?.Id) return;
-        await _workspaceService.DeleteWorkspaceAsync(workspace.Id);
-        await RefreshWorkspaceListAsync();
+        try
+        {
+            if (workspace is null || workspace.Id == ActiveWorkspace?.Id) return;
+            await _workspaceService.DeleteWorkspaceAsync(workspace.Id);
+            await RefreshWorkspaceListAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WorkspaceTree] DeleteWorkspace failed: {ex}");
+        }
     }
 
     [RelayCommand]

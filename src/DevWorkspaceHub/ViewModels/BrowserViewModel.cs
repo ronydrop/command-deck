@@ -19,6 +19,10 @@ public partial class BrowserViewModel : ObservableObject, IDisposable
     private readonly IAiContextRouter _contextRouter;
     private readonly AssistantPanelViewModel _assistantPanel;
 
+    // ─── Per-project browser session state ────────────────────────────────
+    private readonly Dictionary<string, ProjectBrowserState> _projectSessions = new();
+    private string? _currentProjectId;
+
     [ObservableProperty]
     private string _url = string.Empty;
 
@@ -240,8 +244,11 @@ public partial class BrowserViewModel : ObservableObject, IDisposable
     private async Task DetectServer()
     {
         var projects = await _projectService.GetAllProjectsAsync();
-        var currentProject = projects?.FirstOrDefault(p => p.IsFavorite)
-                             ?? projects?.FirstOrDefault();
+        var currentProject = _currentProjectId != null
+            ? projects?.FirstOrDefault(p => p.Id == _currentProjectId)
+            : null;
+        currentProject ??= projects?.FirstOrDefault(p => p.IsFavorite)
+                           ?? projects?.FirstOrDefault();
         if (currentProject != null)
             await DetectAndNavigateAsync(currentProject.Path, currentProject.ProjectType.ToString());
     }
@@ -435,6 +442,55 @@ URL: {el.Url}
         });
     }
 
+    // ─── Per-project session management ─────────────────────────────────
+
+    /// <summary>
+    /// Switches the browser context to the given project.
+    /// Saves the current project's browser state and restores the target project's state.
+    /// </summary>
+    public async Task SwitchToProjectAsync(Project project)
+    {
+        // Save current project state
+        if (_currentProjectId != null)
+        {
+            _projectSessions[_currentProjectId] = new ProjectBrowserState
+            {
+                Url = Url,
+                AddressBarText = AddressBarText,
+                DetectedPort = DetectedPort,
+                IsServerRunning = IsServerRunning,
+                PageTitle = PageTitle
+            };
+        }
+
+        _currentProjectId = project.Id;
+
+        // Restore saved state or detect fresh
+        if (_projectSessions.TryGetValue(project.Id, out var saved))
+        {
+            DetectedPort = saved.DetectedPort;
+            IsServerRunning = saved.IsServerRunning;
+            AddressBarText = saved.AddressBarText;
+            PageTitle = saved.PageTitle;
+
+            if (IsInitialized && !string.IsNullOrEmpty(saved.Url))
+                await NavigateToUrlAsync(saved.Url);
+        }
+        else
+        {
+            // Reset state for a project with no previous session
+            DetectedPort = 0;
+            IsServerRunning = false;
+            AddressBarText = string.Empty;
+            Url = string.Empty;
+            PageTitle = string.Empty;
+            StatusText = "Desconectado";
+
+            if (IsInitialized)
+                await DetectAndNavigateAsync(project.Path, project.ProjectType.ToString());
+        }
+    }
+
     public void Dispose()
     {
         var runtime = (BrowserRuntimeService)_browserRuntime;
@@ -447,4 +503,16 @@ URL: {el.Url}
         _domSelection.PickerDeactivated -= OnPickerDeactivated;
         _domSelection.PickerCancelled -= OnPickerCancelled;
     }
+}
+
+/// <summary>
+/// Snapshot of browser state for a specific project, used to restore on project switch.
+/// </summary>
+internal sealed class ProjectBrowserState
+{
+    public string Url { get; set; } = string.Empty;
+    public string AddressBarText { get; set; } = string.Empty;
+    public int DetectedPort { get; set; }
+    public bool IsServerRunning { get; set; }
+    public string PageTitle { get; set; } = string.Empty;
 }

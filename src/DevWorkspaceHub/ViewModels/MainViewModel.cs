@@ -651,7 +651,7 @@ public partial class MainViewModel : ObservableObject
             ProjectSwitchMessage = $"Carregando informações do projeto…";
             StatusBarText = $"Switching to {project.Name}… loading project info";
 
-            // 5. Persist settings & fetch git info in parallel
+            // 5. Persist settings, fetch git info & switch browser session in parallel
             var settingsTask = Task.Run(async () =>
             {
                 var settings = await _settingsService.GetSettingsAsync();
@@ -661,8 +661,9 @@ public partial class MainViewModel : ObservableObject
 
             var dashboardTask = Dashboard.SetProjectAsync(project);
             var gitTask = _gitService.GetGitInfoAsync(project.Path);
+            var browserTask = Browser.SwitchToProjectAsync(project);
 
-            await Task.WhenAll(settingsTask, dashboardTask, gitTask);
+            await Task.WhenAll(settingsTask, dashboardTask, gitTask, browserTask);
 
             Dashboard.StopRefresh();
 

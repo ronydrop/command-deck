@@ -135,6 +135,7 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
         request.Content = new StringContent(body, Encoding.UTF8, "application/json");
 
         HttpResponseMessage? response = null;
+        string? networkError = null;
         try
         {
             response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
@@ -142,11 +143,16 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
         }
         catch (HttpRequestException ex)
         {
-            yield return $"Erro de rede com OpenRouter: {ex.Message}";
+            networkError = $"Erro de rede com OpenRouter: {ex.Message}";
+        }
+
+        if (networkError is not null)
+        {
+            yield return networkError;
             yield break;
         }
 
-        using (response)
+        using (response!)
         {
             using var stream = await response.Content.ReadAsStreamAsync(ct);
             using var reader = new System.IO.StreamReader(stream);
@@ -159,6 +165,8 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
                 var data = line["data: ".Length..];
                 if (data == "[DONE]") yield break;
 
+                string? chunk = null;
+                bool parseOk = true;
                 try
                 {
                     using var doc = JsonDocument.Parse(data);
@@ -167,14 +175,13 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
                     {
                         var delta = choices[0].GetProperty("delta");
                         if (delta.TryGetProperty("content", out var contentEl))
-                        {
-                            var chunk = contentEl.GetString();
-                            if (!string.IsNullOrEmpty(chunk))
-                                yield return chunk;
-                        }
+                            chunk = contentEl.GetString();
                     }
                 }
-                catch (JsonException) { }
+                catch (JsonException) { parseOk = false; }
+
+                if (parseOk && !string.IsNullOrEmpty(chunk))
+                    yield return chunk;
             }
         }
     }

@@ -487,9 +487,11 @@ public class AnsiParser
     }
 
     /// <summary>
-    /// Resets all formatting attributes to defaults.
+    /// Resets only formatting attributes (colors, bold, italic, etc.) to defaults.
+    /// Does NOT touch rendering state (_committedInlineCount, _lineBuffer, _pendingInput).
+    /// Called by ProcessSgr when SGR code 0 is received (\x1B[0m).
     /// </summary>
-    public void Reset()
+    private void ResetFormatting()
     {
         _foreground = _defaultForeground;
         _background = _defaultBackground;
@@ -499,6 +501,14 @@ public class AnsiParser
         _isDim = false;
         _isStrikethrough = false;
         _isInverse = false;
+    }
+
+    /// <summary>
+    /// Full reset: formatting + rendering state. Used only for clear screen / terminal init.
+    /// </summary>
+    public void Reset()
+    {
+        ResetFormatting();
         _pendingInput = string.Empty;
         _committedInlineCount = 0;
         _lineBuffer.Clear();
@@ -631,7 +641,7 @@ public class AnsiParser
     {
         if (string.IsNullOrEmpty(paramString) || paramString == "0")
         {
-            Reset();
+            ResetFormatting();
             return;
         }
 
@@ -642,7 +652,7 @@ public class AnsiParser
 
             switch (code)
             {
-                case 0: Reset(); break;
+                case 0: ResetFormatting(); break;
                 case 1: _isBold = true; break;
                 case 2: _isDim = true; break;
                 case 3: _isItalic = true; break;
