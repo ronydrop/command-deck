@@ -162,6 +162,38 @@ public partial class ProjectListViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private async Task MoveProjectUp(Project? project)
+    {
+        if (project == null) return;
+        var idx = FilteredProjects.IndexOf(project);
+        if (idx <= 0) return;
+        FilteredProjects.Move(idx, idx - 1);
+        var orderedIds = FilteredProjects.Select(p => p.Id).ToList();
+        await _projectService.ReorderProjectsAsync(orderedIds);
+    }
+
+    [RelayCommand]
+    private async Task MoveProjectDown(Project? project)
+    {
+        if (project == null) return;
+        var idx = FilteredProjects.IndexOf(project);
+        if (idx < 0 || idx >= FilteredProjects.Count - 1) return;
+        FilteredProjects.Move(idx, idx + 1);
+        var orderedIds = FilteredProjects.Select(p => p.Id).ToList();
+        await _projectService.ReorderProjectsAsync(orderedIds);
+    }
+
+    public async Task MoveProjectAsync(Project dragged, Project target)
+    {
+        var draggedIdx = FilteredProjects.IndexOf(dragged);
+        var targetIdx = FilteredProjects.IndexOf(target);
+        if (draggedIdx < 0 || targetIdx < 0 || draggedIdx == targetIdx) return;
+        FilteredProjects.Move(draggedIdx, targetIdx);
+        var orderedIds = FilteredProjects.Select(p => p.Id).ToList();
+        await _projectService.ReorderProjectsAsync(orderedIds);
+    }
+
     partial void OnSearchTextChanged(string value)
     {
         ApplyFilter();

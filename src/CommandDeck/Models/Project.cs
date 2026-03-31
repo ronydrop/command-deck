@@ -36,6 +36,9 @@ public partial class Project : ObservableObject
     private bool _isFavorite;
 
     [ObservableProperty]
+    private int _sortOrder = 0;
+
+    [ObservableProperty]
     [property: JsonIgnore]
     private GitInfo? _gitInfo;
 
@@ -59,6 +62,7 @@ public partial class Project : ObservableObject
         Icon = Icon,
         LastOpened = LastOpened,
         IsFavorite = IsFavorite,
+        SortOrder = SortOrder,
         ProjectType = ProjectType
     };
 }

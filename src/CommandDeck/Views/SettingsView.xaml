@@ -36,7 +36,8 @@
                                 <TabPanel IsItemsHost="True" Background="Transparent"/>
                             </Border>
                             <!-- Content without any border -->
-                            <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"/>
+                            <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"
+                                              HorizontalAlignment="Stretch"/>
                         </Grid>
                     </ControlTemplate>
                 </Setter.Value>
@@ -126,7 +127,7 @@
         </ControlTemplate>
     </UserControl.Resources>
 
-    <Grid Margin="24,24" MaxWidth="900" HorizontalAlignment="Center">
+    <Grid Margin="24,24" MaxWidth="1100" HorizontalAlignment="Center">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />

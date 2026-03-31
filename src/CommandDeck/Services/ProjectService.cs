@@ -52,7 +52,8 @@ public class ProjectService : IProjectService, IDisposable
             if (!_isLoaded)
                 await LoadProjectsAsync();
             return _projects.OrderByDescending(p => p.IsFavorite)
-                            .ThenByDescending(p => p.LastOpened)
+                            .ThenBy(p => p.SortOrder)
+                            .ThenBy(p => p.Name)
                             .ToList();
         }
         finally
@@ -184,6 +185,26 @@ public class ProjectService : IProjectService, IDisposable
         return ProjectType.Unknown;
     }
 
+    public async Task ReorderProjectsAsync(List<string> orderedIds)
+    {
+        await _lock.WaitAsync();
+        try
+        {
+            for (int i = 0; i < orderedIds.Count; i++)
+            {
+                var project = _projects.FirstOrDefault(p => p.Id == orderedIds[i]);
+                if (project != null)
+                    project.SortOrder = i + 1;
+            }
+            await SaveProjectsAsync();
+            ProjectsChanged?.Invoke();
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
     // ─── Private Methods ────────────────────────────────────────────────────
 
     private void ScanDirectory(string directory, List<Project> results, int currentDepth, int maxDepth)
@@ -300,6 +321,15 @@ public class ProjectService : IProjectService, IDisposable
         finally
         {
             _isLoaded = true;
+        }
+
+        // Migrate: assign SortOrder based on file order if not yet set
+        bool needsMigration = _projects.All(p => p.SortOrder == 0);
+        if (needsMigration && _projects.Count > 0)
+        {
+            for (int i = 0; i < _projects.Count; i++)
+                _projects[i].SortOrder = i + 1;
+            await SaveProjectsAsync();
         }
     }
 

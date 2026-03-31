@@ -49,7 +49,11 @@
                  SelectedItem="{Binding SelectedProject}"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  VirtualizingPanel.IsVirtualizing="True"
-                 SelectionChanged="OnProjectSelectionChanged">
+                 AllowDrop="True"
+                 SelectionChanged="OnProjectSelectionChanged"
+                 PreviewMouseLeftButtonDown="OnListPreviewMouseLeftButtonDown"
+                 PreviewMouseMove="OnListPreviewMouseMove"
+                 Drop="OnListDrop">
             <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem" BasedOn="{StaticResource DarkListBoxItem}">
                     <Setter Property="Padding" Value="8,8" />
@@ -143,6 +147,13 @@
                                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                         <MenuItem Header="Editar"
                                                   Command="{Binding PlacementTarget.Tag.EditProjectCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <Separator />
+                                        <MenuItem Header="Mover para cima"
+                                                  Command="{Binding PlacementTarget.Tag.MoveProjectUpCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="Mover para baixo"
+                                                  Command="{Binding PlacementTarget.Tag.MoveProjectDownCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                         <Separator />
                                         <MenuItem Header="Excluir"

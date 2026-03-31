@@ -44,6 +44,11 @@ public interface IProjectService
     ProjectType DetectProjectType(string projectPath);
 
     /// <summary>
+    /// Reorders projects by saving new SortOrder values based on the provided ID sequence.
+    /// </summary>
+    Task ReorderProjectsAsync(List<string> orderedIds);
+
+    /// <summary>
     /// Event raised when the project list changes.
     /// </summary>
     event Action? ProjectsChanged;

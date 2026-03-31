@@ -402,6 +402,8 @@
                     <Border CornerRadius="4"
                             Margin="6,0,0,0"
                             Background="{DynamicResource Surface0Brush}"
+                            BorderBrush="{DynamicResource Surface1Brush}"
+                            BorderThickness="1"
                             Padding="2">
                         <StackPanel Orientation="Horizontal">
                             <!-- Canvas mode button -->
@@ -473,18 +475,20 @@
                     </Border>
 
                     <!-- ── Auto-arrange button ── -->
-                    <Button Padding="6,4"
+                    <Border CornerRadius="4"
                             Margin="4,0,0,0"
+                            Background="{DynamicResource Surface0Brush}"
+                            BorderBrush="{DynamicResource Surface1Brush}"
+                            BorderThickness="1">
+                    <Button Padding="6,4"
                             Command="{Binding CanvasViewModel.AutoArrangeCommand}"
                             ToolTip="Organizar terminais automaticamente"
                             Cursor="Hand">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
-                                <Setter Property="Opacity" Value="0.6" />
                                 <Style.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Opacity" Value="1" />
-                                        <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                        <Setter Property="Background" Value="{DynamicResource Surface1Brush}" />
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
@@ -501,6 +505,7 @@
                               Stretch="Uniform"
                               VerticalAlignment="Center" />
                     </Button>
+                    </Border>
 
                     <!-- Vertical separator -->
                     <Rectangle Width="1" Height="20"
@@ -526,15 +531,24 @@
                                Margin="10,0" />
 
                     <!-- Browser button -->
+                    <Border CornerRadius="4"
+                            Background="{DynamicResource Surface0Brush}"
+                            BorderBrush="{DynamicResource Surface1Brush}"
+                            BorderThickness="1"
+                            VerticalAlignment="Center">
                     <Button Command="{Binding DataContext.NavigateToCommand,
                                      RelativeSource={RelativeSource AncestorType=Window}}"
                             CommandParameter="{x:Static vm:ViewType.Browser}"
                             ToolTip="Abrir Browser do projeto"
-                            Cursor="Hand"
-                            VerticalAlignment="Center">
+                            Cursor="Hand">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
                                 <Setter Property="Padding" Value="8,4" />
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource Surface1Brush}" />
+                                    </Trigger>
+                                </Style.Triggers>
                             </Style>
                         </Button.Style>
                         <StackPanel Orientation="Horizontal">
@@ -549,6 +563,7 @@
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
+                    </Border>
 
                 </StackPanel>
             </DockPanel>

@@ -373,7 +373,7 @@ public partial class SettingsViewModel : ObservableObject
         "nvidia/nemotron-3-super-120b-a12b"
     };
 
-    public bool CanActivateAnthropic => !string.IsNullOrWhiteSpace(AnthropicApiKey) || AnthropicAuthMode == "oauth";
+    public bool CanActivateAnthropic => !string.IsNullOrWhiteSpace(AnthropicApiKey) || AnthropicAuthMode == "claude_oauth";
     public bool CanActivateOpenAi => !string.IsNullOrWhiteSpace(OpenAiApiKey);
     public bool CanActivateOpenRouter => !string.IsNullOrWhiteSpace(OpenRouterApiKey);
 
