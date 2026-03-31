@@ -147,6 +147,48 @@
         </Setter>
     </Style>
 
+    <!-- Layout mode toggle buttons (Canvas / Tiled) — hover identical to AccentButton -->
+    <Style x:Key="LayoutModeButton" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="Opacity" Value="0.55" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="3"
+                            Padding="{TemplateBinding Padding}">
+                        <Border x:Name="overlay"
+                                Background="Transparent"
+                                CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="overlay" Property="Background" Value="#33FFFFFF" />
+                            <Setter Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="overlay" Property="Background" Value="#11FFFFFF" />
+                            <Setter Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.3" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="GhostButton" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />

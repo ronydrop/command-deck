@@ -412,8 +412,7 @@
                                     ToolTip="Modo Canvas — layout livre (Ctrl+Shift+L)"
                                     Cursor="Hand">
                                 <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
-                                        <Setter Property="Opacity" Value="0.5" />
+                                    <Style TargetType="Button" BasedOn="{StaticResource LayoutModeButton}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding CanvasViewModel.IsCanvasMode}" Value="True">
                                                 <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
@@ -445,8 +444,7 @@
                                     ToolTip="Modo Tiled — layout em grade (Ctrl+Shift+L)"
                                     Cursor="Hand">
                                 <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
-                                        <Setter Property="Opacity" Value="0.5" />
+                                    <Style TargetType="Button" BasedOn="{StaticResource LayoutModeButton}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding CanvasViewModel.IsTiledMode}" Value="True">
                                                 <Setter Property="Background" Value="{DynamicResource AccentBrush}" />

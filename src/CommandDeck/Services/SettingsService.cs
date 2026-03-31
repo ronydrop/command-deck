@@ -254,11 +254,11 @@ public class SettingsService : ISettingsService, IDisposable
     {
         if (_settings != null) return _settings;
 
-        await _lock.WaitAsync();
+        await _lock.WaitAsync().ConfigureAwait(false);
         try
         {
             if (_settings != null) return _settings;
-            _settings = await LoadSettingsAsync();
+            _settings = await LoadSettingsAsync().ConfigureAwait(false);
             return _settings;
         }
         finally
@@ -272,11 +272,11 @@ public class SettingsService : ISettingsService, IDisposable
     /// </summary>
     public async Task SaveSettingsAsync(AppSettings settings)
     {
-        await _lock.WaitAsync();
+        await _lock.WaitAsync().ConfigureAwait(false);
         try
         {
             var json = JsonSerializer.Serialize(settings, JsonOptions);
-            await File.WriteAllTextAsync(_settingsFilePath, json);
+            await File.WriteAllTextAsync(_settingsFilePath, json).ConfigureAwait(false);
             _settings = settings;  // Only cache after successful write
             SettingsChanged?.Invoke(settings);
         }
@@ -307,7 +307,7 @@ public class SettingsService : ISettingsService, IDisposable
         {
             if (File.Exists(_settingsFilePath))
             {
-                var json = await File.ReadAllTextAsync(_settingsFilePath);
+                var json = await File.ReadAllTextAsync(_settingsFilePath).ConfigureAwait(false);
                 return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
             }
         }

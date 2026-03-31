@@ -250,10 +250,18 @@
                     <Grid.ContextMenu>
                         <ContextMenu x:Name="CardContextMenu">
                             <ContextMenu.Resources>
+                                <!-- Override system colors to eliminate white icon column in dark theme -->
+                                <SolidColorBrush x:Key="{x:Static SystemColors.MenuBrushKey}"          Color="#313244"/>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}"       Color="#313244"/>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.MenuBarBrushKey}"       Color="#313244"/>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.MenuHighlightBrushKey}" Color="#45475A"/>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}"     Color="#45475A"/>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#CDD6F4"/>
                                 <Style TargetType="MenuItem">
-                                    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-                                    <Setter Property="FontSize" Value="12" />
-                                    <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+                                    <Setter Property="Foreground"  Value="{DynamicResource TextBrush}" />
+                                    <Setter Property="Background"  Value="{DynamicResource GlassBgBrush}" />
+                                    <Setter Property="FontSize"    Value="12" />
+                                    <Setter Property="FontFamily"  Value="{StaticResource MonoFont}" />
                                 </Style>
                                 <Style TargetType="Separator">
                                     <Setter Property="Background" Value="{DynamicResource Surface1Brush}" />
@@ -269,21 +277,21 @@
                                 </Style>
                             </ContextMenu.Style>
 
-                            <MenuItem Header="⚡ Fix Last Error"
+                            <MenuItem Header="⚡ Corrigir Último Erro"
                                       Click="OnAiFixError" />
-                            <MenuItem Header="💡 Explain Output"
+                            <MenuItem Header="💡 Explicar Saída"
                                       Click="OnAiExplainOutput" />
-                            <MenuItem Header="🔧 Suggest Command"
+                            <MenuItem Header="🔧 Sugerir Comando"
                                       Click="OnAiSuggestCommand" />
                             <Separator />
-                            <MenuItem Header="📤 Send Context to AI"
+                            <MenuItem Header="📤 Enviar Contexto à IA"
                                       Click="OnAiSendContext" />
                             <Separator />
-                            <MenuItem Header="🔄 Run Again"
+                            <MenuItem Header="🔄 Executar Novamente"
                                       Click="OnAiRunAgain" />
-                            <MenuItem Header="⚡ Fix Again"
+                            <MenuItem Header="⚡ Corrigir Novamente"
                                       Click="OnAiFixAgain" />
-                            <MenuItem Header="💡 Explain More"
+                            <MenuItem Header="💡 Explicar Mais"
                                       Click="OnAiExplainMore" />
                         </ContextMenu>
                     </Grid.ContextMenu>

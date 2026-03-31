@@ -62,6 +62,9 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _statusText = "Starting...";
 
+    /// <summary>True once <see cref="StartSessionAsync"/> has been called (even if it failed).</summary>
+    public bool IsSessionStarted => _sessionStarted;
+
     /// <summary>Current cursor column position from the ANSI parser's line buffer.</summary>
     public int CursorColumn => _ansiParser.CursorColumn;
 

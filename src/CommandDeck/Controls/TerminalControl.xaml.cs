@@ -317,16 +317,26 @@ public partial class TerminalControl : UserControl
     }
 
     /// <summary>
-    /// Recalculates terminal dimensions on resize. Only fires after the session is started.
+    /// Recalculates terminal dimensions on resize.
+    /// Also serves as a fallback session start when OnLoaded fired with zero dimensions.
     /// </summary>
-    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+    private async void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (_viewModel?.Session == null) return;
+        if (_viewModel == null) return;
 
         var (charWidth, lineHeight) = MeasureCharDimensions();
-
         short columns = (short)Math.Max(40, (int)(ActualWidth / charWidth));
         short rows = (short)Math.Max(10, (int)(ActualHeight / lineHeight));
+
+        // Fallback: if OnLoaded fired before the control had non-zero dimensions,
+        // the session was never started. Try now that we have a valid size.
+        if (!_viewModel.IsSessionStarted && ActualWidth > 0 && ActualHeight > 0)
+        {
+            await _viewModel.StartSessionAsync(columns, rows);
+            return;
+        }
+
+        if (_viewModel.Session == null) return;
 
         _viewModel.ResizeTerminal(columns, rows);
     }

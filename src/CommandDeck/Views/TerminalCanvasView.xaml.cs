@@ -481,32 +481,21 @@ public partial class TerminalCanvasView : UserControl
 
     private void OnCardCloseRequested(object sender, RoutedEventArgs e)
     {
-        // D. Animate the card out before removing it from the collection.
-        var item = GetItemViewModel(e.OriginalSource);
+        // Prefer sender.DataContext (direct reference), fall back to visual-tree walk.
+        var item = (sender as FrameworkElement)?.DataContext as CanvasItemViewModel
+                   ?? GetItemViewModel(e.OriginalSource);
         if (item is null) return;
 
-        // Find the ContentPresenter that wraps this card in the ItemsControl.
-        var cardElement = FindContentPresenterForItem(item);
-
-        if (cardElement is not null)
-        {
-            // Animate out, then execute the actual removal in the callback.
-            AnimateCardOut(cardElement, () =>
-            {
-                if (item is TerminalCanvasItemViewModel tvm)
-                    _mainVm?.CloseTerminalCommand.Execute(tvm.Terminal);
-                else
-                    _mainVm?.CanvasViewModel.Items.Remove(item);
-            });
-        }
+        // Execute removal immediately — don't delay behind animation callback.
+        if (item is TerminalCanvasItemViewModel tvm)
+            _mainVm?.CloseTerminalCommand.Execute(tvm.Terminal);
         else
-        {
-            // Fallback: no presenter found, remove immediately.
-            if (item is TerminalCanvasItemViewModel tvm)
-                _mainVm?.CloseTerminalCommand.Execute(tvm.Terminal);
-            else
-                _mainVm?.CanvasViewModel.Items.Remove(item);
-        }
+            _mainVm?.CanvasViewModel.Items.Remove(item);
+
+        // Fire-and-forget animation on the card element (optional visual feedback).
+        var cardElement = FindContentPresenterForItem(item);
+        if (cardElement is not null)
+            AnimateCardOut(cardElement, () => { });
     }
 
     /// <summary>

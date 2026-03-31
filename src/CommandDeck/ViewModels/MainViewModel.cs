@@ -655,10 +655,11 @@ public partial class MainViewModel : ObservableObject
                 if (saved.Camera is not null)
                     CanvasViewModel.SyncCamera(saved.Camera.OffsetX, saved.Camera.OffsetY, saved.Camera.Zoom);
 
-                // Restore terminal items with limited parallelism (max 3 concurrent)
+                // Restore terminal items sequentially.
+                // PrepareAsync MUST complete before AddRestoredItem so that when WPF creates
+                // the TerminalControl and OnLoaded fires, StartSessionAsync finds the correct
+                // shell type and working directory already set on the ViewModel.
                 var terminalItems = saved.Items.Where(i => i.Type == CanvasItemType.Terminal).ToList();
-                var semaphore = new SemaphoreSlim(3, 3);
-                var initTasks = new List<Task>();
 
                 ProjectSwitchMessage = $"Restaurando {terminalItems.Count} terminais…";
                 StatusBarText = $"Switching to {project.Name}… restoring {terminalItems.Count} terminals";
@@ -677,21 +678,10 @@ public partial class MainViewModel : ObservableObject
                     var terminalVm = _terminalVmFactory();
                     Terminals.Add(terminalVm);
 
-                    // Capture for closure
-                    var vm = terminalVm;
-                    var model = itemModel;
-                    initTasks.Add(Task.Run(async () =>
-                    {
-                        await semaphore.WaitAsync();
-                        try
-                        {
-                            await vm.PrepareAsync(shellType, workDir, project.Id);
-                        }
-                        finally
-                        {
-                            semaphore.Release();
-                        }
-                    }));
+                    // PrepareAsync is synchronous (returns Task.CompletedTask) and must run
+                    // before AddRestoredItem to avoid a race where OnLoaded calls StartSessionAsync
+                    // with uninitialized _pendingShellType / _pendingWorkDir.
+                    await terminalVm.PrepareAsync(shellType, workDir, project.Id);
 
                     var canvasItem = _canvasItemFactory.CreateTerminalItemFromModel(terminalVm, itemModel);
                     _workspaceService.AddRestoredItem(canvasItem);
@@ -700,7 +690,6 @@ public partial class MainViewModel : ObservableObject
                         _ = WorkspaceTree.RegisterTerminalAsync(canvasItem.Title, canvasItem.Model.Id, project.Id);
                 }
 
-                await Task.WhenAll(initTasks);
                 Debug.WriteLine($"[Perf] RestoreTerminals ({terminalItems.Count}): {stepSw.ElapsedMilliseconds}ms");
 
                 ActiveTerminal = Terminals.FirstOrDefault();
