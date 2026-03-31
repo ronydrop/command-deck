@@ -351,7 +351,7 @@
                AllowsTransparency="True"
                PopupAnimation="Fade"
                HorizontalOffset="-4">
-            <Border Background="{DynamicResource MantelBrush}"
+            <Border Background="{DynamicResource MantelBgBrush}"
                     BorderBrush="{DynamicResource GlassBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="8"

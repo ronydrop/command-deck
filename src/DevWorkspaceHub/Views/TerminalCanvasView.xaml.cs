@@ -106,6 +106,8 @@ public partial class TerminalCanvasView : UserControl
             };
         }
 
+        SyncEmptyStatePosition();
+
         // Feed viewport size to ViewModel for tiled layout calculation
         ViewportArea.SizeChanged += OnViewportSizeChanged;
 
@@ -158,7 +160,7 @@ public partial class TerminalCanvasView : UserControl
     {
         if (newMode == LayoutMode.Tiled)
         {
-            // Reset camera to identity for tiled mode
+            // Reset camera: scale 1, Y locked to 0, X to 0 (user can pan horizontally)
             CanvasScale.ScaleX = 1;
             CanvasScale.ScaleY = 1;
             CanvasTranslate.X = 0;
@@ -215,8 +217,8 @@ public partial class TerminalCanvasView : UserControl
 
     private void OnViewportMouseDown(object sender, MouseButtonEventArgs e)
     {
-        // No panning in tiled mode
-        if (_canvasVm?.IsCanvasMode != true) return;
+        // Allow panning in both canvas and tiled modes
+        if (_canvasVm is null) return;
 
         // Pan with middle mouse OR left button on empty canvas background
         bool isMiddle = e.ChangedButton == MouseButton.Middle;
@@ -249,14 +251,19 @@ public partial class TerminalCanvasView : UserControl
 
         var pos = e.GetPosition(ViewportArea);
         CanvasTranslate.X = _panOriginX + pos.X - _panStart.X;
-        CanvasTranslate.Y = _panOriginY + pos.Y - _panStart.Y;
+
+        // In tiled mode, lock vertical axis (horizontal strip only)
+        if (_canvasVm?.IsTiledMode != true)
+            CanvasTranslate.Y = _panOriginY + pos.Y - _panStart.Y;
+
+        SyncEmptyStatePosition();
 
         var now = DateTime.UtcNow;
         double dt = (now - _lastPanTime).TotalSeconds;
         if (dt > 0 && dt < 0.1)
         {
             _momentumVelX = (pos.X - _lastPanPos.X) / dt;
-            _momentumVelY = (pos.Y - _lastPanPos.Y) / dt;
+            _momentumVelY = _canvasVm?.IsTiledMode == true ? 0 : (pos.Y - _lastPanPos.Y) / dt;
         }
         _lastPanPos  = pos;
         _lastPanTime = now;
@@ -371,6 +378,8 @@ public partial class TerminalCanvasView : UserControl
         CanvasTranslate.X  = _zoomCurrentTransX;
         CanvasTranslate.Y  = _zoomCurrentTransY;
 
+        SyncEmptyStatePosition();
+
         // Check convergence
         bool converged =
             Math.Abs(_zoomTargetScale  - _zoomCurrentScale)  < ZoomLerpEpsilon &&
@@ -427,7 +436,25 @@ public partial class TerminalCanvasView : UserControl
 
         double frameSeconds = 0.016;
         CanvasTranslate.X += _momentumVelX * frameSeconds;
-        CanvasTranslate.Y += _momentumVelY * frameSeconds;
+        if (_canvasVm?.IsTiledMode != true)
+            CanvasTranslate.Y += _momentumVelY * frameSeconds;
+
+        SyncEmptyStatePosition();
+    }
+
+    // ─── Empty state parallax ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Moves the empty-state placeholder to follow canvas pan/zoom,
+    /// giving the impression that it floats on the canvas like a terminal card.
+    /// Uses a damped factor so it moves slightly less than the canvas (parallax feel).
+    /// </summary>
+    private void SyncEmptyStatePosition()
+    {
+        // A factor < 1 gives a subtle parallax; 1.0 = exact 1:1 with canvas
+        const double Parallax = 0.55;
+        EmptyStateTranslate.X = CanvasTranslate.X * Parallax;
+        EmptyStateTranslate.Y = CanvasTranslate.Y * Parallax;
     }
 
     // ─── Card routed events ───────────────────────────────────────────────
@@ -614,6 +641,15 @@ public partial class TerminalCanvasView : UserControl
         {
             _canvasVm?.SetActiveTerminal(item);
             CenterOnItem(item, animated: true);
+        }
+    }
+
+    private void OnSidebarCloseClick(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true; // prevent OnSidebarItemClick from firing
+        if ((sender as FrameworkElement)?.DataContext is TerminalCanvasItemViewModel item)
+        {
+            _mainVm?.CloseTerminalCommand.Execute(item.Terminal);
         }
     }
 
@@ -929,6 +965,21 @@ public partial class TerminalCanvasView : UserControl
         CanvasTranslate.BeginAnimation(TranslateTransform.XProperty, transXAnim);
         CanvasTranslate.BeginAnimation(TranslateTransform.YProperty,
             new DoubleAnimation(targetTransY, duration) { EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd });
+
+        // Animate empty state placeholder in sync
+        const double parallax = 0.55;
+        var emptyXAnim = new DoubleAnimation(targetTransX * parallax, duration)
+            { EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd };
+        emptyXAnim.Completed += (_, _) =>
+        {
+            EmptyStateTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+            EmptyStateTranslate.BeginAnimation(TranslateTransform.YProperty, null);
+            EmptyStateTranslate.X = finalTransX * parallax;
+            EmptyStateTranslate.Y = finalTransY * parallax;
+        };
+        EmptyStateTranslate.BeginAnimation(TranslateTransform.XProperty, emptyXAnim);
+        EmptyStateTranslate.BeginAnimation(TranslateTransform.YProperty,
+            new DoubleAnimation(targetTransY * parallax, duration) { EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd });
 
         UpdateZoomLabel(targetScale);
     }

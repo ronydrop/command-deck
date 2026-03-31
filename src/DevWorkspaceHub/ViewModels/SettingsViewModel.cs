@@ -293,7 +293,7 @@ public partial class SettingsViewModel : ObservableObject
 
     public IReadOnlyList<string> AvailableAiProviders { get; } = new[]
     {
-        "none", "openai", "local"
+        "none", "anthropic", "openai", "local"
     };
 
     public ObservableCollection<AiSlotItemViewModel> AiModelSlots { get; } = new();
@@ -302,13 +302,17 @@ public partial class SettingsViewModel : ObservableObject
 
     public bool IsAiEnabled => AiProvider != "none";
     public bool IsOpenAiProvider => AiProvider == "openai";
+    public bool IsAnthropicProvider => AiProvider == "anthropic";
     public bool IsLocalProvider => AiProvider == "local";
+    public bool IsApiKeyProvider => IsOpenAiProvider || IsAnthropicProvider;
 
     partial void OnAiProviderChanged(string value)
     {
         OnPropertyChanged(nameof(IsAiEnabled));
         OnPropertyChanged(nameof(IsOpenAiProvider));
+        OnPropertyChanged(nameof(IsAnthropicProvider));
         OnPropertyChanged(nameof(IsLocalProvider));
+        OnPropertyChanged(nameof(IsApiKeyProvider));
     }
 
     /// <summary>
@@ -401,10 +405,11 @@ public partial class SettingsViewModel : ObservableObject
         TerminalWallpaperContrast = settings.TerminalWallpaperContrast;
         TerminalWallpaperStretch = settings.TerminalWallpaperStretch;
 
-        // API key (from secure storage)
+        // API key (from secure storage — load based on provider)
         try
         {
-            AiApiKey = await _secretStorageService.RetrieveSecretAsync("ai_openai_api_key") ?? string.Empty;
+            var secretName = AiProvider == "anthropic" ? "ai_anthropic_api_key" : "ai_openai_api_key";
+            AiApiKey = await _secretStorageService.RetrieveSecretAsync(secretName) ?? string.Empty;
         }
         catch
         {
@@ -516,8 +521,8 @@ public partial class SettingsViewModel : ObservableObject
         {
             if (AiProvider == "openai" && !string.IsNullOrWhiteSpace(AiApiKey))
                 await _secretStorageService.StoreSecretAsync("ai_openai_api_key", AiApiKey);
-            else if (AiProvider != "openai")
-                await _secretStorageService.DeleteSecretAsync("ai_openai_api_key");
+            else if (AiProvider == "anthropic" && !string.IsNullOrWhiteSpace(AiApiKey))
+                await _secretStorageService.StoreSecretAsync("ai_anthropic_api_key", AiApiKey);
         }
         catch { }
 

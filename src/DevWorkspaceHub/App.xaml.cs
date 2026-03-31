@@ -3,6 +3,7 @@ using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using DevWorkspaceHub.Models;
 using DevWorkspaceHub.Services;
+using DevWorkspaceHub.Services.Browser;
 using DevWorkspaceHub.ViewModels;
 using DevWorkspaceHub.Views;
 
@@ -86,6 +87,10 @@ public partial class App : Application
             sp.GetService<ISecretStorageService>(),
             sp.GetService<ISettingsService>(),
             sp.GetRequiredService<AssistantSettings>()));
+        services.AddSingleton<IAssistantProvider>(sp => new AnthropicProvider(
+            sp.GetService<ISecretStorageService>(),
+            sp.GetService<ISettingsService>(),
+            sp.GetRequiredService<AssistantSettings>()));
         services.AddSingleton<IAssistantService, AssistantService>();
 
         // ─── AI Terminal (cc/claude CLI) ──────────────────────────────────
@@ -121,6 +126,16 @@ public partial class App : Application
         // ─── Terminal Background ─────────────────────────────────────────
         services.AddSingleton<ITerminalBackgroundService, TerminalBackgroundService>();
 
+        // ─── Browser Services ────────────────────────────────────────────
+        services.AddSingleton<IBrowserRuntimeService, BrowserRuntimeService>();
+        services.AddSingleton<ILocalAppSessionService, LocalAppSessionService>();
+        services.AddSingleton<IDomSelectionService, DomSelectionService>();
+        services.AddSingleton<IAiContextRouter, AiContextRouter>();
+        services.AddSingleton<ICdpService, CdpService>();
+        services.AddSingleton<ICodeMappingService, CodeMappingService>();
+        services.AddSingleton<ISelectionHistoryService, SelectionHistoryService>();
+        services.AddSingleton<PortHealthCheckService>();
+
         // ─── Layout Strategies ──────────────────────────────────────────
         services.AddSingleton<FreeCanvasLayoutStrategy>();
         services.AddSingleton<TiledLayoutStrategy>();
@@ -135,6 +150,7 @@ public partial class App : Application
         services.AddSingleton<ProjectListViewModel>();
         services.AddSingleton<DashboardViewModel>();
         services.AddSingleton<ProcessMonitorViewModel>();
+        services.AddSingleton<BrowserViewModel>();
 
         // Transient: each request gets a fresh instance
         services.AddTransient<TerminalViewModel>();
@@ -198,27 +214,47 @@ public partial class App : Application
         catch { }
 
         // Resolve and show the main window
-        var mainWindow = _serviceProvider!.GetRequiredService<MainWindow>();
-        MainWindow = mainWindow;
-        mainWindow.Show();
+        try
+        {
+            var mainWindow = _serviceProvider!.GetRequiredService<MainWindow>();
+            MainWindow = mainWindow;
+            mainWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Erro ao iniciar a janela principal:\n\n{ex}", "DevWorkspaceHub - Erro de Inicialização", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(1);
+            return;
+        }
 
+        // Post-window initialization runs asynchronously to avoid blocking UI thread (deadlock).
+        _ = InitializeServicesAsync();
+    }
+
+    /// <summary>
+    /// Initializes post-window services asynchronously so the UI thread is not blocked.
+    /// </summary>
+    private async Task InitializeServicesAsync()
+    {
         // Initialize SQLite database (creates file + tables if missing)
         try
         {
             var db = _serviceProvider!.GetRequiredService<IDatabaseService>();
-            Task.Run(() => db.InitializeAsync()).GetAwaiter().GetResult();
+            await db.InitializeAsync();
             var assistantService = _serviceProvider!.GetRequiredService<IAssistantService>();
-            Task.Run(() => assistantService.RestorePreferencesAsync()).GetAwaiter().GetResult();
+            await assistantService.RestorePreferencesAsync();
 
             // Bridge: apply AppSettings AI config to AssistantService so the chat panel
             // uses whatever the user configured in Settings (provider, model, url, key).
             try
             {
                 var settingsService = _serviceProvider!.GetRequiredService<ISettingsService>();
-                var appSettings = Task.Run(() => settingsService.GetSettingsAsync()).GetAwaiter().GetResult();
+                var appSettings = await settingsService.GetSettingsAsync();
                 var secretStorage = _serviceProvider!.GetRequiredService<ISecretStorageService>();
                 var apiKey = string.Empty;
-                try { apiKey = Task.Run(() => secretStorage.RetrieveSecretAsync("ai_openai_api_key")).GetAwaiter().GetResult() ?? string.Empty; } catch { }
+                var providerLower = appSettings.AiProvider?.ToLowerInvariant() ?? "none";
+                var secretName = providerLower == "anthropic" ? "ai_anthropic_api_key" : "ai_openai_api_key";
+                try { apiKey = await secretStorage.RetrieveSecretAsync(secretName) ?? string.Empty; } catch { }
                 assistantService.ApplySettings(appSettings.AiProvider, appSettings.AiModel, appSettings.AiBaseUrl, apiKey);
             }
             catch (Exception ex2)
@@ -235,7 +271,7 @@ public partial class App : Application
         try
         {
             var bgService = _serviceProvider!.GetRequiredService<ITerminalBackgroundService>();
-            Task.Run(() => bgService.InitializeAsync()).GetAwaiter().GetResult();
+            await bgService.InitializeAsync();
         }
         catch (Exception ex)
         {

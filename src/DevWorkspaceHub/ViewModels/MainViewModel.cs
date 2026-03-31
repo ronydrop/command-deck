@@ -41,6 +41,7 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>AI Assistant side-panel ViewModel.</summary>
     public AssistantPanelViewModel AssistantPanel { get; }
+    public BrowserViewModel Browser { get; }
 
     [ObservableProperty] private bool _isCommandPaletteOpen;
 
@@ -147,6 +148,7 @@ public partial class MainViewModel : ObservableObject
         DashboardViewModel dashboard,
         ProcessMonitorViewModel processMonitor,
         AssistantPanelViewModel assistantPanel,
+        BrowserViewModel browserViewModel,
         CanvasItemFactory canvasItemFactory,
         IAiTerminalLauncher aiLauncher)
     {
@@ -173,6 +175,7 @@ public partial class MainViewModel : ObservableObject
         CommandPalette = commandPalette;
         WorkspaceTree = workspaceTree;
         AssistantPanel = assistantPanel;
+        Browser = browserViewModel;
 
         CommandPalette.CloseRequested += () => IsCommandPaletteOpen = false;
 
@@ -798,5 +801,6 @@ public enum ViewType
     Dashboard,
     Terminal,
     ProcessMonitor,
-    Settings
+    Settings,
+    Browser
 }

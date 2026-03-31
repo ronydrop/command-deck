@@ -150,83 +150,49 @@
                 <!-- ── LEFT GROUP: new terminal + title label ─────────────────── -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
 
-                    <!-- Novo Terminal button with refined icon -->
-                    <Button Style="{StaticResource AccentButton}"
-                            Padding="12,5"
-                            Command="{Binding DataContext.NewTerminalCommand,
-                                      RelativeSource={RelativeSource AncestorType=Window}}"
-                            ToolTip="Novo Terminal (Ctrl+Shift+T)">
+                    <!-- ── Novo Terminal split button (main + AI dropdown) ── -->
+                    <Border CornerRadius="6">
                         <StackPanel Orientation="Horizontal">
-                            <!-- Terminal icon (> _) -->
-                            <Grid Width="14" Height="14"
-                                  VerticalAlignment="Center"
-                                  Margin="0,0,7,0">
-                                <!-- Chevron ">" -->
-                                <Path Data="M2 3 L7 7 L2 11"
-                                      Stroke="White"
-                                      StrokeThickness="1.8"
-                                      StrokeLineJoin="Round"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round"
-                                      Fill="Transparent"
-                                      Stretch="None" />
-                                <!-- Cursor underscore -->
-                                <Rectangle Width="5" Height="1.5"
-                                           Fill="White"
-                                           HorizontalAlignment="Right"
-                                           VerticalAlignment="Center"
-                                           Margin="0,2,0,0" />
-                            </Grid>
-                            <TextBlock Text="Novo Terminal"
-                                       FontSize="12"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-
-                    <!-- ── AI Quick-Launch Split Button ──────────────────── -->
-                    <Border CornerRadius="6"
-                            Margin="6,0,0,0"
-                            Background="{DynamicResource Surface0Brush}">
-                        <StackPanel Orientation="Horizontal">
-                            <!-- Main: launch claude -->
-                            <Button Style="{StaticResource GhostButton}"
-                                    Padding="10,5"
-                                    Command="{Binding DataContext.LaunchClaudeCommand,
+                            <!-- Main: new terminal -->
+                            <Button Style="{StaticResource AccentButton}"
+                                    Padding="12,5"
+                                    Command="{Binding DataContext.NewTerminalCommand,
                                               RelativeSource={RelativeSource AncestorType=Window}}"
-                                    ToolTip="Abrir Claude (Ctrl+Shift+C)">
+                                    ToolTip="Novo Terminal (Ctrl+Shift+T)">
                                 <StackPanel Orientation="Horizontal">
-                                    <Border Width="16" Height="16"
-                                            CornerRadius="3"
-                                            Background="{DynamicResource AccentBrush}"
-                                            Margin="0,0,6,0">
-                                        <TextBlock Text="AI"
-                                                   Foreground="White"
-                                                   FontSize="8"
-                                                   FontWeight="Bold"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" />
-                                    </Border>
-                                    <TextBlock Text="Claude"
+                                    <Grid Width="14" Height="14"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,7,0">
+                                        <Path Data="M2 3 L7 7 L2 11"
+                                              Stroke="White"
+                                              StrokeThickness="1.8"
+                                              StrokeLineJoin="Round"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"
+                                              Fill="Transparent"
+                                              Stretch="None" />
+                                        <Rectangle Width="5" Height="1.5"
+                                                   Fill="White"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,2,0,0" />
+                                    </Grid>
+                                    <TextBlock Text="Novo Terminal"
                                                FontSize="12"
                                                FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextBrush}"
                                                VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
 
-                            <!-- Dropdown chevron -->
-                            <Rectangle Width="1" Height="18"
-                                       Fill="{DynamicResource Surface1Brush}"
-                                       Opacity="0.5" />
+                            <!-- Dropdown chevron (AI options) -->
                             <Button x:Name="AiDropdownBtn"
-                                    Style="{StaticResource GhostButton}"
-                                    Padding="5,5"
-                                    ToolTip="Mais opções AI"
+                                    Style="{StaticResource AccentButton}"
+                                    Padding="6,5"
+                                    ToolTip="Abrir terminal AI"
                                     Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}"
                                     Click="OnAiDropdownClick">
                                 <Path Data="{StaticResource ChevronDownIcon}"
-                                      Stroke="{DynamicResource SubtextBrush}"
+                                      Stroke="White"
                                       StrokeThickness="1.5"
                                       StrokeLineJoin="Round"
                                       StrokeStartLineCap="Round"
@@ -531,14 +497,14 @@
                     </ItemsControl>
                 </Canvas>
 
-                <!-- Mini-map overlay — hidden in tiled mode -->
+                <!-- Mini-map overlay — hidden -->
                 <ctrl:MiniMapControl
                     HorizontalAlignment="Right"
                     VerticalAlignment="Bottom"
                     Margin="0,0,16,16"
                     Panel.ZIndex="100"
                     DataContext="{Binding CanvasViewModel.MiniMap}"
-                    Visibility="{Binding CanvasViewModel.IsCanvasMode, Converter={StaticResource BoolToVis}}" />
+                    Visibility="Collapsed" />
 
                 <!-- Focus overlay (semi-transparent black, shown in focus mode) -->
                 <Rectangle x:Name="FocusOverlay"
@@ -546,13 +512,17 @@
                            Opacity="0"
                            IsHitTestVisible="False" />
 
-                <!-- Empty state -->
+                <!-- Empty state (lives outside WorldCanvas but follows pan/zoom via its own transform) -->
                 <StackPanel x:Name="EmptyState"
-                            VerticalAlignment="Center"
                             HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
                             IsHitTestVisible="False"
+                            RenderTransformOrigin="0.5,0.5"
                             Visibility="{Binding CanvasViewModel.Items.Count,
                                          Converter={StaticResource EmptyVisConverter}}">
+                    <StackPanel.RenderTransform>
+                        <TranslateTransform x:Name="EmptyStateTranslate" X="0" Y="0" />
+                    </StackPanel.RenderTransform>
                     <Path Data="{StaticResource TerminalIcon}"
                           Style="{StaticResource IconPathLarge}"
                           Width="56" Height="56"
@@ -666,7 +636,8 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <!-- Outer container holds accent bar + item body -->
-                                    <Grid Margin="0,2">
+                                    <Grid Margin="0,2"
+                                          x:Name="SidebarRow">
                                         <Grid.ColumnDefinitions>
                                             <!-- 3 px accent bar (left) -->
                                             <ColumnDefinition Width="3" />
@@ -691,14 +662,10 @@
                                         </Rectangle>
 
                                         <!-- Item body -->
-                                        <!-- F. Sidebar hover uses an opacity-animated overlay instead of
-                                             instant Background swap, avoiding SolidColorBrush clone issues.
-                                             A second Border (HoverOverlay) sits behind the content at Opacity=0
-                                             and fades in/out via EventTrigger MouseEnter/MouseLeave. -->
                                         <Border Grid.Column="1"
                                                 x:Name="SidebarItem"
                                                 CornerRadius="6"
-                                                Padding="10,7"
+                                                Padding="8,6"
                                                 Margin="3,0,0,0"
                                                 Cursor="Hand"
                                                 MouseDown="OnSidebarItemClick">
@@ -710,13 +677,11 @@
                                                             <Setter Property="Background"
                                                                     Value="{DynamicResource Surface0Brush}" />
                                                         </DataTrigger>
-                                                        <!-- Removed instant IsMouseOver trigger — replaced by
-                                                             animated overlay below -->
                                                     </Style.Triggers>
                                                 </Style>
                                             </Border.Style>
 
-                                            <!-- F. Mouse enter/leave: animate hover overlay opacity -->
+                                            <!-- Mouse enter/leave: animate hover overlay opacity -->
                                             <Border.Triggers>
                                                 <EventTrigger RoutedEvent="Border.MouseEnter">
                                                     <BeginStoryboard>
@@ -730,6 +695,11 @@
                                                                     <QuadraticEase EasingMode="EaseOut" />
                                                                 </DoubleAnimation.EasingFunction>
                                                             </DoubleAnimation>
+                                                            <DoubleAnimation
+                                                                Storyboard.TargetName="CloseBtn"
+                                                                Storyboard.TargetProperty="Opacity"
+                                                                To="1"
+                                                                Duration="0:0:0.150" />
                                                         </Storyboard>
                                                     </BeginStoryboard>
                                                 </EventTrigger>
@@ -745,92 +715,115 @@
                                                                     <QuadraticEase EasingMode="EaseOut" />
                                                                 </DoubleAnimation.EasingFunction>
                                                             </DoubleAnimation>
+                                                            <DoubleAnimation
+                                                                Storyboard.TargetName="CloseBtn"
+                                                                Storyboard.TargetProperty="Opacity"
+                                                                To="0"
+                                                                Duration="0:0:0.200" />
                                                         </Storyboard>
                                                     </BeginStoryboard>
                                                 </EventTrigger>
                                             </Border.Triggers>
 
-                                            <!-- F. Grid wraps HoverOverlay (behind) + DockPanel (in front).
-                                                 Border Padding="10,7" still applies to this Grid. -->
                                             <Grid>
-
-                                                <!-- F. Hover background overlay — fades in/out via EventTrigger above.
-                                                     Negative margin pulls it out to the full padded area of SidebarItem. -->
+                                                <!-- Hover background overlay -->
                                                 <Border x:Name="HoverOverlay"
                                                         CornerRadius="6"
                                                         Background="{DynamicResource Surface0Brush}"
                                                         Opacity="0"
                                                         IsHitTestVisible="False"
-                                                        Margin="-10,-7,-10,-7" />
+                                                        Margin="-8,-6,-8,-6" />
 
-                                            <DockPanel>
+                                                <DockPanel>
+                                                    <!-- Close button (right-aligned, visible on hover) -->
+                                                    <Button x:Name="CloseBtn"
+                                                            DockPanel.Dock="Right"
+                                                            Style="{StaticResource GhostButton}"
+                                                            Width="20" Height="20"
+                                                            Padding="0"
+                                                            Opacity="0"
+                                                            VerticalAlignment="Center"
+                                                            Margin="4,0,0,0"
+                                                            ToolTip="Fechar terminal"
+                                                            Click="OnSidebarCloseClick">
+                                                        <Path Data="M 3 3 L 9 9 M 9 3 L 3 9"
+                                                              Stroke="{DynamicResource SubtextBrush}"
+                                                              StrokeThickness="1.5"
+                                                              StrokeLineJoin="Round"
+                                                              StrokeStartLineCap="Round"
+                                                              StrokeEndLineCap="Round"
+                                                              Width="10" Height="10"
+                                                              Stretch="Uniform" />
+                                                    </Button>
 
-                                                <!-- Status dot (right-aligned) -->
-                                                <Ellipse DockPanel.Dock="Right"
-                                                         Width="7" Height="7"
-                                                         VerticalAlignment="Center"
-                                                         Margin="4,0,0,0">
-                                                    <Ellipse.Style>
-                                                        <Style TargetType="Ellipse">
-                                                            <Setter Property="Fill"
-                                                                    Value="{DynamicResource Surface2Brush}" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Terminal.IsConnected}"
-                                                                             Value="True">
-                                                                    <Setter Property="Fill"
-                                                                            Value="{DynamicResource AccentGreenBrush}" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Ellipse.Style>
-                                                </Ellipse>
+                                                    <!-- Status dot -->
+                                                    <Ellipse DockPanel.Dock="Right"
+                                                             Width="6" Height="6"
+                                                             VerticalAlignment="Center"
+                                                             Margin="4,0,0,0">
+                                                        <Ellipse.Style>
+                                                            <Style TargetType="Ellipse">
+                                                                <Setter Property="Fill"
+                                                                        Value="{DynamicResource Surface2Brush}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Terminal.IsConnected}"
+                                                                                 Value="True">
+                                                                        <Setter Property="Fill"
+                                                                                Value="{DynamicResource AccentGreenBrush}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Ellipse.Style>
+                                                    </Ellipse>
 
-                                                <!-- Avatar circle with first letter of title -->
-                                                <Border DockPanel.Dock="Left"
-                                                        Width="26" Height="26"
-                                                        CornerRadius="13"
-                                                        Background="{DynamicResource Surface1Brush}"
-                                                        VerticalAlignment="Center"
-                                                        Margin="0,0,8,0">
-                                                    <Border.Style>
-                                                        <Style TargetType="Border">
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsSelected}"
-                                                                             Value="True">
-                                                                    <Setter Property="Background"
-                                                                            Value="{DynamicResource AccentBrush}" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Border.Style>
-                                                    <TextBlock
-                                                        Text="{Binding Title,
-                                                               Converter={StaticResource FirstLetterConverter}}"
-                                                        FontSize="11"
-                                                        FontWeight="SemiBold"
-                                                        FontFamily="{StaticResource MonoFont}"
-                                                        Foreground="{DynamicResource TextBrush}"
-                                                        HorizontalAlignment="Center"
-                                                        VerticalAlignment="Center" />
-                                                </Border>
+                                                    <!-- Terminal icon -->
+                                                    <Path DockPanel.Dock="Left"
+                                                          Data="{StaticResource TerminalIcon}"
+                                                          Stroke="{DynamicResource AccentGreenBrush}"
+                                                          StrokeThickness="1.2"
+                                                          StrokeLineJoin="Round"
+                                                          StrokeStartLineCap="Round"
+                                                          StrokeEndLineCap="Round"
+                                                          Fill="Transparent"
+                                                          Stretch="Uniform"
+                                                          Width="14" Height="14"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,8,0">
+                                                        <Path.Style>
+                                                            <Style TargetType="Path">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                        <Setter Property="Stroke"
+                                                                                Value="{DynamicResource AccentBrush}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Path.Style>
+                                                    </Path>
 
-                                                <!-- Title + working directory -->
-                                                <StackPanel VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Title}"
-                                                               FontSize="12"
-                                                               Foreground="{DynamicResource TextBrush}"
-                                                               TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock
-                                                        Text="{Binding Terminal.Session.WorkingDirectory}"
-                                                        FontSize="10"
-                                                        Foreground="{DynamicResource SubtextBrush}"
-                                                        TextTrimming="CharacterEllipsis"
-                                                        Opacity="0.7"
-                                                        Margin="0,1,0,0" />
-                                                </StackPanel>
-                                            </DockPanel>
-
-                                            </Grid><!-- end HoverOverlay wrapper Grid (F) -->
+                                                    <!-- Title + shell type -->
+                                                    <StackPanel VerticalAlignment="Center"
+                                                                Margin="0,0,4,0">
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   FontSize="12"
+                                                                   Foreground="{DynamicResource TextBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   MaxWidth="140" />
+                                                        <TextBlock FontSize="10"
+                                                                   Foreground="{DynamicResource SubtextBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Opacity="0.7"
+                                                                   MaxWidth="140"
+                                                                   Margin="0,1,0,0">
+                                                            <TextBlock.Text>
+                                                                <MultiBinding StringFormat="{}{0}">
+                                                                    <Binding Path="ShellType" />
+                                                                </MultiBinding>
+                                                            </TextBlock.Text>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </Grid>
                                         </Border>
                                     </Grid>
                                 </DataTemplate>

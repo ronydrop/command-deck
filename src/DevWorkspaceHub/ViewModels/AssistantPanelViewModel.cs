@@ -278,6 +278,7 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
         SelectedProviderLabel = value switch
         {
             AssistantProviderType.OpenAI => "OpenAI",
+            AssistantProviderType.Anthropic => "Claude",
             AssistantProviderType.Ollama => "Local",
             _ => "Nenhum"
         };
@@ -303,10 +304,11 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
 
             SelectedProvider = providerSetting switch
             {
-                "openai" => AssistantProviderType.OpenAI,
-                "local"  => AssistantProviderType.Ollama,
-                "ollama" => AssistantProviderType.Ollama,
-                _        => AssistantProviderType.None
+                "openai"    => AssistantProviderType.OpenAI,
+                "anthropic" => AssistantProviderType.Anthropic,
+                "local"     => AssistantProviderType.Ollama,
+                "ollama"    => AssistantProviderType.Ollama,
+                _           => AssistantProviderType.None
             };
 
             if (SelectedProvider == AssistantProviderType.None)
@@ -332,9 +334,12 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
 
             StatusText = available
                 ? "Pronto"
-                : SelectedProvider == AssistantProviderType.Ollama
-                    ? "Ollama indisponível. Execute 'ollama serve' para iniciar."
-                    : "OpenAI indisponível. Verifique sua API key nas Configurações.";
+                : SelectedProvider switch
+                {
+                    AssistantProviderType.Ollama => "Ollama indisponível. Execute 'ollama serve' para iniciar.",
+                    AssistantProviderType.Anthropic => "Anthropic indisponível. Verifique sua API key nas Configurações.",
+                    _ => "OpenAI indisponível. Verifique sua API key nas Configurações."
+                };
         }
         catch (Exception ex)
         {
@@ -365,7 +370,8 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
             var hint = SelectedProvider switch
             {
                 AssistantProviderType.Ollama => "Verifique se o Ollama está em execução: 'ollama serve'",
-                AssistantProviderType.OpenAI => "Verifique sua API key nas Configurações.",
+                AssistantProviderType.OpenAI => "Verifique sua API key do OpenAI nas Configurações.",
+                AssistantProviderType.Anthropic => "Verifique sua API key da Anthropic nas Configurações.",
                 _ => "Configure um provider nas Configurações (Ctrl+,)."
             };
             StatusText = hint;
@@ -445,6 +451,13 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
         Messages.Add(ChatMessage.FromAssistant(text));
     }
 
+    public void ReceiveElementContext(string formattedContext)
+    {
+        Messages.Add(ChatMessage.FromUser($"[🔍 Elemento capturado do browser]\n\n{formattedContext}"));
+        InputText = "Analise este elemento e identifique possíveis melhorias.";
+        StatusText = "Contexto de elemento recebido";
+    }
+
     /// <summary>
     /// Called when SettingsService fires SettingsChanged (e.g. after user saves Settings).
     /// Re-applies AI configuration to the AssistantService and refreshes provider info
@@ -466,11 +479,13 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
         try
         {
             var apiKey = string.Empty;
-            if (string.Equals(settings.AiProvider, "openai", StringComparison.OrdinalIgnoreCase))
+            var providerLower = settings.AiProvider?.ToLowerInvariant() ?? "none";
+            if (providerLower is "openai" or "anthropic")
             {
+                var secretName = providerLower == "anthropic" ? "ai_anthropic_api_key" : "ai_openai_api_key";
                 try
                 {
-                    apiKey = await _secretStorageService.RetrieveSecretAsync("ai_openai_api_key") ?? string.Empty;
+                    apiKey = await _secretStorageService.RetrieveSecretAsync(secretName) ?? string.Empty;
                 }
                 catch { /* secure storage may not be available */ }
             }

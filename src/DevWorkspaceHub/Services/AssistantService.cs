@@ -75,9 +75,12 @@ public sealed class AssistantService : IAssistantService
         {
             _active = found;
             _settings.ActiveProvider = type;
-            var model = type == AssistantProviderType.OpenAI
-                ? _settings.OpenAIModel
-                : _settings.OllamaModel;
+            var model = type switch
+            {
+                AssistantProviderType.OpenAI => _settings.OpenAIModel,
+                AssistantProviderType.Anthropic => _settings.AnthropicModel,
+                _ => _settings.OllamaModel
+            };
             _ = _db.SaveAssistantPreferencesAsync(found.ProviderName, model);
         }
     }
@@ -87,9 +90,12 @@ public sealed class AssistantService : IAssistantService
         var prefs = await _db.GetAssistantPreferencesAsync();
         if (prefs is null) return;
 
-        var providerType = prefs.Value.providerName == "OpenAI"
-            ? AssistantProviderType.OpenAI
-            : AssistantProviderType.Ollama;
+        var providerType = prefs.Value.providerName switch
+        {
+            "OpenAI" => AssistantProviderType.OpenAI,
+            "Anthropic" => AssistantProviderType.Anthropic,
+            _ => AssistantProviderType.Ollama
+        };
 
         var found = ResolveProvider(providerType);
         if (found is not null)
@@ -97,10 +103,18 @@ public sealed class AssistantService : IAssistantService
             _active = found;
             _settings.ActiveProvider = providerType;
 
-            if (providerType == AssistantProviderType.Ollama)
-                _settings.OllamaModel = prefs.Value.model;
-            else
-                _settings.OpenAIModel = prefs.Value.model;
+            switch (providerType)
+            {
+                case AssistantProviderType.Anthropic:
+                    _settings.AnthropicModel = prefs.Value.model;
+                    break;
+                case AssistantProviderType.OpenAI:
+                    _settings.OpenAIModel = prefs.Value.model;
+                    break;
+                default:
+                    _settings.OllamaModel = prefs.Value.model;
+                    break;
+            }
         }
     }
 
@@ -176,23 +190,29 @@ public sealed class AssistantService : IAssistantService
         // Map the Settings-screen provider string to the enum
         var providerType = provider?.ToLowerInvariant() switch
         {
-            "openai"  => AssistantProviderType.OpenAI,
-            "local"   => AssistantProviderType.Ollama,
-            "ollama"  => AssistantProviderType.Ollama,
-            _         => AssistantProviderType.None
+            "openai"    => AssistantProviderType.OpenAI,
+            "anthropic" => AssistantProviderType.Anthropic,
+            "local"     => AssistantProviderType.Ollama,
+            "ollama"    => AssistantProviderType.Ollama,
+            _           => AssistantProviderType.None
         };
 
         // Update the shared AssistantSettings object (singleton, used by providers)
-        if (providerType == AssistantProviderType.OpenAI)
+        switch (providerType)
         {
-            _settings.OpenAIModel = !string.IsNullOrWhiteSpace(model) ? model : _settings.OpenAIModel;
-            _settings.OpenAIKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _settings.OpenAIKey;
-        }
-        else if (providerType == AssistantProviderType.Ollama)
-        {
-            _settings.OllamaModel = !string.IsNullOrWhiteSpace(model) ? model : _settings.OllamaModel;
-            if (!string.IsNullOrWhiteSpace(baseUrl))
-                _settings.OllamaBaseUrl = baseUrl;
+            case AssistantProviderType.OpenAI:
+                _settings.OpenAIModel = !string.IsNullOrWhiteSpace(model) ? model : _settings.OpenAIModel;
+                _settings.OpenAIKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _settings.OpenAIKey;
+                break;
+            case AssistantProviderType.Anthropic:
+                _settings.AnthropicModel = !string.IsNullOrWhiteSpace(model) ? model : _settings.AnthropicModel;
+                _settings.AnthropicKey = !string.IsNullOrWhiteSpace(apiKey) ? apiKey : _settings.AnthropicKey;
+                break;
+            case AssistantProviderType.Ollama:
+                _settings.OllamaModel = !string.IsNullOrWhiteSpace(model) ? model : _settings.OllamaModel;
+                if (!string.IsNullOrWhiteSpace(baseUrl))
+                    _settings.OllamaBaseUrl = baseUrl;
+                break;
         }
 
         _settings.ActiveProvider = providerType;
@@ -204,9 +224,12 @@ public sealed class AssistantService : IAssistantService
             if (found is not null)
             {
                 _active = found;
-                var modelName = providerType == AssistantProviderType.OpenAI
-                    ? _settings.OpenAIModel
-                    : _settings.OllamaModel;
+                var modelName = providerType switch
+                {
+                    AssistantProviderType.OpenAI => _settings.OpenAIModel,
+                    AssistantProviderType.Anthropic => _settings.AnthropicModel,
+                    _ => _settings.OllamaModel
+                };
                 _ = _db.SaveAssistantPreferencesAsync(found.ProviderName, modelName);
             }
         }
@@ -221,6 +244,7 @@ public sealed class AssistantService : IAssistantService
         {
             AssistantProviderType.Ollama => "Ollama",
             AssistantProviderType.OpenAI => "OpenAI",
+            AssistantProviderType.Anthropic => "Anthropic",
             _ => null
         };
 

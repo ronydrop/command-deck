@@ -15,7 +15,7 @@
         <conv:StringToVisibilityConverter x:Key="StringToVis" />
     </UserControl.Resources>
 
-    <Grid Margin="24,24" MaxWidth="1400" HorizontalAlignment="Center">
+    <Grid Margin="24,24" MaxWidth="1800" HorizontalAlignment="Center">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -242,11 +242,11 @@
                                        Style="{StaticResource BodyText}" VerticalAlignment="Center" />
                             <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
                                 <Button Content="Selecionar..."
-                                        Style="{StaticResource GlassButton}"
+                                        Style="{StaticResource GhostButton}"
                                         Command="{Binding BrowseTerminalWallpaperCommand}"
                                         Margin="0,0,8,0" Padding="12,6" />
                                 <Button Content="Limpar"
-                                        Style="{StaticResource GlassButton}"
+                                        Style="{StaticResource GhostButton}"
                                         Command="{Binding ClearTerminalWallpaperCommand}"
                                         Padding="12,6"
                                         Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}" />
@@ -435,7 +435,7 @@
                             <!-- Reset -->
                             <Button Grid.Row="10" Grid.Column="1"
                                     Content="Restaurar Padrão"
-                                    Style="{StaticResource GlassButton}"
+                                    Style="{StaticResource GhostButton}"
                                     Command="{Binding ClearTerminalWallpaperCommand}"
                                     HorizontalAlignment="Left"
                                     Padding="16,6"
@@ -710,16 +710,16 @@
                                      Margin="0,0,0,10"
                                      Visibility="{Binding IsLocalProvider, Converter={StaticResource BoolToVis}}" />
 
-                            <!-- Chave API (visível quando provider = openai) -->
+                            <!-- Chave API (visível quando provider = openai ou anthropic) -->
                             <TextBlock Grid.Row="3" Grid.Column="0" Text="Chave API"
                                        Style="{StaticResource BodyText}" VerticalAlignment="Center"
-                                       Visibility="{Binding IsOpenAiProvider, Converter={StaticResource BoolToVis}}" />
+                                       Visibility="{Binding IsApiKeyProvider, Converter={StaticResource BoolToVis}}" />
                             <PasswordBox Grid.Row="3" Grid.Column="1"
                                          Style="{StaticResource DarkPasswordBox}"
                                          helpers:PasswordBoxHelper.BoundPassword="{Binding AiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         Tag="sk-..."
+                                         Tag="sk-ant-... ou sk-..."
                                          Margin="0,0,0,10"
-                                         Visibility="{Binding IsOpenAiProvider, Converter={StaticResource BoolToVis}}" />
+                                         Visibility="{Binding IsApiKeyProvider, Converter={StaticResource BoolToVis}}" />
 
                             <!-- Máximo de Mensagens (visível quando AI habilitado) -->
                             <TextBlock Grid.Row="4" Grid.Column="0" Text="Mensagens de Contexto"
@@ -861,13 +861,13 @@
                                     <Setter.Value>
                                         <ControlTemplate TargetType="CheckBox">
                                             <Border x:Name="Track"
-                                                    Width="36" Height="20"
-                                                    CornerRadius="10"
+                                                    Width="40" Height="22"
+                                                    CornerRadius="11"
                                                     Background="{DynamicResource Surface2Brush}"
                                                     Cursor="Hand"
                                                     VerticalAlignment="Center">
                                                 <Ellipse x:Name="Thumb"
-                                                         Width="14" Height="14"
+                                                         Width="16" Height="16"
                                                          Fill="{DynamicResource SubtextBrush}"
                                                          HorizontalAlignment="Left"
                                                          Margin="3,0,0,0" />
@@ -876,15 +876,14 @@
                                                 <Trigger Property="IsChecked" Value="True">
                                                     <Setter TargetName="Track" Property="Background"
                                                             Value="{DynamicResource AccentBrush}" />
-                                                    <Setter TargetName="Thumb" Property="Fill"
-                                                            Value="{DynamicResource TextBrush}" />
+                                                    <Setter TargetName="Thumb" Property="Fill" Value="White" />
                                                     <Setter TargetName="Thumb" Property="HorizontalAlignment"
                                                             Value="Right" />
                                                     <Setter TargetName="Thumb" Property="Margin"
                                                             Value="0,0,3,0" />
                                                 </Trigger>
                                                 <Trigger Property="IsEnabled" Value="False">
-                                                    <Setter TargetName="Track" Property="Opacity" Value="0.4" />
+                                                    <Setter TargetName="Track" Property="Opacity" Value="0.35" />
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
@@ -894,34 +893,44 @@
                         </StackPanel.Resources>
 
                         <TextBlock Text="Notificações" Style="{StaticResource SubheadingText}"
-                                   Margin="0,0,0,12" />
+                                   Margin="0,0,0,16" />
 
                         <!-- Master toggle -->
-                        <Grid Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Notificações ativas"
-                                       Style="{StaticResource BodyText}"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center" />
-                            <CheckBox Grid.Column="1"
-                                      Style="{StaticResource ToggleSwitch}"
-                                      IsChecked="{Binding NotificationsEnabled}" />
-                        </Grid>
-
-                        <!-- Per-source toggles grouped -->
                         <Border Background="{DynamicResource Surface0Brush}"
-                                CornerRadius="8"
-                                Padding="14,10"
-                                Margin="0,0,0,12">
-                            <StackPanel>
-                                <TextBlock Text="Fontes de notificação"
-                                           Style="{StaticResource CaptionText}"
-                                           Margin="0,0,0,10" />
+                                CornerRadius="8" Padding="16,12" Margin="0,0,0,16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="Notificações ativas"
+                                               Style="{StaticResource BodyText}"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="Habilita ou desabilita todas as notificações do sistema"
+                                               Style="{StaticResource CaptionText}"
+                                               Opacity="0.6" Margin="0,2,0,0" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="1"
+                                          Style="{StaticResource ToggleSwitch}"
+                                          IsChecked="{Binding NotificationsEnabled}" />
+                            </Grid>
+                        </Border>
 
-                                <Grid Margin="16,0,0,8">
+                        <!-- Per-source toggles -->
+                        <TextBlock Text="FONTES DE NOTIFICAÇÃO"
+                                   Style="{StaticResource CaptionText}"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource SubtextBrush}"
+                                   Opacity="0.7"
+                                   FontSize="10"
+                                   Margin="4,0,0,8" />
+
+                        <Border Background="{DynamicResource Surface0Brush}"
+                                CornerRadius="8" Padding="0" Margin="0,0,0,16">
+                            <StackPanel>
+                                <!-- Terminal -->
+                                <Grid Margin="16,12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -934,7 +943,9 @@
                                               IsChecked="{Binding NotifyTerminalEvents}"
                                               IsEnabled="{Binding NotificationsEnabled}" />
                                 </Grid>
-                                <Grid Margin="16,0,0,8">
+                                <Rectangle Height="1" Fill="{DynamicResource Surface1Brush}" Opacity="0.4" Margin="16,0" />
+                                <!-- Git -->
+                                <Grid Margin="16,12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -947,7 +958,9 @@
                                               IsChecked="{Binding NotifyGitEvents}"
                                               IsEnabled="{Binding NotificationsEnabled}" />
                                 </Grid>
-                                <Grid Margin="16,0,0,8">
+                                <Rectangle Height="1" Fill="{DynamicResource Surface1Brush}" Opacity="0.4" Margin="16,0" />
+                                <!-- Processos -->
+                                <Grid Margin="16,12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -960,7 +973,9 @@
                                               IsChecked="{Binding NotifyProcessEvents}"
                                               IsEnabled="{Binding NotificationsEnabled}" />
                                 </Grid>
-                                <Grid Margin="16,0,0,8">
+                                <Rectangle Height="1" Fill="{DynamicResource Surface1Brush}" Opacity="0.4" Margin="16,0" />
+                                <!-- Assistente IA -->
+                                <Grid Margin="16,12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -973,7 +988,9 @@
                                               IsChecked="{Binding NotifyAiEvents}"
                                               IsEnabled="{Binding NotificationsEnabled}" />
                                 </Grid>
-                                <Grid Margin="16,0,0,0">
+                                <Rectangle Height="1" Fill="{DynamicResource Surface1Brush}" Opacity="0.4" Margin="16,0" />
+                                <!-- Sistema -->
+                                <Grid Margin="16,12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -990,20 +1007,27 @@
                         </Border>
 
                         <!-- Sound toggle -->
-                        <Separator Style="{StaticResource DarkSeparator}" Margin="0,0,0,10" />
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Som de notificação"
-                                       Style="{StaticResource BodyText}"
-                                       VerticalAlignment="Center" />
-                            <CheckBox Grid.Column="1"
-                                      Style="{StaticResource ToggleSwitch}"
-                                      IsChecked="{Binding NotificationSoundEnabled}"
-                                      IsEnabled="{Binding NotificationsEnabled}" />
-                        </Grid>
+                        <Border Background="{DynamicResource Surface0Brush}"
+                                CornerRadius="8" Padding="16,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="Som de notificação"
+                                               Style="{StaticResource BodyText}"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="Reproduz um som ao receber notificações"
+                                               Style="{StaticResource CaptionText}"
+                                               Opacity="0.6" Margin="0,2,0,0" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="1"
+                                          Style="{StaticResource ToggleSwitch}"
+                                          IsChecked="{Binding NotificationSoundEnabled}"
+                                          IsEnabled="{Binding NotificationsEnabled}" />
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </Border>
 
@@ -1013,155 +1037,157 @@
                         <TextBlock Text="Sobre" Style="{StaticResource SubheadingText}"
                                    Margin="0,0,0,16" />
 
-                        <!-- App identity -->
-                        <StackPanel Margin="0,0,0,16">
-                            <TextBlock Text="Dev Workspace Hub"
-                                       FontSize="22" FontWeight="Bold"
-                                       Foreground="{DynamicResource AccentMauveBrush}"
-                                       Margin="0,0,0,8" />
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <Border CornerRadius="12" Padding="10,4">
-                                    <Border.Background>
-                                        <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.15" />
-                                    </Border.Background>
-                                    <TextBlock VerticalAlignment="Center">
-                                        <Run Text="v" FontWeight="SemiBold"
-                                             Foreground="{DynamicResource AccentBrush}" />
-                                        <Run Text="{Binding AppVersion, Mode=OneWay}"
-                                             FontFamily="{StaticResource MonoFont}"
-                                             FontWeight="SemiBold"
-                                             Foreground="{DynamicResource AccentBrush}" />
-                                    </TextBlock>
-                                </Border>
+                        <!-- App identity hero -->
+                        <Border Background="{DynamicResource Surface0Brush}"
+                                CornerRadius="10" Padding="20,18" Margin="0,0,0,20">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <!-- App icon placeholder -->
+                                    <Border Width="42" Height="42" CornerRadius="10"
+                                            Background="{DynamicResource AccentBrush}"
+                                            Margin="0,0,14,0">
+                                        <TextBlock Text="DW" FontSize="16" FontWeight="Bold"
+                                                   Foreground="White"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Dev Workspace Hub"
+                                                   FontSize="20" FontWeight="Bold"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                            <Border CornerRadius="4" Padding="8,2"
+                                                    Background="{DynamicResource AccentBrush}"
+                                                    Margin="0,0,8,0">
+                                                <TextBlock VerticalAlignment="Center">
+                                                    <Run Text="v" FontWeight="SemiBold" Foreground="White" />
+                                                    <Run Text="{Binding AppVersion, Mode=OneWay}"
+                                                         FontFamily="{StaticResource MonoFont}"
+                                                         FontWeight="SemiBold" Foreground="White" />
+                                                </TextBlock>
+                                            </Border>
+                                            <TextBlock Text="MIT License"
+                                                       Style="{StaticResource CaptionText}"
+                                                       Opacity="0.5"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                                <TextBlock Text="Terminal manager e dashboard de desenvolvimento para Windows."
+                                           Style="{StaticResource BodyText}"
+                                           TextWrapping="Wrap"
+                                           Opacity="0.75"
+                                           Margin="0,4,0,0" />
                             </StackPanel>
-                            <TextBlock Text="Terminal manager e dashboard de desenvolvimento para Windows."
-                                       Style="{StaticResource BodyText}"
-                                       TextWrapping="Wrap"
-                                       Opacity="0.85" />
-                        </StackPanel>
-
-                        <Separator Style="{StaticResource DarkSeparator}" Margin="0,0,0,14" />
-
-                        <!-- Credits -->
-                        <TextBlock Text="Créditos" Style="{StaticResource BodyText}"
-                                   FontWeight="SemiBold" Margin="0,0,0,10" />
-
-                        <!-- Credit items as mini-cards -->
-                        <Border Background="{DynamicResource Surface0Brush}"
-                                CornerRadius="8" Padding="14,10"
-                                Margin="0,0,0,6">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Dev"
-                                           Style="{StaticResource CaptionText}"
-                                           FontFamily="{StaticResource MonoFont}"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AccentBlueBrush}"
-                                           VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="2" Text="Rony Oliveira"
-                                           Style="{StaticResource BodyText}"
-                                           VerticalAlignment="Center" />
-                            </Grid>
-                        </Border>
-                        <Border Background="{DynamicResource Surface0Brush}"
-                                CornerRadius="8" Padding="14,10"
-                                Margin="0,0,0,6">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Repo"
-                                           Style="{StaticResource CaptionText}"
-                                           FontFamily="{StaticResource MonoFont}"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AccentBlueBrush}"
-                                           VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="2" Text="github.com/ronydrop/dev-workspace-hub"
-                                           Style="{StaticResource BodyText}"
-                                           FontFamily="{StaticResource MonoFont}"
-                                           FontSize="12"
-                                           VerticalAlignment="Center" />
-                            </Grid>
-                        </Border>
-                        <Border Background="{DynamicResource Surface0Brush}"
-                                CornerRadius="8" Padding="14,10"
-                                Margin="0,0,0,6">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="License"
-                                           Style="{StaticResource CaptionText}"
-                                           FontFamily="{StaticResource MonoFont}"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AccentBlueBrush}"
-                                           VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="2" Text="MIT"
-                                           Style="{StaticResource BodyText}"
-                                           VerticalAlignment="Center" />
-                            </Grid>
-                        </Border>
-                        <Border Background="{DynamicResource Surface0Brush}"
-                                CornerRadius="8" Padding="14,10"
-                                Margin="0,0,0,16">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Stack"
-                                           Style="{StaticResource CaptionText}"
-                                           FontFamily="{StaticResource MonoFont}"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AccentBlueBrush}"
-                                           VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="2" Text=".NET 8 + WPF + CommunityToolkit.Mvvm"
-                                           Style="{StaticResource BodyText}"
-                                           FontFamily="{StaticResource MonoFont}"
-                                           FontSize="12"
-                                           VerticalAlignment="Center" />
-                            </Grid>
                         </Border>
 
-                        <Separator Style="{StaticResource DarkSeparator}" Margin="0,0,0,14" />
+                        <!-- Credits in a single grouped card -->
+                        <TextBlock Text="INFORMAÇÕES"
+                                   Style="{StaticResource CaptionText}"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource SubtextBrush}"
+                                   Opacity="0.7"
+                                   FontSize="10"
+                                   Margin="4,0,0,8" />
+
+                        <Border Background="{DynamicResource Surface0Brush}"
+                                CornerRadius="8" Padding="0" Margin="0,0,0,20">
+                            <StackPanel>
+                                <!-- Dev -->
+                                <Grid Margin="16,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Dev"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontWeight="SemiBold" FontSize="11"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="Rony Oliveira"
+                                               Style="{StaticResource BodyText}"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                                <Rectangle Height="1" Fill="{DynamicResource Surface1Brush}" Opacity="0.4" Margin="16,0" />
+                                <!-- Repo -->
+                                <Grid Margin="16,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Repo"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontWeight="SemiBold" FontSize="11"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="github.com/ronydrop/dev-workspace-hub"
+                                               Style="{StaticResource BodyText}"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontSize="12"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                                <Rectangle Height="1" Fill="{DynamicResource Surface1Brush}" Opacity="0.4" Margin="16,0" />
+                                <!-- Stack -->
+                                <Grid Margin="16,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Stack"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontWeight="SemiBold" FontSize="11"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1"
+                                               Text=".NET 8 + WPF + CommunityToolkit.Mvvm"
+                                               Style="{StaticResource BodyText}"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               FontSize="12"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
 
                         <!-- Update check -->
-                        <TextBlock Text="Atualizações" Style="{StaticResource BodyText}"
-                                   FontWeight="SemiBold" Margin="0,0,0,10" />
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <Button Style="{StaticResource AccentButton}"
-                                    Content="Verificar Atualizações"
-                                    Command="{Binding CheckForUpdateCommand}"
-                                    Padding="16,8"
-                                    FontSize="13"
-                                    Margin="0,0,10,0" />
-                            <Button Style="{StaticResource GhostButton}"
-                                    Content="Baixar Atualização"
-                                    Command="{Binding OpenUpdatePageCommand}"
-                                    Visibility="{Binding HasUpdate, Converter={StaticResource BoolToVis}}"
-                                    Padding="16,8"
-                                    FontSize="13" />
-                        </StackPanel>
-                        <TextBlock Text="{Binding UpdateStatusText}"
+                        <TextBlock Text="ATUALIZAÇÕES"
                                    Style="{StaticResource CaptionText}"
-                                   Margin="0,4,0,0"
-                                   Visibility="{Binding UpdateStatusText, Converter={StaticResource NullToVis}}" />
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource SubtextBrush}"
+                                   Opacity="0.7"
+                                   FontSize="10"
+                                   Margin="4,0,0,8" />
+
+                        <Border Background="{DynamicResource Surface0Brush}"
+                                CornerRadius="8" Padding="16,14">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <Button Style="{StaticResource AccentButton}"
+                                            Content="Verificar Atualizações"
+                                            Command="{Binding CheckForUpdateCommand}"
+                                            Padding="16,8"
+                                            FontSize="13"
+                                            Margin="0,0,10,0" />
+                                    <Button Style="{StaticResource GhostButton}"
+                                            Content="Baixar Atualização"
+                                            Command="{Binding OpenUpdatePageCommand}"
+                                            Visibility="{Binding HasUpdate, Converter={StaticResource BoolToVis}}"
+                                            Padding="16,8"
+                                            FontSize="13" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding UpdateStatusText}"
+                                           Style="{StaticResource CaptionText}"
+                                           Opacity="0.6"
+                                           Visibility="{Binding UpdateStatusText, Converter={StaticResource NullToVis}}" />
+                            </StackPanel>
+                        </Border>
 
                         <!-- Footer -->
-                        <Separator Style="{StaticResource DarkSeparator}" Margin="0,14,0,10" />
                         <TextBlock HorizontalAlignment="Center"
                                    Style="{StaticResource CaptionText}"
-                                   Opacity="0.5"
-                                   FontSize="11">
+                                   Opacity="0.35"
+                                   FontSize="11"
+                                   Margin="0,20,0,0">
                             <Run Text="Made with C# and WPF" />
                         </TextBlock>
                     </StackPanel>

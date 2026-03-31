@@ -64,6 +64,9 @@
     <Geometry x:Key="ChevronRightIcon">M9 18L15 12L9 6</Geometry>
     <Geometry x:Key="ChevronLeftIcon">M15 18L9 12L15 6</Geometry>
     <Geometry x:Key="ChevronDownIcon">M6 9L12 15L18 9</Geometry>
+    <Geometry x:Key="BrowserIcon">M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM2 12H22M12 2C14.5013 4.73835 15.9228 8.29203 16 12C15.9228 15.708 14.5013 19.2616 12 22M12 2C9.49872 4.73835 8.07725 8.29203 8 12C8.07725 15.708 9.49872 19.2616 12 22</Geometry>
+    <Geometry x:Key="ArrowBackIcon">M19 12H5M12 19L5 12L12 5</Geometry>
+    <Geometry x:Key="ArrowForwardIcon">M5 12H19M12 5L19 12L12 19</Geometry>
 
     <!-- ═══════════════════════════════════════════════════════════════════════
          ICON STYLE (for Path elements using icons)

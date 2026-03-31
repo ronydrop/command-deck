@@ -43,5 +43,9 @@ public enum AiPromptIntent
     ExplainOutput,
     SuggestCommand,
     GeneralQuestion,
-    SendContext
+    SendContext,
+    AnalyzeElement,
+    FixElementBug,
+    ImproveElementUX,
+    LocateElementCode
 }

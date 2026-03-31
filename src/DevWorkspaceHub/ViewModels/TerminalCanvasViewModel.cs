@@ -213,6 +213,38 @@ public partial class TerminalCanvasViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Auto-arranges all items using the free canvas cascade layout.
+    /// Widgets that were hidden (off-screen) get their dimensions restored first.
+    /// </summary>
+    private void RecalculateFreeCanvasLayout()
+    {
+        // Restore widget dimensions from stash before laying out
+        foreach (var widget in _workspaceService.Items.OfType<WidgetCanvasItemViewModel>())
+        {
+            if (widget.HasFreePositionStash)
+                widget.RestoreFreePosition();
+        }
+
+        var allItems = _workspaceService.Items.ToList();
+        if (allItems.Count == 0) return;
+
+        double vpW = ViewportWidth > 0 ? ViewportWidth : 1200;
+        double vpH = ViewportHeight > 0 ? ViewportHeight : 800;
+
+        var layout = _freeStrategy.CalculateLayout(allItems.Count, vpW, vpH);
+
+        for (int i = 0; i < allItems.Count && i < layout.Placements.Count; i++)
+        {
+            var p = layout.Placements[i];
+            var item = allItems[i];
+            item.X = p.X;
+            item.Y = p.Y;
+            item.Width = p.Width;
+            item.Height = p.Height;
+        }
+    }
+
     private void OnItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (IsTiledMode) RecalculateTiledLayout();
@@ -242,11 +274,9 @@ public partial class TerminalCanvasViewModel : ObservableObject
         }
         else // Returning to FreeCanvas
         {
-            // Restore free-canvas positions
-            foreach (var item in Items)
-                item.RestoreFreePosition();
-
-            // Restore widgets visibility (width/height restored by RestoreFreePosition)
+            // Auto-arrange all items using the free canvas layout strategy
+            // instead of restoring old positions (which may be chaotic)
+            RecalculateFreeCanvasLayout();
         }
 
         LayoutModeChanged?.Invoke(newValue);

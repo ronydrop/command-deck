@@ -6,15 +6,22 @@ namespace DevWorkspaceHub.Services;
 
 /// <summary>
 /// Layout strategy for tiled mode.
-/// Calculates grid positions to fill the viewport proportionally.
+/// Arranges terminals in a single horizontal row (infinite strip to the right).
+/// Each terminal occupies the full viewport height and a proportional width.
+/// When few terminals fit the viewport they share its width equally;
+/// once they would become too narrow, a fixed minimum width is used and
+/// the strip extends beyond the viewport (scroll via drag-to-pan).
 /// </summary>
 public class TiledLayoutStrategy : ILayoutStrategy
 {
     private const double Gap = 4;
 
+    /// <summary>Minimum width for a single terminal tile in the horizontal strip.</summary>
+    private const double MinTileWidth = 480;
+
     public LayoutMode Mode => LayoutMode.Tiled;
     public bool SupportsDrag => false;
-    public bool SupportsPanZoom => false;
+    public bool SupportsPanZoom => true;   // horizontal pan enabled
     public bool SupportsResize => false;
 
     public TileLayout CalculateLayout(int itemCount, double viewportWidth, double viewportHeight)
@@ -22,121 +29,29 @@ public class TiledLayoutStrategy : ILayoutStrategy
         if (itemCount <= 0 || viewportWidth <= 0 || viewportHeight <= 0)
             return new TileLayout(0, 0, Array.Empty<TilePlacement>());
 
-        return itemCount switch
-        {
-            1 => BuildSingleLayout(viewportWidth, viewportHeight),
-            2 => BuildTwoColumnLayout(viewportWidth, viewportHeight),
-            3 => BuildMasterStackLayout(viewportWidth, viewportHeight),
-            4 => BuildGridLayout(2, 2, 4, viewportWidth, viewportHeight),
-            5 => BuildFiveLayout(viewportWidth, viewportHeight),
-            6 => BuildGridLayout(2, 3, 6, viewportWidth, viewportHeight),
-            _ => BuildGridLayout(
-                    rows: (int)Math.Ceiling((double)itemCount / 3),
-                    cols: 3,
-                    itemCount,
-                    viewportWidth,
-                    viewportHeight)
-        };
+        return BuildHorizontalStripLayout(itemCount, viewportWidth, viewportHeight);
     }
 
-    // ─── 1 terminal: full area ──────────────────────────────────────────────
+    // ─── Horizontal strip: all terminals side-by-side ───────────────────────
 
-    private static TileLayout BuildSingleLayout(double vpW, double vpH)
+    private static TileLayout BuildHorizontalStripLayout(int itemCount, double vpW, double vpH)
     {
-        var p = new TilePlacement(0, Gap, Gap, vpW - Gap * 2, vpH - Gap * 2);
-        return new TileLayout(1, 1, new[] { p });
-    }
-
-    // ─── 2 terminals: side by side ──────────────────────────────────────────
-
-    private static TileLayout BuildTwoColumnLayout(double vpW, double vpH)
-    {
-        double halfW = (vpW - Gap * 3) / 2;
         double h = vpH - Gap * 2;
 
-        return new TileLayout(1, 2, new[]
-        {
-            new TilePlacement(0, Gap, Gap, halfW, h),
-            new TilePlacement(1, Gap * 2 + halfW, Gap, halfW, h)
-        });
-    }
+        // Try to fit all tiles evenly inside the viewport
+        double evenWidth = (vpW - Gap * (itemCount + 1)) / itemCount;
 
-    // ─── 3 terminals: master left + 2 stacked right ────────────────────────
+        // Use the larger of the even split or the minimum width
+        double tileW = Math.Max(evenWidth, MinTileWidth);
 
-    private static TileLayout BuildMasterStackLayout(double vpW, double vpH)
-    {
-        double halfW = (vpW - Gap * 3) / 2;
-        double fullH = vpH - Gap * 2;
-        double halfH = (vpH - Gap * 3) / 2;
-        double rightX = Gap * 2 + halfW;
-
-        return new TileLayout(2, 2, new[]
-        {
-            new TilePlacement(0, Gap, Gap, halfW, fullH),
-            new TilePlacement(1, rightX, Gap, halfW, halfH),
-            new TilePlacement(2, rightX, Gap * 2 + halfH, halfW, halfH)
-        });
-    }
-
-    // ─── 5 terminals: 3 top + 2 bottom ─────────────────────────────────────
-
-    private static TileLayout BuildFiveLayout(double vpW, double vpH)
-    {
-        double halfH = (vpH - Gap * 3) / 2;
-
-        // Top row: 3 columns
-        double topCellW = (vpW - Gap * 4) / 3;
-        // Bottom row: 2 columns
-        double botCellW = (vpW - Gap * 3) / 2;
-
-        double bottomY = Gap * 2 + halfH;
-
-        return new TileLayout(2, 3, new[]
-        {
-            new TilePlacement(0, Gap, Gap, topCellW, halfH),
-            new TilePlacement(1, Gap * 2 + topCellW, Gap, topCellW, halfH),
-            new TilePlacement(2, Gap * 3 + topCellW * 2, Gap, topCellW, halfH),
-            new TilePlacement(3, Gap, bottomY, botCellW, halfH),
-            new TilePlacement(4, Gap * 2 + botCellW, bottomY, botCellW, halfH)
-        });
-    }
-
-    // ─── Generic grid layout ────────────────────────────────────────────────
-
-    private static TileLayout BuildGridLayout(int rows, int cols, int itemCount, double vpW, double vpH)
-    {
-        double cellW = (vpW - Gap * (cols + 1)) / cols;
-        double cellH = (vpH - Gap * (rows + 1)) / rows;
-
-        var placements = new List<TilePlacement>();
+        var placements = new List<TilePlacement>(itemCount);
 
         for (int i = 0; i < itemCount; i++)
         {
-            int row = i / cols;
-            int col = i % cols;
-
-            // Last row: center remaining items if fewer than cols
-            int itemsInLastRow = itemCount - (rows - 1) * cols;
-            bool isLastRow = row == rows - 1 && itemsInLastRow < cols;
-
-            double x, w;
-            if (isLastRow)
-            {
-                int lastCol = i - (rows - 1) * cols;
-                w = (vpW - Gap * (itemsInLastRow + 1)) / itemsInLastRow;
-                x = Gap + lastCol * (w + Gap);
-            }
-            else
-            {
-                w = cellW;
-                x = Gap + col * (cellW + Gap);
-            }
-
-            double y = Gap + row * (cellH + Gap);
-
-            placements.Add(new TilePlacement(i, x, y, w, cellH));
+            double x = Gap + i * (tileW + Gap);
+            placements.Add(new TilePlacement(i, x, Gap, tileW, h));
         }
 
-        return new TileLayout(rows, cols, placements);
+        return new TileLayout(1, itemCount, placements);
     }
 }

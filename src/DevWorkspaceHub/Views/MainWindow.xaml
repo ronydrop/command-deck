@@ -71,6 +71,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
@@ -133,8 +134,23 @@
                     </StackPanel>
                 </Button>
 
+                <!-- Browser toggle -->
+                <Button Grid.Column="4"
+                        Style="{StaticResource GhostButton}"
+                        Command="{Binding NavigateToCommand}"
+                        CommandParameter="{x:Static vm:ViewType.Browser}"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Left"
+                        Margin="0,0,4,0"
+                        Padding="10,6">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🌐" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Browser" VerticalAlignment="Center" FontSize="13" />
+                    </StackPanel>
+                </Button>
+
                 <!-- AI Assistant toggle -->
-                <Button Grid.Column="5"
+                <Button Grid.Column="6"
                         Style="{StaticResource IconButton}"
                         Width="32" Height="32"
                         Command="{Binding ToggleAIPanelCommand}"
@@ -279,6 +295,12 @@
                 DataContext="{Binding SettingsViewModel}"
                 Visibility="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window},
                              Converter={StaticResource ViewTypeToVis}, ConverterParameter=Settings}" />
+
+            <!-- Browser View -->
+            <views:BrowserView
+                DataContext="{Binding Browser}"
+                Visibility="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window},
+                             Converter={StaticResource ViewTypeToVis}, ConverterParameter=Browser}" />
         </Grid>
 
         <!-- ═══════════════════════════════════════════════════════════════

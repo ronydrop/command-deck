@@ -10,6 +10,7 @@
     <RootNamespace>DevWorkspaceHub</RootNamespace>
     <AssemblyName>DevWorkspaceHub</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <Version>1.0.0</Version>
     <InformationalVersion>1.0.0</InformationalVersion>
   </PropertyGroup>
@@ -18,7 +19,12 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
     <PackageReference Include="System.Management" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Scripts\element-picker.js" />
   </ItemGroup>
 
 </Project>

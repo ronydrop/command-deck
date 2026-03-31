@@ -48,7 +48,8 @@ public enum AssistantProviderType
 {
     None,
     Ollama,
-    OpenAI
+    OpenAI,
+    Anthropic
 }
 
 public class AssistantSettings
@@ -57,5 +58,7 @@ public class AssistantSettings
     public string OllamaModel { get; set; } = string.Empty;
     public string? OpenAIKey { get; set; }
     public string OpenAIModel { get; set; } = string.Empty;
+    public string? AnthropicKey { get; set; }
+    public string AnthropicModel { get; set; } = "claude-sonnet-4-20250514";
     public AssistantProviderType ActiveProvider { get; set; } = AssistantProviderType.None;
 }
