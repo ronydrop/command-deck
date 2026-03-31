@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Documents;
@@ -7,17 +6,18 @@ using System.Windows.Media;
 namespace CommandDeck.Helpers;
 
 /// <summary>
-/// Parses VT100/ANSI escape sequences from terminal output and produces
-/// WPF rich text (Inline elements) for display in a RichTextBox or FlowDocument.
+/// Parses VT100/ANSI escape sequences from terminal output and renders directly
+/// into a WPF <see cref="FlowDocument"/> using a full 2-D screen buffer.
 /// Supports: SGR colors (standard, 256-color, true color), bold, italic, underline,
-/// cursor movement (basic), clear screen/line, and OSC title sequences.
+/// full cursor addressing (ESC[H), all erase modes, scroll/insert/delete line ops,
+/// and OSC title sequences.
 /// </summary>
 public class AnsiParser
 {
     // ─── ANSI Standard Colors (indices 0–7) ─────────────────────────────────
     private static readonly Color[] StandardColors =
     {
-        Color.FromRgb(0x1E, 0x1E, 0x2E), // 0 Black (match theme background)
+        Color.FromRgb(0x1E, 0x1E, 0x2E), // 0 Black
         Color.FromRgb(0xF3, 0x8B, 0xA8), // 1 Red
         Color.FromRgb(0xA6, 0xE3, 0xA1), // 2 Green
         Color.FromRgb(0xF9, 0xE2, 0xAF), // 3 Yellow
@@ -40,8 +40,7 @@ public class AnsiParser
         Color.FromRgb(0xFF, 0xFF, 0xFF), // 15 Bright White
     };
 
-    // ─── Parser State ───────────────────────────────────────────────────────
-
+    // ─── SGR State ───────────────────────────────────────────────────────────
     private Color _foreground;
     private Color _background;
     private bool _isBold;
@@ -51,30 +50,56 @@ public class AnsiParser
     private bool _isStrikethrough;
     private bool _isInverse;
 
-    // ─── Line Buffer for cursor-aware rendering ────────────────────────────
-
-    private readonly TerminalLineBuffer _lineBuffer;
-
-    /// <summary>Number of committed inlines (before current line) in the Paragraph.</summary>
-    private int _committedInlineCount;
-
-    /// <summary>Current cursor column position within the active line.</summary>
-    public int CursorColumn => _lineBuffer.CursorCol;
-
     private readonly Color _defaultForeground;
     private readonly Color _defaultBackground;
 
     private static readonly Color FallbackFg = Color.FromRgb(0xCD, 0xD6, 0xF4);
     private static readonly Color FallbackBg = Color.FromRgb(0x1E, 0x1E, 0x2E);
 
-    /// <summary>
-    /// Creates a parser with Catppuccin Mocha defaults (backward-compatible).
-    /// </summary>
+    // ─── 2-D Screen Buffer ───────────────────────────────────────────────────
+    private readonly TerminalLineBuffer _lineBuffer;
+
+    // ─── Document Ownership ─────────────────────────────────────────────────
+    private FlowDocument? _doc;
+    private Paragraph? _screenParagraph;      // Always the last Block; rebuilt on every render
+    private const int MaxScrollbackParagraphs = 2000;
+
+    // ─── Incomplete Escape Buffer ────────────────────────────────────────────
+    private string _pendingInput = string.Empty;
+
+    // ─── Regex ───────────────────────────────────────────────────────────────
+    private static readonly Regex CsiRegex = new(
+        @"\x1B\[(?<params>[0-9;]*?)(?<final>[A-Za-z@`])",
+        RegexOptions.Compiled);
+
+    private static readonly Regex OscRegex = new(
+        @"\x1B\](?<id>\d+);(?<text>[^\x07\x1B]*?)(?:\x07|\x1B\\)",
+        RegexOptions.Compiled);
+
+    private static readonly Regex CharsetSelectRegex = new(@"\x1B[()][AB012]", RegexOptions.Compiled);
+    private static readonly Regex KeypadModeRegex    = new(@"\x1B[=>]",        RegexOptions.Compiled);
+    private static readonly Regex DecPrivateRegex    = new(@"\x1B\x5B\?[0-9;]*[A-Za-z@`]", RegexOptions.Compiled);
+    private static readonly Regex PrivateCsiRegex    = new(@"\x1B\[[><!=][0-9;]*[A-Za-z@`]", RegexOptions.Compiled);
+
+    // ─── Brush Cache ─────────────────────────────────────────────────────────
+    private static readonly Dictionary<Color, SolidColorBrush> BrushCache = new();
+
+    // ─── Public API ──────────────────────────────────────────────────────────
+
+    /// <summary>Fires when an OSC title-change sequence is received.</summary>
+    public event Action<string>? TitleChanged;
+
+    /// <summary>Fires when a bell character is received.</summary>
+    public event Action? BellReceived;
+
+    /// <summary>Current cursor column (0-based).</summary>
+    public int CursorColumn => _lineBuffer.CursorCol;
+
+    /// <summary>Current cursor row (0-based) within the visible screen.</summary>
+    public int CursorRow => _lineBuffer.CursorRow;
+
     public AnsiParser() : this(FallbackFg, FallbackBg) { }
 
-    /// <summary>
-    /// Creates a parser with theme-specific default colors.
-    /// </summary>
     public AnsiParser(Color defaultForeground, Color defaultBackground)
     {
         _defaultForeground = defaultForeground;
@@ -84,160 +109,40 @@ public class AnsiParser
         _lineBuffer = new TerminalLineBuffer(120, defaultForeground, defaultBackground);
     }
 
-    /// <summary>
-    /// Fires when an OSC title-change sequence is received.
-    /// </summary>
-    public event Action<string>? TitleChanged;
+    // ─── Document Initialization ─────────────────────────────────────────────
 
     /// <summary>
-    /// Fires when a bell character is received.
+    /// Connects this parser to a <see cref="FlowDocument"/>.
+    /// Must be called once before <see cref="ParseAndRender"/>.
+    /// Clears any existing blocks and adds the screen paragraph.
     /// </summary>
-    public event Action? BellReceived;
-
-    // Regex to match CSI sequences: ESC [ <params> <intermediate> <final>
-    private static readonly Regex CsiRegex = new(
-        @"\x1B\[(?<params>[0-9;]*?)(?<final>[A-Za-z@`])",
-        RegexOptions.Compiled);
-
-    // Regex to match OSC sequences: ESC ] <id> ; <text> (BEL | ST)
-    private static readonly Regex OscRegex = new(
-        @"\x1B\](?<id>\d+);(?<text>[^\x07\x1B]*?)(?:\x07|\x1B\\)",
-        RegexOptions.Compiled);
-
-    // Cached compiled Regex for non-CSI escape sequences stripped in Parse()
-    private static readonly Regex CharsetSelectRegex = new(@"\x1B[()][AB012]", RegexOptions.Compiled);
-    private static readonly Regex KeypadModeRegex    = new(@"\x1B[=>]",        RegexOptions.Compiled);
-    private static readonly Regex DecPrivateRegex    = new(@"\x1B\x5B\?[0-9;]*[A-Za-z@`]", RegexOptions.Compiled);
-    // Private/extended CSI: ESC [ > ... or < ... or ! ... (e.g. ESC[>0q, ESC[>4m, ESC[<u sent by Claude Code)
-    private static readonly Regex PrivateCsiRegex    = new(@"\x1B\[[><!=][0-9;]*[A-Za-z@`]", RegexOptions.Compiled);
-
-    // Frozen brush cache: avoids allocating a new SolidColorBrush per Run
-    private static readonly Dictionary<Color, SolidColorBrush> BrushCache = new();
-
-    // Buffer for incomplete escape sequences split across ConPTY read chunks
-    private string _pendingInput = string.Empty;
-
-    /// <summary>
-    /// Parses a string containing ANSI escape codes and returns a list of WPF Inline elements.
-    /// </summary>
-    public List<Inline> Parse(string input)
+    public void Initialize(FlowDocument doc)
     {
-        var inlines = new List<Inline>();
-        if (string.IsNullOrEmpty(input)) return inlines;
-
-        // Handle OSC sequences first (window titles, etc.)
-        input = OscRegex.Replace(input, match =>
-        {
-            if (int.TryParse(match.Groups["id"].Value, out int id))
-            {
-                string text = match.Groups["text"].Value;
-                if (id is 0 or 2) // Set window title
-                    TitleChanged?.Invoke(text);
-            }
-            return string.Empty;
-        });
-
-        // Remove non-CSI escape sequences we don't handle (compiled, cached)
-        input = CharsetSelectRegex.Replace(input, ""); // Character set selection
-        input = KeypadModeRegex.Replace(input, "");    // Keypad mode
-        input = DecPrivateRegex.Replace(input, "");    // DEC private modes (?...)
-        input = PrivateCsiRegex.Replace(input, "");    // Private CSI (>..., <..., !..., =...)
-
-        // Handle bell character
-        if (input.Contains('\x07'))
-        {
-            BellReceived?.Invoke();
-            input = input.Replace("\x07", "");
-        }
-
-        // Split by CSI sequences
-        int lastIndex = 0;
-        foreach (Match match in CsiRegex.Matches(input))
-        {
-            // Add text before this escape sequence (handles \x08 backspace)
-            if (match.Index > lastIndex)
-                AppendTextWithControls(input[lastIndex..match.Index], inlines);
-
-            // Process the escape sequence
-            ProcessCsiSequence(match.Groups["params"].Value, match.Groups["final"].Value[0]);
-            lastIndex = match.Index + match.Length;
-        }
-
-        // Add remaining text after last escape sequence
-        if (lastIndex < input.Length)
-            AppendTextWithControls(input[lastIndex..], inlines);
-
-        return inlines;
+        _doc = doc;
+        _doc.Blocks.Clear();
+        _screenParagraph = new Paragraph { Margin = new Thickness(0) };
+        _doc.Blocks.Add(_screenParagraph);
     }
 
-    /// <summary>
-    /// Appends text to the inline list, handling backspace (\x08) by removing
-    /// the previous character and skipping other non-printable control chars.
-    /// This enables correct visual display of shell backspace-erase sequences
-    /// like BS + SPACE + BS that readline produces when the user presses Backspace.
-    /// </summary>
-    private void AppendTextWithControls(string text, List<Inline> inlines)
-    {
-        var sb = new StringBuilder(text.Length);
-
-        foreach (char c in text)
-        {
-            if (c == '\x08') // Backspace in terminal output — erase previous char
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Length--;
-                }
-                else if (inlines.Count > 0 && inlines[^1] is Run lastRun)
-                {
-                    // Remove last char from the most recently added Run
-                    var t = lastRun.Text;
-                    if (t.Length > 1)
-                        lastRun.Text = t[..^1];
-                    else
-                        inlines.RemoveAt(inlines.Count - 1);
-                }
-            }
-            else if (c == '\n' || c == '\r' || c == '\t' || !char.IsControl(c))
-            {
-                // Flush pending buffer when formatting might change at CSI boundary
-                sb.Append(c);
-            }
-            // All other control chars (e.g. \x07 bell already removed, \x7F, etc.) are skipped
-        }
-
-        if (sb.Length > 0)
-            inlines.Add(CreateRun(sb.ToString()));
-    }
+    // ─── Main Render Entry Point ─────────────────────────────────────────────
 
     /// <summary>
-    /// Parses ANSI text and appends to an existing Paragraph.
+    /// Parses ANSI sequences from <paramref name="input"/>, writes characters
+    /// to the 2-D screen buffer, then rebuilds the document's screen paragraph.
     /// </summary>
-    public void ParseAndAppend(string input, Paragraph paragraph)
+    public void ParseAndRender(string input)
     {
-        var inlines = Parse(input);
-        foreach (var inline in inlines)
-            paragraph.Inlines.Add(inline);
-    }
-
-    /// <summary>
-    /// Parses ANSI escape codes and renders directly into the given Paragraph.
-    /// Unlike Parse(), this method handles cursor/erase operations (\r, ESC[K, ESC[J)
-    /// by manipulating the Paragraph's Inlines in-place.
-    /// Buffers incomplete escape sequences across calls to avoid garbled output.
-    /// </summary>
-    public void ParseAndRender(string input, Paragraph paragraph)
-    {
+        if (_doc == null || _screenParagraph == null) return;
         if (string.IsNullOrEmpty(input) && _pendingInput.Length == 0) return;
 
-        // Prepend any leftover partial escape sequence from the previous call
+        // Re-attach leftover partial escape from previous chunk
         if (_pendingInput.Length > 0)
         {
             input = _pendingInput + input;
             _pendingInput = string.Empty;
         }
 
-        // Check for incomplete escape sequence at the end of input and save it
+        // Save any trailing partial escape for next call
         int trailingEsc = FindTrailingPartialEscape(input);
         if (trailingEsc >= 0)
         {
@@ -246,99 +151,119 @@ public class AnsiParser
             if (input.Length == 0) return;
         }
 
-        // Handle OSC sequences (window titles, etc.)
+        // Strip OSC sequences (title changes handled via TitleChanged event)
         input = OscRegex.Replace(input, match =>
         {
             if (int.TryParse(match.Groups["id"].Value, out int id))
             {
                 string text = match.Groups["text"].Value;
-                if (id is 0 or 2)
-                    TitleChanged?.Invoke(text);
+                if (id is 0 or 2) TitleChanged?.Invoke(text);
             }
             return string.Empty;
         });
 
-        // Remove non-CSI escape sequences we don't handle
+        // Strip non-CSI sequences we don't handle
         input = CharsetSelectRegex.Replace(input, "");
         input = KeypadModeRegex.Replace(input, "");
         input = DecPrivateRegex.Replace(input, "");
         input = PrivateCsiRegex.Replace(input, "");
 
-        // Handle bell character
         if (input.Contains('\x07'))
         {
             BellReceived?.Invoke();
             input = input.Replace("\x07", "");
         }
 
-        // Split by CSI sequences and process
+        // Process: write text to buffer, apply CSI sequences to buffer
         int lastIndex = 0;
         foreach (Match match in CsiRegex.Matches(input))
         {
             if (match.Index > lastIndex)
-                RenderTextToDocument(input[lastIndex..match.Index], paragraph);
+                WriteTextToBuffer(input[lastIndex..match.Index]);
 
-            ProcessCsiWithDocument(match.Groups["params"].Value, match.Groups["final"].Value[0], paragraph);
+            ProcessCsi(match.Groups["params"].Value, match.Groups["final"].Value[0]);
             lastIndex = match.Index + match.Length;
         }
-
         if (lastIndex < input.Length)
-            RenderTextToDocument(input[lastIndex..], paragraph);
+            WriteTextToBuffer(input[lastIndex..]);
+
+        // Commit lines that scrolled off the top to scrollback paragraphs
+        CommitScrolledLines();
+
+        // Rebuild the screen paragraph from the current buffer state
+        RenderScreenToDocument();
+
+        // Limit scrollback memory
+        TrimScrollback();
     }
 
     /// <summary>
-    /// Detects an incomplete escape sequence at the end of the input.
-    /// Returns the start index of the partial sequence, or -1 if none found.
+    /// Parses a string and returns a flat list of WPF <see cref="Inline"/> elements.
+    /// Used for one-shot rendering outside of the document (e.g. tooltips).
     /// </summary>
-    private static int FindTrailingPartialEscape(string input)
+    public List<Inline> Parse(string input)
     {
-        // Search backward for the last ESC character
-        int lastEsc = input.LastIndexOf('\x1B');
-        if (lastEsc < 0) return -1;
+        var inlines = new List<Inline>();
+        if (string.IsNullOrEmpty(input)) return inlines;
 
-        string tail = input[lastEsc..];
-
-        // ESC alone at end → definitely incomplete
-        if (tail.Length == 1) return lastEsc;
-
-        char second = tail[1];
-
-        // CSI sequence: ESC [ params finalChar
-        if (second == '[')
+        input = OscRegex.Replace(input, match =>
         {
-            // Check if there's a valid final character (letter or @`)
-            for (int i = 2; i < tail.Length; i++)
+            if (int.TryParse(match.Groups["id"].Value, out int id))
             {
-                char c = tail[i];
-                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '@' || c == '`')
-                    return -1; // Complete CSI sequence found
-                if (c != ';' && (c < '0' || c > '9') && c != '?' && c != '>' && c != '<' && c != '!' && c != '=')
-                    return -1; // Invalid char — not a partial CSI, let it through
+                string text = match.Groups["text"].Value;
+                if (id is 0 or 2) TitleChanged?.Invoke(text);
             }
-            return lastEsc; // Incomplete: has ESC[ + params but no final char
-        }
+            return string.Empty;
+        });
 
-        // OSC sequence: ESC ] id ; text (BEL | ST)
-        if (second == ']')
+        input = CharsetSelectRegex.Replace(input, "");
+        input = KeypadModeRegex.Replace(input, "");
+        input = DecPrivateRegex.Replace(input, "");
+        input = PrivateCsiRegex.Replace(input, "");
+
+        if (input.Contains('\x07'))
         {
-            // Check for terminator: BEL (\x07) or ST (ESC \)
-            if (tail.Contains('\x07') || tail.Contains("\x1B\\"))
-                return -1; // Complete OSC
-            return lastEsc; // Incomplete OSC
+            BellReceived?.Invoke();
+            input = input.Replace("\x07", "");
         }
 
-        // Other 2-char sequences (charset, keypad): ESC ( A, ESC =, etc.
-        if (tail.Length >= 2)
-            return -1; // 2+ chars is enough for these short sequences
+        int lastIndex = 0;
+        foreach (Match match in CsiRegex.Matches(input))
+        {
+            if (match.Index > lastIndex)
+                AppendTextAsInlines(input[lastIndex..match.Index], inlines);
+            ProcessCsiSequence(match.Groups["params"].Value, match.Groups["final"].Value[0]);
+            lastIndex = match.Index + match.Length;
+        }
+        if (lastIndex < input.Length)
+            AppendTextAsInlines(input[lastIndex..], inlines);
 
-        return lastEsc;
+        return inlines;
     }
 
-    /// <summary>
-    /// Renders plain text (with control chars like \r, \n, \x08) into a Paragraph
-    /// using the line buffer for cursor-aware rendering.
-    /// </summary>
-    private void RenderTextToDocument(string text, Paragraph paragraph)
+    // ─── Reset & Resize ──────────────────────────────────────────────────────
+
+    /// <summary>Full reset: clears formatting, buffer state, and rebuilds the document.</summary>
+    public void Reset()
+    {
+        ResetFormatting();
+        _pendingInput = string.Empty;
+        _lineBuffer.Clear();
+        if (_doc != null) Initialize(_doc);
+    }
+
+    /// <summary>Resizes the buffer to match the terminal's new column count.</summary>
+    public void SetColumns(int columns) => SetSize(columns, _lineBuffer.ScreenRows);
+
+    /// <summary>Resizes the buffer to match both terminal width and height.</summary>
+    public void SetSize(int columns, int rows)
+    {
+        _lineBuffer.SetSize(rows, columns);
+    }
+
+    // ─── Internal: Write Text to Buffer ──────────────────────────────────────
+
+    private void WriteTextToBuffer(string text)
     {
         var fg = _isInverse ? _background : _foreground;
         var bg = _isInverse ? _foreground : _background;
@@ -347,232 +272,215 @@ public class AnsiParser
         for (int i = 0; i < text.Length; i++)
         {
             char c = text[i];
+            switch (c)
+            {
+                case '\r':
+                    if (i + 1 < text.Length && text[i + 1] == '\n')
+                    {
+                        _lineBuffer.CarriageReturn();
+                        _lineBuffer.LineFeed();
+                        i++; // skip the \n
+                    }
+                    else
+                    {
+                        _lineBuffer.CarriageReturn();
+                    }
+                    break;
 
-            if (c == '\r')
-            {
-                if (i + 1 < text.Length && text[i + 1] == '\n')
-                {
-                    // \r\n → commit current line, start new line
-                    CommitCurrentLine(paragraph);
-                    paragraph.Inlines.Add(new Run("\n"));
-                    _committedInlineCount = paragraph.Inlines.Count;
-                    _lineBuffer.Clear();
-                    i++; // skip \n
-                }
-                else
-                {
-                    // Standalone \r → cursor to column 0 (line will be overwritten)
-                    _lineBuffer.CarriageReturn();
-                }
-            }
-            else if (c == '\n')
-            {
-                CommitCurrentLine(paragraph);
-                paragraph.Inlines.Add(new Run("\n"));
-                _committedInlineCount = paragraph.Inlines.Count;
-                _lineBuffer.Clear();
-            }
-            else if (c == '\x08') // Backspace — move cursor left (NOT delete)
-            {
-                _lineBuffer.Backspace();
-            }
-            else if (c == '\t')
-            {
-                // Expand tab to next multiple of 8
-                int nextTab = ((_lineBuffer.CursorCol / 8) + 1) * 8;
-                while (_lineBuffer.CursorCol < nextTab)
-                    _lineBuffer.Write(' ', fg, bg, _isBold, _isItalic, _isUnderline);
-            }
-            else if (!char.IsControl(c))
-            {
-                _lineBuffer.Write(c, fg, bg, _isBold, _isItalic, _isUnderline);
+                case '\n':
+                    _lineBuffer.LineFeed();
+                    break;
+
+                case '\x08': // Backspace
+                    _lineBuffer.Backspace();
+                    break;
+
+                case '\t':
+                    int nextTab = ((_lineBuffer.CursorCol / 8) + 1) * 8;
+                    while (_lineBuffer.CursorCol < nextTab)
+                        _lineBuffer.Write(' ', fg, bg, _isBold, _isItalic, _isUnderline);
+                    break;
+
+                default:
+                    if (!char.IsControl(c))
+                        _lineBuffer.Write(c, fg, bg, _isBold, _isItalic, _isUnderline);
+                    break;
             }
         }
-
-        // Flush current line buffer to display (replaceable zone)
-        FlushCurrentLine(paragraph);
     }
 
-    /// <summary>
-    /// Commits the current line buffer content as permanent inlines (no longer replaceable).
-    /// Called before a newline to "freeze" the current line.
-    /// </summary>
-    private void CommitCurrentLine(Paragraph paragraph)
+    // ─── Internal: CSI Processing ────────────────────────────────────────────
+
+    private void ProcessCsi(string paramString, char finalChar)
     {
-        // Remove the replaceable current-line inlines
-        RemoveCurrentLineInlines(paragraph);
-
-        // Add the buffer content as permanent inlines
-        var runs = _lineBuffer.FlushToInlines();
-        foreach (var run in runs)
-            paragraph.Inlines.Add(run);
-
-        // Update committed count to include these new inlines
-        _committedInlineCount = paragraph.Inlines.Count;
-    }
-
-    /// <summary>
-    /// Flushes the current line buffer to display, replacing the temporary
-    /// current-line inlines with fresh Runs from the buffer.
-    /// </summary>
-    private void FlushCurrentLine(Paragraph paragraph)
-    {
-        // Remove old current-line inlines (everything after committed zone)
-        RemoveCurrentLineInlines(paragraph);
-
-        // Add new Runs from the buffer
-        var runs = _lineBuffer.FlushToInlines();
-        foreach (var run in runs)
-            paragraph.Inlines.Add(run);
-    }
-
-    /// <summary>
-    /// Removes all inlines after the committed zone (the replaceable current line).
-    /// </summary>
-    private void RemoveCurrentLineInlines(Paragraph paragraph)
-    {
-        while (paragraph.Inlines.Count > _committedInlineCount)
-            paragraph.Inlines.Remove(paragraph.Inlines.LastInline);
-    }
-
-    /// <summary>
-    /// Processes a CSI sequence with direct access to the Paragraph for erase operations
-    /// and cursor movement via the line buffer.
-    /// </summary>
-    private void ProcessCsiWithDocument(string paramString, char finalChar, Paragraph paragraph)
-    {
-        int n = string.IsNullOrEmpty(paramString) ? 1 : int.TryParse(paramString, out int p) ? p : 1;
+        int n = string.IsNullOrEmpty(paramString) ? 1
+              : int.TryParse(paramString, out int p) ? p : 1;
 
         switch (finalChar)
         {
-            case 'm':
+            case 'm': // SGR
                 ProcessSgr(paramString);
                 break;
 
-            case 'J': // Erase in Display
+            case 'J': // Erase in Display (all 4 modes)
             {
-                int mode = string.IsNullOrEmpty(paramString) ? 0 : (int.TryParse(paramString, out int jp) ? jp : 0);
-                if (mode is 2 or 3)
-                {
-                    paragraph.Inlines.Clear();
-                    _committedInlineCount = 0;
-                    _lineBuffer.Clear();
-                }
+                int mode = string.IsNullOrEmpty(paramString) ? 0
+                         : (int.TryParse(paramString, out int jp) ? jp : 0);
+                _lineBuffer.EraseDisplay(mode);
                 break;
             }
 
-            case 'K': // Erase in Line
+            case 'K': // Erase in Line (all 3 modes)
             {
-                int mode = string.IsNullOrEmpty(paramString) ? 0 : (int.TryParse(paramString, out int kp) ? kp : 0);
+                int mode = string.IsNullOrEmpty(paramString) ? 0
+                         : (int.TryParse(paramString, out int kp) ? kp : 0);
                 _lineBuffer.EraseLine(mode);
-                FlushCurrentLine(paragraph);
                 break;
             }
 
-            case 'C': // Cursor Forward
-                _lineBuffer.MoveCursorRight(n);
-                break;
-
-            case 'D': // Cursor Back
-                _lineBuffer.MoveCursorLeft(n);
-                break;
-
-            case 'G': // Cursor Horizontal Absolute (1-based)
-                _lineBuffer.MoveCursorToColumn(n - 1);
-                break;
-
-            case 'P': // Delete Characters
-                _lineBuffer.DeleteChars(n);
-                FlushCurrentLine(paragraph);
-                break;
-
-            case '@': // Insert Characters
-                _lineBuffer.InsertChars(n);
-                FlushCurrentLine(paragraph);
-                break;
-
-            case 'H': case 'f': // Cursor Position (row;col)
+            case 'H': case 'f': // Cursor Position (1-based row;col)
             {
-                // Both row and col are 1-based; default to 1 if omitted
                 var parts = (paramString ?? "").Split(';');
                 int row = parts.Length >= 1 && int.TryParse(parts[0], out int r) && r > 0 ? r : 1;
                 int col = parts.Length >= 2 && int.TryParse(parts[1], out int c) && c > 0 ? c : 1;
-                _lineBuffer.CursorRow = Math.Clamp(row - 1, 0, _lineBuffer.ScreenRows - 1);
-                _lineBuffer.MoveCursorToColumn(col - 1);
+                _lineBuffer.SetCursor(row - 1, col - 1);
                 break;
             }
 
-            case 'A': // Cursor Up
-                _lineBuffer.CursorRow = Math.Max(0, _lineBuffer.CursorRow - n);
-                break;
-            case 'B': // Cursor Down
-                _lineBuffer.CursorRow = Math.Min(_lineBuffer.ScreenRows - 1, _lineBuffer.CursorRow + n);
-                break;
-            // Scroll, insert/delete lines — no-op
-            case 'S': case 'T': case 'L': case 'M':
-            // Save/restore cursor, scrolling region — no-op
-            case 's': case 'u': case 'r':
-                break;
+            case 'A': _lineBuffer.MoveCursorUp(n);    break; // Cursor Up
+            case 'B': _lineBuffer.MoveCursorDown(n);  break; // Cursor Down
+            case 'C': _lineBuffer.MoveCursorRight(n); break; // Cursor Forward
+            case 'D': _lineBuffer.MoveCursorLeft(n);  break; // Cursor Back
+
+            case 'G': _lineBuffer.MoveCursorToColumn(n - 1); break; // Cursor Horizontal Absolute
+
+            case 'P': _lineBuffer.DeleteChars(n);  break; // Delete Characters
+            case '@': _lineBuffer.InsertChars(n);  break; // Insert Characters
+            case 'L': _lineBuffer.InsertLines(n);  break; // Insert Lines
+            case 'M': _lineBuffer.DeleteLines(n);  break; // Delete Lines
+            case 'S': _lineBuffer.ScrollUp(n);     break; // Scroll Up
+            case 'T': _lineBuffer.ScrollDown(n);   break; // Scroll Down
+
+            case 's': case 'u': case 'r': break; // Save/restore cursor, scrolling region — no-op
+        }
+    }
+
+    // ─── Internal: Scrollback & Screen Render ────────────────────────────────
+
+    /// <summary>
+    /// Transfers lines that scrolled off the top of the screen to scrollback Paragraphs
+    /// inserted before the screen paragraph.
+    /// </summary>
+    private void CommitScrolledLines()
+    {
+        if (_doc == null || _screenParagraph == null) return;
+        while (_lineBuffer.HasScrolledLines)
+        {
+            var cells = _lineBuffer.DequeueScrolledLine();
+            var para = new Paragraph { Margin = new Thickness(0) };
+            RenderCellsToInlines(cells, cells.Length, para);
+            _doc.Blocks.InsertBefore(_screenParagraph, para);
         }
     }
 
     /// <summary>
-    /// Resets only formatting attributes (colors, bold, italic, etc.) to defaults.
-    /// Does NOT touch rendering state (_committedInlineCount, _lineBuffer, _pendingInput).
-    /// Called by ProcessSgr when SGR code 0 is received (\x1B[0m).
+    /// Clears and rebuilds the screen paragraph from the current 2-D buffer state.
+    /// Renders rows 0 through the last row that contains any non-default content.
     /// </summary>
-    private void ResetFormatting()
+    private void RenderScreenToDocument()
     {
-        _foreground = _defaultForeground;
-        _background = _defaultBackground;
-        _isBold = false;
-        _isItalic = false;
-        _isUnderline = false;
-        _isDim = false;
-        _isStrikethrough = false;
-        _isInverse = false;
+        if (_screenParagraph == null) return;
+
+        _screenParagraph.Inlines.Clear();
+
+        int lastRow = Math.Max(_lineBuffer.CursorRow, _lineBuffer.GetLastUsedRow());
+
+        for (int r = 0; r <= lastRow; r++)
+        {
+            if (r > 0) _screenParagraph.Inlines.Add(new LineBreak());
+            RenderScreenRowToInlines(r, _screenParagraph);
+        }
     }
 
-    /// <summary>
-    /// Full reset: formatting + rendering state. Used only for clear screen / terminal init.
-    /// </summary>
-    public void Reset()
+    private void RenderScreenRowToInlines(int row, Paragraph para)
     {
-        ResetFormatting();
-        _pendingInput = string.Empty;
-        _committedInlineCount = 0;
-        _lineBuffer.Clear();
+        int cols = _lineBuffer.ScreenCols;
+
+        // Find logical end of the row (trim trailing default spaces)
+        int len = cols;
+        while (len > 0)
+        {
+            var cell = _lineBuffer.GetCell(row, len - 1);
+            if (cell.Char != ' ' || cell.Background != _defaultBackground)
+                break;
+            len--;
+        }
+        if (len == 0) return;
+
+        int start = 0;
+        while (start < len)
+        {
+            var fmt = _lineBuffer.GetCell(row, start);
+            int end = start + 1;
+            while (end < len && _lineBuffer.GetCell(row, end).SameFormat(fmt))
+                end++;
+
+            var chars = new char[end - start];
+            for (int i = start; i < end; i++)
+                chars[i - start] = _lineBuffer.GetCell(row, i).Char;
+
+            para.Inlines.Add(BuildRun(new string(chars), fmt));
+            start = end;
+        }
     }
 
-    /// <summary>
-    /// Adjusts the committed inline count after scrollback trimming removes inlines
-    /// from the front of the Paragraph.
-    /// </summary>
-    public void AdjustCommittedCount(int removedCount)
+    private void RenderCellsToInlines(TerminalCell[] cells, int totalLen, Paragraph para)
     {
-        _committedInlineCount = Math.Max(0, _committedInlineCount - removedCount);
+        int len = totalLen;
+        while (len > 0)
+        {
+            if (cells[len - 1].Char != ' ' || cells[len - 1].Background != _defaultBackground)
+                break;
+            len--;
+        }
+        if (len == 0) return;
+
+        int start = 0;
+        while (start < len)
+        {
+            var fmt = cells[start];
+            int end = start + 1;
+            while (end < len && cells[end].SameFormat(fmt))
+                end++;
+
+            var chars = new char[end - start];
+            for (int i = start; i < end; i++) chars[i - start] = cells[i].Char;
+            para.Inlines.Add(BuildRun(new string(chars), fmt));
+            start = end;
+        }
     }
 
-    /// <summary>
-    /// Resizes the line buffer to match the terminal width.
-    /// </summary>
-    public void SetColumns(int columns) => SetSize(columns, _lineBuffer.ScreenRows);
-
-    /// <summary>
-    /// Resizes the line buffer to match both terminal width and height.
-    /// </summary>
-    public void SetSize(int columns, int rows)
+    private void TrimScrollback()
     {
-        _lineBuffer.SetWidth(columns);
-        _lineBuffer.SetHeight(rows);
+        if (_doc == null || _screenParagraph == null) return;
+        // -1: don't count the screen paragraph itself
+        while (_doc.Blocks.Count - 1 > MaxScrollbackParagraphs)
+            _doc.Blocks.Remove(_doc.Blocks.FirstBlock!);
     }
 
-    // ─── Private Methods ────────────────────────────────────────────────────
+    // ─── Run Builder ─────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Returns a frozen SolidColorBrush for the given color, reusing cached instances.
-    /// Frozen brushes are thread-safe and cheaper to use in WPF rendering.
-    /// </summary>
+    private Run BuildRun(string text, TerminalCell fmt)
+    {
+        var run = new Run(text);
+        if (fmt.Foreground != _defaultForeground) run.Foreground = GetBrush(fmt.Foreground);
+        if (fmt.Background != _defaultBackground) run.Background = GetBrush(fmt.Background);
+        if (fmt.IsBold)      run.FontWeight = FontWeights.Bold;
+        if (fmt.IsItalic)    run.FontStyle  = FontStyles.Italic;
+        if (fmt.IsUnderline) run.TextDecorations = TextDecorations.Underline;
+        return run;
+    }
+
     private static SolidColorBrush GetBrush(Color color)
     {
         if (!BrushCache.TryGetValue(color, out var brush))
@@ -584,248 +492,197 @@ public class AnsiParser
         return brush;
     }
 
-    /// <summary>
-    /// Creates a Run with current formatting state.
-    /// </summary>
-    private Run CreateRun(string text)
+    // ─── Parse (flat inlines path) ───────────────────────────────────────────
+
+    private void AppendTextAsInlines(string text, List<Inline> inlines)
+    {
+        var sb = new System.Text.StringBuilder(text.Length);
+        foreach (char c in text)
+        {
+            if (c == '\x08')
+            {
+                if (sb.Length > 0) sb.Length--;
+                else if (inlines.Count > 0 && inlines[^1] is Run r)
+                {
+                    if (r.Text.Length > 1) r.Text = r.Text[..^1];
+                    else inlines.RemoveAt(inlines.Count - 1);
+                }
+            }
+            else if (c == '\n' || c == '\r' || c == '\t' || !char.IsControl(c))
+            {
+                sb.Append(c);
+            }
+        }
+        if (sb.Length > 0) inlines.Add(CreateInlineRun(sb.ToString()));
+    }
+
+    private Run CreateInlineRun(string text)
     {
         var fg = _isInverse ? _background : _foreground;
         var bg = _isInverse ? _foreground : _background;
-
-        if (_isDim)
-        {
-            fg = Color.FromArgb(178, fg.R, fg.G, fg.B); // ~70% opacity
-        }
+        if (_isDim) fg = Color.FromArgb(178, fg.R, fg.G, fg.B);
 
         var run = new Run(text)
         {
             Foreground = GetBrush(fg),
-            FontWeight = _isBold ? FontWeights.Bold : FontWeights.Normal,
-            FontStyle = _isItalic ? FontStyles.Italic : FontStyles.Normal,
+            FontWeight = _isBold  ? FontWeights.Bold   : FontWeights.Normal,
+            FontStyle  = _isItalic ? FontStyles.Italic : FontStyles.Normal,
         };
-
-        if (bg != _defaultBackground)
-            run.Background = GetBrush(bg);
-
-        if (_isUnderline)
-        {
-            run.TextDecorations = TextDecorations.Underline;
-        }
-
+        if (bg != _defaultBackground) run.Background = GetBrush(bg);
+        if (_isUnderline) run.TextDecorations = TextDecorations.Underline;
         if (_isStrikethrough)
         {
             run.TextDecorations = run.TextDecorations != null
                 ? new TextDecorationCollection(run.TextDecorations.Concat(TextDecorations.Strikethrough))
                 : TextDecorations.Strikethrough;
         }
-
         return run;
     }
 
-    /// <summary>
-    /// Processes a CSI (Control Sequence Introducer) escape sequence.
-    /// </summary>
+    // Stateless CSI handler for the flat Parse() path
     private void ProcessCsiSequence(string paramString, char finalChar)
     {
-        switch (finalChar)
-        {
-            case 'm': // SGR - Select Graphic Rendition
-                ProcessSgr(paramString);
-                break;
-
-            case 'A': // Cursor Up
-            case 'B': // Cursor Down
-            case 'C': // Cursor Forward
-            case 'D': // Cursor Back
-            case 'H': // Cursor Position
-            case 'f': // Cursor Position (same as H)
-                // Cursor movement — handled at terminal control level
-                break;
-
-            case 'J': // Erase in Display
-                // 0=below, 1=above, 2=all, 3=scrollback
-                break;
-
-            case 'K': // Erase in Line
-                // 0=to end, 1=to start, 2=entire line
-                break;
-
-            case 'S': // Scroll Up
-            case 'T': // Scroll Down
-                break;
-
-            case 'L': // Insert lines
-            case 'M': // Delete lines
-            case 'P': // Delete characters
-            case '@': // Insert characters
-                break;
-
-            case 's': // Save cursor position
-            case 'u': // Restore cursor position
-                break;
-
-            case 'r': // Set scrolling region
-                break;
-        }
+        if (finalChar == 'm') ProcessSgr(paramString);
+        // Cursor movement and erase have no effect on the flat-inline path
     }
 
-    /// <summary>
-    /// Processes SGR (Select Graphic Rendition) parameters.
-    /// Handles: basic attributes, standard colors, 256-color mode, and true color (24-bit).
-    /// </summary>
+    // ─── SGR ─────────────────────────────────────────────────────────────────
+
+    private void ResetFormatting()
+    {
+        _foreground     = _defaultForeground;
+        _background     = _defaultBackground;
+        _isBold         = false;
+        _isItalic       = false;
+        _isUnderline    = false;
+        _isDim          = false;
+        _isStrikethrough = false;
+        _isInverse      = false;
+    }
+
     private void ProcessSgr(string paramString)
     {
-        if (string.IsNullOrEmpty(paramString) || paramString == "0")
-        {
-            ResetFormatting();
-            return;
-        }
+        if (string.IsNullOrEmpty(paramString) || paramString == "0") { ResetFormatting(); return; }
 
         var parts = paramString.Split(';');
         for (int i = 0; i < parts.Length; i++)
         {
             if (!int.TryParse(parts[i], out int code)) continue;
-
             switch (code)
             {
-                case 0: ResetFormatting(); break;
-                case 1: _isBold = true; break;
-                case 2: _isDim = true; break;
-                case 3: _isItalic = true; break;
-                case 4: _isUnderline = true; break;
-                case 7: _isInverse = true; break;
-                case 9: _isStrikethrough = true; break;
-
-                case 21: _isBold = false; break; // Double underline / bold off
+                case 0:  ResetFormatting(); break;
+                case 1:  _isBold = true;    break;
+                case 2:  _isDim  = true;    break;
+                case 3:  _isItalic = true;  break;
+                case 4:  _isUnderline = true; break;
+                case 7:  _isInverse = true; break;
+                case 9:  _isStrikethrough = true; break;
+                case 21: _isBold = false;   break;
                 case 22: _isBold = false; _isDim = false; break;
                 case 23: _isItalic = false; break;
                 case 24: _isUnderline = false; break;
                 case 27: _isInverse = false; break;
                 case 29: _isStrikethrough = false; break;
 
-                // Standard foreground colors (30–37)
                 case >= 30 and <= 37:
                     _foreground = StandardColors[code - 30];
                     if (_isBold) _foreground = BrightColors[code - 30];
                     break;
-
-                // Extended foreground color
-                case 38:
-                    i = ParseExtendedColor(parts, i, isForeground: true);
-                    break;
-
-                // Default foreground
-                case 39:
-                    _foreground = _defaultForeground;
-                    break;
-
-                // Standard background colors (40–47)
-                case >= 40 and <= 47:
-                    _background = StandardColors[code - 40];
-                    break;
-
-                // Extended background color
-                case 48:
-                    i = ParseExtendedColor(parts, i, isForeground: false);
-                    break;
-
-                // Default background
-                case 49:
-                    _background = _defaultBackground;
-                    break;
-
-                // Bright foreground colors (90–97)
-                case >= 90 and <= 97:
-                    _foreground = BrightColors[code - 90];
-                    break;
-
-                // Bright background colors (100–107)
-                case >= 100 and <= 107:
-                    _background = BrightColors[code - 100];
-                    break;
+                case 38: i = ParseExtendedColor(parts, i, isForeground: true);  break;
+                case 39: _foreground = _defaultForeground; break;
+                case >= 40 and <= 47: _background = StandardColors[code - 40]; break;
+                case 48: i = ParseExtendedColor(parts, i, isForeground: false); break;
+                case 49: _background = _defaultBackground; break;
+                case >= 90 and <= 97:  _foreground = BrightColors[code - 90];  break;
+                case >= 100 and <= 107: _background = BrightColors[code - 100]; break;
             }
         }
     }
 
-    /// <summary>
-    /// Parses extended color sequences: 256-color (5;n) and true color (2;r;g;b).
-    /// </summary>
-    /// <returns>Updated index into the parts array.</returns>
-    private int ParseExtendedColor(string[] parts, int currentIndex, bool isForeground)
+    private int ParseExtendedColor(string[] parts, int i, bool isForeground)
     {
-        if (currentIndex + 1 >= parts.Length) return currentIndex;
+        if (i + 1 >= parts.Length) return i;
+        if (!int.TryParse(parts[i + 1], out int mode)) return i;
 
-        if (int.TryParse(parts[currentIndex + 1], out int mode))
+        switch (mode)
         {
-            switch (mode)
-            {
-                case 5: // 256-color: ESC[38;5;{n}m
-                    if (currentIndex + 2 < parts.Length && int.TryParse(parts[currentIndex + 2], out int colorIndex))
-                    {
-                        var color = Get256Color(colorIndex);
-                        if (isForeground) _foreground = color;
-                        else _background = color;
-                        return currentIndex + 2;
-                    }
-                    return currentIndex + 1;
+            case 5: // 256-color
+                if (i + 2 < parts.Length && int.TryParse(parts[i + 2], out int idx))
+                {
+                    var col = Get256Color(idx);
+                    if (isForeground) _foreground = col; else _background = col;
+                    return i + 2;
+                }
+                return i + 1;
 
-                case 2: // True color: ESC[38;2;{r};{g};{b}m
-                    if (currentIndex + 4 < parts.Length &&
-                        int.TryParse(parts[currentIndex + 2], out int r) &&
-                        int.TryParse(parts[currentIndex + 3], out int g) &&
-                        int.TryParse(parts[currentIndex + 4], out int b))
-                    {
-                        var color = Color.FromRgb(
-                            (byte)Math.Clamp(r, 0, 255),
-                            (byte)Math.Clamp(g, 0, 255),
-                            (byte)Math.Clamp(b, 0, 255));
-                        if (isForeground) _foreground = color;
-                        else _background = color;
-                        return currentIndex + 4;
-                    }
-                    return currentIndex + 1;
-            }
+            case 2: // True color
+                if (i + 4 < parts.Length
+                    && int.TryParse(parts[i + 2], out int r)
+                    && int.TryParse(parts[i + 3], out int g)
+                    && int.TryParse(parts[i + 4], out int b))
+                {
+                    var col = Color.FromRgb(
+                        (byte)Math.Clamp(r, 0, 255),
+                        (byte)Math.Clamp(g, 0, 255),
+                        (byte)Math.Clamp(b, 0, 255));
+                    if (isForeground) _foreground = col; else _background = col;
+                    return i + 4;
+                }
+                return i + 1;
         }
-
-        return currentIndex;
+        return i;
     }
 
-    /// <summary>
-    /// Converts a 256-color index to an RGB Color.
-    /// Indices 0–7: standard colors, 8–15: bright colors,
-    /// 16–231: 6×6×6 color cube, 232–255: grayscale ramp.
-    /// </summary>
     private static Color Get256Color(int index)
     {
         index = Math.Clamp(index, 0, 255);
-
-        // Standard colors (0–7)
-        if (index < 8)
-            return StandardColors[index];
-
-        // Bright colors (8–15)
-        if (index < 16)
-            return BrightColors[index - 8];
-
-        // 6×6×6 color cube (16–231)
+        if (index < 8)   return StandardColors[index];
+        if (index < 16)  return BrightColors[index - 8];
         if (index < 232)
         {
-            int value = index - 16;
-            int r = value / 36;
-            int g = (value % 36) / 6;
-            int b = value % 6;
+            int v = index - 16;
+            int r = v / 36, gg = (v % 36) / 6, b = v % 6;
             return Color.FromRgb(
-                (byte)(r > 0 ? 55 + r * 40 : 0),
-                (byte)(g > 0 ? 55 + g * 40 : 0),
-                (byte)(b > 0 ? 55 + b * 40 : 0));
+                (byte)(r  > 0 ? 55 + r  * 40 : 0),
+                (byte)(gg > 0 ? 55 + gg * 40 : 0),
+                (byte)(b  > 0 ? 55 + b  * 40 : 0));
         }
-
-        // Grayscale ramp (232–255)
-        {
-            int gray = 8 + (index - 232) * 10;
-            gray = Math.Clamp(gray, 0, 255);
-            return Color.FromRgb((byte)gray, (byte)gray, (byte)gray);
-        }
+        int gray = Math.Clamp(8 + (index - 232) * 10, 0, 255);
+        return Color.FromRgb((byte)gray, (byte)gray, (byte)gray);
     }
 
+    // ─── Partial Escape Detection ────────────────────────────────────────────
+
+    private static int FindTrailingPartialEscape(string input)
+    {
+        int lastEsc = input.LastIndexOf('\x1B');
+        if (lastEsc < 0) return -1;
+
+        string tail = input[lastEsc..];
+        if (tail.Length == 1) return lastEsc;
+
+        char second = tail[1];
+
+        if (second == '[')
+        {
+            for (int i = 2; i < tail.Length; i++)
+            {
+                char c = tail[i];
+                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '@' || c == '`')
+                    return -1;
+                if (c != ';' && (c < '0' || c > '9') && c != '?' && c != '>' && c != '<' && c != '!' && c != '=')
+                    return -1;
+            }
+            return lastEsc;
+        }
+
+        if (second == ']')
+        {
+            if (tail.Contains('\x07') || tail.Contains("\x1B\\")) return -1;
+            return lastEsc;
+        }
+
+        if (tail.Length >= 2) return -1;
+        return lastEsc;
+    }
 }

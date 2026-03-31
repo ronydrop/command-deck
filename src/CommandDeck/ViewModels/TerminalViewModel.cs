@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Text;
 using System.Windows;
 using System.Windows.Documents;
@@ -65,7 +64,7 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     /// <summary>True once <see cref="StartSessionAsync"/> has been called (even if it failed).</summary>
     public bool IsSessionStarted => _sessionStarted;
 
-    /// <summary>Current cursor column position from the ANSI parser's line buffer.</summary>
+    /// <summary>Current cursor column position from the ANSI parser's screen buffer.</summary>
     public int CursorColumn => _ansiParser.CursorColumn;
 
     // ─── Terminal Background ────────────────────────────────────────────────
@@ -87,9 +86,6 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _hasBackground;
-
-    private Paragraph _currentParagraph;
-    private int _maxScrollbackLines = 2000;
 
     public TerminalViewModel(ITerminalService terminalService, IDatabaseService db,
                              ITerminalBackgroundService? backgroundService = null)
@@ -116,8 +112,8 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
             Foreground = new SolidColorBrush(_terminalFg)
         };
 
-        _currentParagraph = new Paragraph { Margin = new Thickness(0) };
-        _outputDocument.Blocks.Add(_currentParagraph);
+        // Connect the parser to the document — it will manage all paragraphs internally
+        _ansiParser.Initialize(_outputDocument);
 
         _ansiParser.TitleChanged += newTitle =>
         {
@@ -233,13 +229,7 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ClearOutput()
     {
-        _dispatcher.Invoke(() =>
-        {
-            OutputDocument.Blocks.Clear();
-            _currentParagraph = new Paragraph { Margin = new Thickness(0) };
-            OutputDocument.Blocks.Add(_currentParagraph);
-            _ansiParser.Reset();
-        });
+        _dispatcher.Invoke(() => _ansiParser.Reset());
     }
 
     /// <summary>
@@ -249,9 +239,7 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     private async Task CloseTerminal()
     {
         if (Session != null)
-        {
             await _terminalService.CloseSessionAsync(Session.Id);
-        }
     }
 
     // ─── Private Methods ────────────────────────────────────────────────────
@@ -260,7 +248,6 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     {
         if (!_sessionStarted || Session?.Id != sessionId) return;
 
-        // Acumula output no buffer e agenda flush com throttle
         lock (_bufferLock)
         {
             _outputBuffer.Append(output);
@@ -268,7 +255,8 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
             if (!_flushScheduled)
             {
                 _flushScheduled = true;
-                _dispatcher.BeginInvoke(DispatcherPriority.Background, FlushOutputBuffer);
+                // DispatcherPriority.Normal ensures rendering keeps up with output
+                _dispatcher.BeginInvoke(DispatcherPriority.Normal, FlushOutputBuffer);
             }
         }
     }
@@ -287,15 +275,11 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
 
         try
         {
-            _ansiParser.ParseAndRender(buffered, _currentParagraph);
-            TrimScrollback();
+            _ansiParser.ParseAndRender(buffered);
         }
-        catch
+        catch (Exception ex)
         {
-            _currentParagraph.Inlines.Add(new Run(buffered)
-            {
-                Foreground = new System.Windows.Media.SolidColorBrush(_terminalFg)
-            });
+            System.Diagnostics.Debug.WriteLine($"[TerminalVM] ParseAndRender error: {ex}");
         }
     }
 
@@ -307,38 +291,9 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
         {
             IsConnected = false;
             StatusText = "Disconnected";
-
-            var exitColor = Application.Current?.TryFindResource("AccentRed") is Color red
-                ? red : Color.FromRgb(0xF3, 0x8B, 0xA8);
-            _currentParagraph.Inlines.Add(new Run("\r\n[Process exited]\r\n")
-            {
-                Foreground = new SolidColorBrush(exitColor)
-            });
+            // Render exit message in red via ANSI codes (color 31 = Catppuccin red)
+            _ansiParser.ParseAndRender("\r\n\x1B[31m[Process exited]\x1B[0m\r\n");
         });
-    }
-
-    private void TrimScrollback()
-    {
-        var count = _currentParagraph.Inlines.Count;
-        // Only trim when significantly over the limit (125%), trim down to 75%
-        // This reduces trim frequency while keeping memory bounded
-        var trimThreshold = (int)(_maxScrollbackLines * 1.25);
-        if (count <= trimThreshold) return;
-
-        var targetCount = (int)(_maxScrollbackLines * 0.75);
-        var toRemove = count - targetCount;
-        var inlinesToRemove = new List<System.Windows.Documents.Inline>(toRemove);
-        var current = _currentParagraph.Inlines.FirstInline;
-        for (int i = 0; i < toRemove && current != null; i++)
-        {
-            inlinesToRemove.Add(current);
-            current = current.NextInline;
-        }
-        foreach (var inline in inlinesToRemove)
-            _currentParagraph.Inlines.Remove(inline);
-
-        // Adjust committed inline count after trimming from the front
-        _ansiParser.AdjustCommittedCount(toRemove);
     }
 
     // ─── Background Sync ────────────────────────────────────────────────────
@@ -352,26 +307,24 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     {
         if (_backgroundService == null) return;
 
-        BackgroundImage = _backgroundService.ProcessedImage;
+        BackgroundImage  = _backgroundService.ProcessedImage;
         BackgroundOpacity = _backgroundService.Opacity;
         BackgroundStretch = _backgroundService.WallpaperStretch;
-        OverlayOpacity = _backgroundService.OverlayOpacity;
-        IsDarkOverlay = _backgroundService.IsDarkOverlay;
-        HasBackground = _backgroundService.HasWallpaper;
+        OverlayOpacity   = _backgroundService.OverlayOpacity;
+        IsDarkOverlay    = _backgroundService.IsDarkOverlay;
+        HasBackground    = _backgroundService.HasWallpaper;
     }
 
     public void Dispose()
     {
         _terminalService.OutputReceived -= OnOutputReceived;
-        _terminalService.SessionExited -= OnSessionExited;
+        _terminalService.SessionExited  -= OnSessionExited;
 
         if (_backgroundService != null)
             _backgroundService.BackgroundChanged -= OnBackgroundChanged;
 
         if (Session != null)
-        {
             _ = _terminalService.CloseSessionAsync(Session.Id);
-        }
 
         GC.SuppressFinalize(this);
     }

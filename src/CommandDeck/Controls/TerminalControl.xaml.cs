@@ -18,7 +18,6 @@ public partial class TerminalControl : UserControl
 {
     private TerminalViewModel? _viewModel;
     private TextChangedEventHandler? _scrollHandler;
-    private bool _scrollPending;
 
     public TerminalControl()
     {

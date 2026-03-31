@@ -1,4 +1,3 @@
-using System.Windows.Documents;
 using System.Windows.Media;
 
 namespace CommandDeck.Helpers;
@@ -22,9 +21,7 @@ internal struct TerminalCell
         Background = Color.FromRgb(0x1E, 0x1E, 0x2E),
     };
 
-    /// <summary>
-    /// Returns true if this cell has identical formatting to another.
-    /// </summary>
+    /// <summary>Returns true if this cell has identical formatting to another.</summary>
     public readonly bool SameFormat(in TerminalCell other)
         => Foreground == other.Foreground
         && Background == other.Background
@@ -34,60 +31,82 @@ internal struct TerminalCell
 }
 
 /// <summary>
-/// A line-level character buffer with cursor tracking for terminal emulation.
-/// Maintains a fixed-width array of <see cref="TerminalCell"/> representing the current
-/// terminal line. Supports cursor movement, insert/delete, and erase operations.
-/// Can flush its content as WPF <see cref="Run"/> elements for display in a FlowDocument.
+/// Full 2-D virtual terminal screen buffer.
+/// Manages a <c>rows × cols</c> grid of <see cref="TerminalCell"/> values,
+/// cursor positioning, all standard erase/scroll/insert/delete operations,
+/// and a scrollback queue for lines that roll off the top.
 /// </summary>
-internal class TerminalLineBuffer
+internal sealed class TerminalLineBuffer
 {
-    private TerminalCell[] _cells;
-    private int _width;
-
-    /// <summary>Current cursor column (0-based).</summary>
-    public int CursorCol { get; private set; }
-
-    /// <summary>Current cursor row (0-based). Tracked for CSI H row-awareness.</summary>
-    public int CursorRow { get; set; }
-
-    /// <summary>Screen height in rows. Used to clamp row-positioning sequences.</summary>
-    public int ScreenRows { get; private set; } = 30;
-
-    /// <summary>Logical length of content in the line (rightmost non-empty position + 1).</summary>
-    public int LineLength { get; private set; }
+    private TerminalCell[,] _screen;
+    private int _rows;
+    private int _cols;
 
     private readonly Color _defaultFg;
     private readonly Color _defaultBg;
-    private readonly TerminalCell _emptyCell;
+
+    // Lines that scrolled off the top; consumed by AnsiParser for scrollback rendering.
+    private readonly Queue<TerminalCell[]> _scrolledOffLines = new();
+
+    // ─── Public Properties ───────────────────────────────────────────────────
+
+    /// <summary>0-based cursor row (within the visible screen).</summary>
+    public int CursorRow { get; private set; }
+
+    /// <summary>0-based cursor column.</summary>
+    public int CursorCol { get; private set; }
+
+    public int ScreenRows => _rows;
+    public int ScreenCols => _cols;
+
+    /// <summary>True when there are lines that scrolled off and are waiting to be committed.</summary>
+    public bool HasScrolledLines => _scrolledOffLines.Count > 0;
+
+    // ─── Constructor ─────────────────────────────────────────────────────────
 
     public TerminalLineBuffer(int columns = 120)
-        : this(columns, Color.FromRgb(0xCD, 0xD6, 0xF4), Color.FromRgb(0x1E, 0x1E, 0x2E))
-    {
-    }
+        : this(columns, Color.FromRgb(0xCD, 0xD6, 0xF4), Color.FromRgb(0x1E, 0x1E, 0x2E)) { }
 
     public TerminalLineBuffer(int columns, Color defaultFg, Color defaultBg)
     {
-        _width = columns;
         _defaultFg = defaultFg;
         _defaultBg = defaultBg;
-        _emptyCell = new TerminalCell { Char = ' ', Foreground = defaultFg, Background = defaultBg };
-        _cells = new TerminalCell[columns];
-        Clear();
+        _rows = 30;
+        _cols = Math.Max(1, columns);
+        _screen = new TerminalCell[_rows, _cols];
+        FillEmpty(0, _rows);
     }
 
-    /// <summary>
-    /// Writes a character at the current cursor position and advances the cursor.
-    /// Overwrites any existing character at that position.
-    /// </summary>
+    // ─── Screen Fill ─────────────────────────────────────────────────────────
+
+    private void FillEmpty(int fromRow, int toRowExclusive)
+    {
+        var cell = new TerminalCell { Char = ' ', Foreground = _defaultFg, Background = _defaultBg };
+        for (int r = fromRow; r < toRowExclusive; r++)
+            for (int c = 0; c < _cols; c++)
+                _screen[r, c] = cell;
+    }
+
+    private void FillRowEmpty(int row)
+    {
+        var cell = new TerminalCell { Char = ' ', Foreground = _defaultFg, Background = _defaultBg };
+        for (int c = 0; c < _cols; c++)
+            _screen[row, c] = cell;
+    }
+
+    // ─── Character Write ─────────────────────────────────────────────────────
+
+    /// <summary>Writes a character at the cursor position and advances the cursor.</summary>
     public void Write(char c, Color fg, Color bg, bool bold, bool italic, bool underline)
     {
-        if (CursorCol >= _width)
+        if (CursorCol >= _cols)
         {
-            // Line wrap not supported in single-line buffer; clamp to last column
-            CursorCol = _width - 1;
+            // Auto-wrap: move to next line
+            CursorCol = 0;
+            LineFeedInternal();
         }
 
-        _cells[CursorCol] = new TerminalCell
+        _screen[CursorRow, CursorCol] = new TerminalCell
         {
             Char = c,
             Foreground = fg,
@@ -96,24 +115,18 @@ internal class TerminalLineBuffer
             IsItalic = italic,
             IsUnderline = underline,
         };
-
         CursorCol++;
-        if (CursorCol > LineLength)
-            LineLength = CursorCol;
     }
 
-    /// <summary>
-    /// Writes a string starting at the current cursor position.
-    /// </summary>
+    /// <summary>Writes a string starting at the cursor, expanding tabs to multiples of 8.</summary>
     public void Write(string text, Color fg, Color bg, bool bold, bool italic, bool underline)
     {
         foreach (char c in text)
         {
             if (c == '\t')
             {
-                // Expand tab to next multiple of 8
                 int nextTab = ((CursorCol / 8) + 1) * 8;
-                while (CursorCol < nextTab && CursorCol < _width)
+                while (CursorCol < nextTab)
                     Write(' ', fg, bg, bold, italic, underline);
             }
             else if (!char.IsControl(c))
@@ -123,193 +136,244 @@ internal class TerminalLineBuffer
         }
     }
 
-    /// <summary>Move cursor left by n positions (CSI D). Clamps to column 0.</summary>
-    public void MoveCursorLeft(int n = 1)
-        => CursorCol = Math.Max(0, CursorCol - n);
+    // ─── Cursor Movement ─────────────────────────────────────────────────────
 
-    /// <summary>Move cursor right by n positions (CSI C). Clamps to width - 1.</summary>
-    public void MoveCursorRight(int n = 1)
-        => CursorCol = Math.Min(_width - 1, CursorCol + n);
+    public void CarriageReturn() => CursorCol = 0;
+    public void Backspace() => CursorCol = Math.Max(0, CursorCol - 1);
 
-    /// <summary>Set cursor to absolute column (0-based) (CSI G).</summary>
-    public void MoveCursorToColumn(int col)
-        => CursorCol = Math.Clamp(col, 0, _width - 1);
+    /// <summary>Sets cursor to absolute position (0-based, clamped).</summary>
+    public void SetCursor(int row, int col)
+    {
+        CursorRow = Math.Clamp(row, 0, _rows - 1);
+        CursorCol = Math.Clamp(col, 0, _cols - 1);
+    }
 
-    /// <summary>Move cursor left by 1 for backspace character (\x08). Does NOT delete.</summary>
-    public void Backspace()
-        => MoveCursorLeft(1);
+    public void MoveCursorUp(int n = 1)    => CursorRow = Math.Max(0, CursorRow - n);
+    public void MoveCursorDown(int n = 1)  => CursorRow = Math.Min(_rows - 1, CursorRow + n);
+    public void MoveCursorLeft(int n = 1)  => CursorCol = Math.Max(0, CursorCol - n);
+    public void MoveCursorRight(int n = 1) => CursorCol = Math.Min(_cols - 1, CursorCol + n);
+    public void MoveCursorToColumn(int col) => CursorCol = Math.Clamp(col, 0, _cols - 1);
 
-    /// <summary>Move cursor to column 0 for carriage return (\r).</summary>
-    public void CarriageReturn()
-        => CursorCol = 0;
+    // ─── Line Feed & Scroll ──────────────────────────────────────────────────
+
+    /// <summary>Advances cursor down one row; scrolls if at the bottom.</summary>
+    public void LineFeed() => LineFeedInternal();
+
+    private void LineFeedInternal()
+    {
+        if (CursorRow < _rows - 1)
+            CursorRow++;
+        else
+            ScrollUpBuffer(1);
+    }
+
+    private void ScrollUpBuffer(int n)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            // Capture the scrolled-off row before overwriting
+            var line = new TerminalCell[_cols];
+            for (int c = 0; c < _cols; c++)
+                line[c] = _screen[0, c];
+            _scrolledOffLines.Enqueue(line);
+
+            // Shift every row up by 1
+            for (int r = 0; r < _rows - 1; r++)
+                for (int c = 0; c < _cols; c++)
+                    _screen[r, c] = _screen[r + 1, c];
+
+            FillRowEmpty(_rows - 1);
+        }
+    }
+
+    private void ScrollDownBuffer(int n)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            for (int r = _rows - 1; r > 0; r--)
+                for (int c = 0; c < _cols; c++)
+                    _screen[r, c] = _screen[r - 1, c];
+            FillRowEmpty(0);
+        }
+    }
+
+    // ─── Erase Operations ────────────────────────────────────────────────────
 
     /// <summary>
-    /// Erase in line (CSI K).
-    /// Mode 0: erase from cursor to end. Mode 1: erase from start to cursor. Mode 2: erase all.
+    /// Erase in display (ESC[J).
+    /// Mode 0: cursor→end; 1: start→cursor; 2: entire screen; 3: screen+scrollback.
+    /// </summary>
+    public void EraseDisplay(int mode)
+    {
+        switch (mode)
+        {
+            case 0: // cursor to end of screen
+                for (int c = CursorCol; c < _cols; c++) _screen[CursorRow, c] = EmptyCell();
+                for (int r = CursorRow + 1; r < _rows; r++) FillRowEmpty(r);
+                break;
+
+            case 1: // start of screen to cursor
+                for (int r = 0; r < CursorRow; r++) FillRowEmpty(r);
+                for (int c = 0; c <= CursorCol && c < _cols; c++) _screen[CursorRow, c] = EmptyCell();
+                break;
+
+            case 2: // entire screen (cursor stays)
+                FillEmpty(0, _rows);
+                break;
+
+            case 3: // entire screen + scrollback
+                FillEmpty(0, _rows);
+                _scrolledOffLines.Clear();
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Erase in line (ESC[K).
+    /// Mode 0: cursor→end; 1: start→cursor; 2: entire line.
     /// </summary>
     public void EraseLine(int mode)
     {
         switch (mode)
         {
-            case 0: // Erase to end of line
-                for (int i = CursorCol; i < _width; i++)
-                    _cells[i] = _emptyCell;
-                if (CursorCol < LineLength)
-                    LineLength = CursorCol;
+            case 0:
+                for (int c = CursorCol; c < _cols; c++) _screen[CursorRow, c] = EmptyCell();
                 break;
-
-            case 1: // Erase to start of line
-                for (int i = 0; i <= CursorCol && i < _width; i++)
-                    _cells[i] = _emptyCell;
+            case 1:
+                for (int c = 0; c <= CursorCol && c < _cols; c++) _screen[CursorRow, c] = EmptyCell();
                 break;
-
-            case 2: // Erase entire line
-                for (int i = 0; i < _width; i++)
-                    _cells[i] = _emptyCell;
-                LineLength = 0;
+            case 2:
+                FillRowEmpty(CursorRow);
                 break;
         }
     }
 
-    /// <summary>
-    /// Delete n characters at cursor, shifting remaining chars left (CSI P).
-    /// </summary>
-    public void DeleteChars(int n)
+    // ─── Line Insert / Delete ────────────────────────────────────────────────
+
+    /// <summary>Insert n blank lines at cursor row, pushing existing lines down (ESC[L).</summary>
+    public void InsertLines(int n)
     {
-        n = Math.Min(n, LineLength - CursorCol);
-        if (n <= 0) return;
-
-        Array.Copy(_cells, CursorCol + n, _cells, CursorCol, _width - CursorCol - n);
-        for (int i = _width - n; i < _width; i++)
-            _cells[i] = _emptyCell;
-
-        LineLength = Math.Max(0, LineLength - n);
+        n = Math.Min(n, _rows - CursorRow);
+        for (int r = _rows - 1; r >= CursorRow + n; r--)
+            for (int c = 0; c < _cols; c++)
+                _screen[r, c] = _screen[r - n, c];
+        for (int r = CursorRow; r < CursorRow + n && r < _rows; r++)
+            FillRowEmpty(r);
     }
 
-    /// <summary>
-    /// Insert n blank characters at cursor, shifting existing chars right (CSI @).
-    /// </summary>
+    /// <summary>Delete n lines at cursor row, pulling lines below up (ESC[M).</summary>
+    public void DeleteLines(int n)
+    {
+        n = Math.Min(n, _rows - CursorRow);
+        for (int r = CursorRow; r < _rows - n; r++)
+            for (int c = 0; c < _cols; c++)
+                _screen[r, c] = _screen[r + n, c];
+        for (int r = _rows - n; r < _rows; r++)
+            FillRowEmpty(r);
+    }
+
+    // ─── Character Insert / Delete ───────────────────────────────────────────
+
+    /// <summary>Delete n characters at cursor column, shifting the rest left (ESC[P).</summary>
+    public void DeleteChars(int n)
+    {
+        n = Math.Min(n, _cols - CursorCol);
+        if (n <= 0) return;
+        for (int c = CursorCol; c < _cols - n; c++)
+            _screen[CursorRow, c] = _screen[CursorRow, c + n];
+        for (int c = _cols - n; c < _cols; c++)
+            _screen[CursorRow, c] = EmptyCell();
+    }
+
+    /// <summary>Insert n blank characters at cursor column, shifting the rest right (ESC[@).</summary>
     public void InsertChars(int n)
     {
         if (n <= 0) return;
-        int shiftEnd = Math.Min(LineLength + n, _width);
-
-        // Shift right
-        for (int i = shiftEnd - 1; i >= CursorCol + n; i--)
-            _cells[i] = _cells[i - n];
-
-        // Fill inserted positions with blanks
-        for (int i = CursorCol; i < CursorCol + n && i < _width; i++)
-            _cells[i] = _emptyCell;
-
-        LineLength = Math.Min(LineLength + n, _width);
+        for (int c = _cols - 1; c >= CursorCol + n; c--)
+            _screen[CursorRow, c] = _screen[CursorRow, c - n];
+        for (int c = CursorCol; c < CursorCol + n && c < _cols; c++)
+            _screen[CursorRow, c] = EmptyCell();
     }
 
-    /// <summary>
-    /// Converts the buffer content into a list of <see cref="Run"/> elements,
-    /// grouping consecutive cells with identical formatting into single Runs.
-    /// Only includes content up to <see cref="LineLength"/>.
-    /// </summary>
-    public List<Run> FlushToInlines()
-    {
-        var runs = new List<Run>();
-        if (LineLength == 0) return runs;
+    // ─── Scroll Sequences ────────────────────────────────────────────────────
 
-        int start = 0;
-        while (start < LineLength)
-        {
-            var fmt = _cells[start];
-            int end = start + 1;
+    /// <summary>Scroll screen up n lines (ESC[S). Lines scrolled off go to scrollback.</summary>
+    public void ScrollUp(int n) => ScrollUpBuffer(n);
 
-            // Group consecutive cells with same formatting
-            while (end < LineLength && _cells[end].SameFormat(fmt))
-                end++;
+    /// <summary>Scroll screen down n lines (ESC[T). Blank lines appear at the top.</summary>
+    public void ScrollDown(int n) => ScrollDownBuffer(n);
 
-            // Build the text for this run
-            var chars = new char[end - start];
-            for (int i = start; i < end; i++)
-                chars[i - start] = _cells[i].Char;
+    // ─── Full Reset ──────────────────────────────────────────────────────────
 
-            var text = new string(chars);
-
-            // Trim trailing spaces only for the very last run
-            if (end >= LineLength)
-                text = text.TrimEnd();
-
-            if (text.Length > 0)
-            {
-                var run = new Run(text);
-
-                // Apply foreground
-                if (fmt.Foreground != _defaultFg)
-                    run.Foreground = GetBrush(fmt.Foreground);
-
-                // Apply background
-                if (fmt.Background != _defaultBg)
-                    run.Background = GetBrush(fmt.Background);
-
-                if (fmt.IsBold) run.FontWeight = System.Windows.FontWeights.Bold;
-                if (fmt.IsItalic) run.FontStyle = System.Windows.FontStyles.Italic;
-                if (fmt.IsUnderline)
-                    run.TextDecorations = System.Windows.TextDecorations.Underline;
-
-                runs.Add(run);
-            }
-
-            start = end;
-        }
-
-        return runs;
-    }
-
-    /// <summary>
-    /// Clears the buffer and resets cursor to column 0.
-    /// </summary>
+    /// <summary>Clears the entire screen and scrollback queue, resets cursor to (0,0).</summary>
     public void Clear()
     {
-        for (int i = 0; i < _width; i++)
-            _cells[i] = _emptyCell;
+        FillEmpty(0, _rows);
+        CursorRow = 0;
         CursorCol = 0;
-        LineLength = 0;
+        _scrolledOffLines.Clear();
     }
+
+    // ─── Resize ──────────────────────────────────────────────────────────────
+
+    /// <summary>Resizes the screen buffer, preserving existing content.</summary>
+    public void SetSize(int rows, int cols)
+    {
+        rows = Math.Max(1, rows);
+        cols = Math.Max(1, cols);
+        if (rows == _rows && cols == _cols) return;
+
+        var newScreen = new TerminalCell[rows, cols];
+        var empty = new TerminalCell { Char = ' ', Foreground = _defaultFg, Background = _defaultBg };
+
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                newScreen[r, c] = empty;
+
+        int copyRows = Math.Min(rows, _rows);
+        int copyCols = Math.Min(cols, _cols);
+        for (int r = 0; r < copyRows; r++)
+            for (int c = 0; c < copyCols; c++)
+                newScreen[r, c] = _screen[r, c];
+
+        _screen = newScreen;
+        _rows = rows;
+        _cols = cols;
+        CursorRow = Math.Clamp(CursorRow, 0, rows - 1);
+        CursorCol = Math.Clamp(CursorCol, 0, cols - 1);
+    }
+
+    // Keep old single-axis setters for backward compatibility
+    public void SetWidth(int cols) => SetSize(_rows, cols);
+    public void SetHeight(int rows) => SetSize(rows, _cols);
+
+    // ─── Cell Access (for rendering) ─────────────────────────────────────────
+
+    /// <summary>Returns the cell at a given screen position.</summary>
+    public TerminalCell GetCell(int row, int col) => _screen[row, col];
+
+    /// <summary>Dequeues the oldest line that scrolled off the top of the screen.</summary>
+    public TerminalCell[] DequeueScrolledLine() => _scrolledOffLines.Dequeue();
 
     /// <summary>
-    /// Updates the screen height (rows). Used to clamp vertical cursor movements.
+    /// Returns the index of the last row that contains any non-default character.
+    /// Returns 0 (never negative) so at least row 0 is always rendered.
     /// </summary>
-    public void SetHeight(int rows) => ScreenRows = Math.Max(1, rows);
-
-    /// <summary>
-    /// Resizes the buffer to a new column width. Preserves existing content where possible.
-    /// </summary>
-    public void SetWidth(int columns)
+    public int GetLastUsedRow()
     {
-        if (columns == _width) return;
-
-        var newCells = new TerminalCell[columns];
-        int copyLen = Math.Min(columns, _width);
-        Array.Copy(_cells, newCells, copyLen);
-
-        for (int i = copyLen; i < columns; i++)
-            newCells[i] = _emptyCell;
-
-        _cells = newCells;
-        _width = columns;
-        LineLength = Math.Min(LineLength, columns);
-        CursorCol = Math.Min(CursorCol, columns - 1);
+        var empty = new TerminalCell { Char = ' ', Foreground = _defaultFg, Background = _defaultBg };
+        for (int r = _rows - 1; r > 0; r--)
+            for (int c = 0; c < _cols; c++)
+            {
+                ref var cell = ref _screen[r, c];
+                if (cell.Char != ' ' || cell.Background != _defaultBg)
+                    return r;
+            }
+        return 0;
     }
 
-    // ─── Brush cache (shared with AnsiParser) ───────────────────────────────
+    // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    private static readonly Dictionary<Color, SolidColorBrush> BrushCache = new();
-
-    private static SolidColorBrush GetBrush(Color color)
-    {
-        if (!BrushCache.TryGetValue(color, out var brush))
-        {
-            brush = new SolidColorBrush(color);
-            brush.Freeze();
-            BrushCache[color] = brush;
-        }
-        return brush;
-    }
+    private TerminalCell EmptyCell()
+        => new() { Char = ' ', Foreground = _defaultFg, Background = _defaultBg };
 }
