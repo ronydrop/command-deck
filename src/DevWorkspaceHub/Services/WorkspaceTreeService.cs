@@ -114,6 +114,12 @@ public class WorkspaceTreeService : IWorkspaceTreeService
         if (node is not null) node.Name = newName;
     }
 
+    public void SetColor(string nodeId, string hexColor)
+    {
+        var node = FindById(nodeId);
+        if (node is not null) node.Color = hexColor;
+    }
+
     public void Move(string nodeId, string? newParentId, int sortOrder = 0)
     {
         var node = FindById(nodeId);

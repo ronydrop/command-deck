@@ -32,6 +32,8 @@ public partial class WorkspaceTreeViewModel : ObservableObject
     [ObservableProperty] private WorkspaceTreeNodeViewModel? _selectedNode;
     [ObservableProperty] private WorkspaceModel? _activeWorkspace;
     [ObservableProperty] private bool _isWorkspaceSelectorOpen;
+    [ObservableProperty] private WorkspaceModel? _editingWorkspace;
+    [ObservableProperty] private string _workspaceEditingName = string.Empty;
 
     /// <summary>Raised when the user activates a node — canvas should center on it.</summary>
     public event Action<string>? NodeActivated; // payload: canvasItemId
@@ -39,10 +41,11 @@ public partial class WorkspaceTreeViewModel : ObservableObject
     /// <summary>Raised when the user switches to a different workspace.</summary>
     public event Action<string>? WorkspaceSwitchRequested; // payload: workspaceId
 
-    public WorkspaceTreeViewModel(IWorkspaceTreeService treeService, IWorkspaceService workspaceService)
+    public WorkspaceTreeViewModel(IWorkspaceTreeService treeService, IWorkspaceService workspaceService, IWorkspaceExportService exportService)
     {
         _treeService = treeService;
         _workspaceService = workspaceService;
+        _exportService = exportService;
 
         _workspaceService.ActiveWorkspaceChanged += OnWorkspaceServiceActiveChanged;
     }
@@ -64,6 +67,82 @@ public partial class WorkspaceTreeViewModel : ObservableObject
     }
 
     // ─── Commands ─────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void StartRenameNode()
+    {
+        if (SelectedNode is null) return;
+        SelectedNode.IsEditing = true;
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task CommitRenameNode(WorkspaceTreeNodeViewModel? node)
+    {
+        if (node is null) return;
+        node.IsEditing = false;
+        if (!string.IsNullOrWhiteSpace(node.EditingName))
+            await RenameNode(node.Model.Id, node.EditingName);
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task ChangeNodeColor(string hexColor)
+    {
+        if (SelectedNode is null) return;
+        _treeService.SetColor(SelectedNode.Model.Id, hexColor);
+        await _treeService.SaveAsync();
+        Rebuild();
+    }
+
+    [RelayCommand]
+    private void StartRenameWorkspace(WorkspaceModel? ws)
+    {
+        if (ws is null) return;
+        WorkspaceEditingName = ws.Name;
+        EditingWorkspace = ws;
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task CommitRenameWorkspace()
+    {
+        if (EditingWorkspace is null) return;
+        var ws = EditingWorkspace;
+        EditingWorkspace = null;
+        if (!string.IsNullOrWhiteSpace(WorkspaceEditingName))
+            await RenameWorkspace(ws.Id, WorkspaceEditingName);
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task ChangeWorkspaceColor(string parameter)
+    {
+        // parameter format: "workspaceId::hexColor"
+        var parts = parameter?.Split("::") ?? Array.Empty<string>();
+        if (parts.Length != 2) return;
+        await UpdateWorkspaceColor(parts[0], parts[1]);
+    }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task DuplicateWorkspace(WorkspaceModel? ws)
+    {
+        if (ws is null) return;
+        var tempFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"dwh_dup_{ws.Id}.dwhz");
+        try
+        {
+            await _exportService.ExportWorkspaceAsync(ws.Id, tempFile);
+            var manifest = await _exportService.ImportWorkspaceAsync(tempFile, MergeStrategy.Replace);
+            if (!string.IsNullOrEmpty(manifest.WorkspaceId))
+                await _workspaceService.RenameWorkspaceAsync(manifest.WorkspaceId, ws.Name + " (cópia)");
+            await RefreshWorkspaceListAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WorkspaceTree] DuplicateWorkspace failed: {ex}");
+        }
+        finally
+        {
+            if (System.IO.File.Exists(tempFile))
+                System.IO.File.Delete(tempFile);
+        }
+    }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task AddGroup()

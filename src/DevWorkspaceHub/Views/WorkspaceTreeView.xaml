@@ -30,9 +30,45 @@
                 <Grid.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Renomear"
-                                  Tag="{Binding Model.Id}"/>
-                        <MenuItem Header="Alterar Cor"
-                                  Tag="{Binding Model.Id}"/>
+                                  Command="{Binding DataContext.StartRenameNodeCommand,
+                                                    RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        <MenuItem Header="Alterar Cor">
+                            <MenuItem Header="Roxo"
+                                      Command="{Binding DataContext.ChangeNodeColorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      CommandParameter="#CBA6F7">
+                                <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#CBA6F7"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Azul"
+                                      Command="{Binding DataContext.ChangeNodeColorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      CommandParameter="#89B4FA">
+                                <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#89B4FA"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Verde"
+                                      Command="{Binding DataContext.ChangeNodeColorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      CommandParameter="#A6E3A1">
+                                <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#A6E3A1"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Amarelo"
+                                      Command="{Binding DataContext.ChangeNodeColorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      CommandParameter="#F9E2AF">
+                                <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#F9E2AF"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Laranja"
+                                      Command="{Binding DataContext.ChangeNodeColorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      CommandParameter="#FAB387">
+                                <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#FAB387"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Rosa"
+                                      Command="{Binding DataContext.ChangeNodeColorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      CommandParameter="#F38BA8">
+                                <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#F38BA8"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Ciano"
+                                      Command="{Binding DataContext.ChangeNodeColorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      CommandParameter="#89DCEB">
+                                <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#89DCEB"/></MenuItem.Icon>
+                            </MenuItem>
+                        </MenuItem>
                         <Separator/>
                         <MenuItem Header="Excluir"
                                   Command="{Binding DataContext.DeleteSelectedCommand,
@@ -125,10 +161,20 @@
                     </Path.Style>
                 </Path>
 
-                <!-- ── Name + type caption ── -->
+                <!-- ── Name + type caption (hidden when editing) ── -->
                 <StackPanel Grid.Column="6"
                             VerticalAlignment="Center"
                             Margin="0,0,4,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
                     <TextBlock Text="{Binding Name}"
                                Foreground="{DynamicResource TextBrush}"
                                FontSize="12"
@@ -138,6 +184,25 @@
                                FontSize="10"
                                Margin="0,1,0,0"/>
                 </StackPanel>
+                <!-- ── Inline rename TextBox (visible when editing) ── -->
+                <TextBox Grid.Column="6"
+                         x:Name="NodeRenameTextBox"
+                         Text="{Binding EditingName, UpdateSourceTrigger=PropertyChanged}"
+                         FontSize="12" Padding="2,1" VerticalAlignment="Center"
+                         KeyDown="NodeRenameTextBox_KeyDown"
+                         LostFocus="NodeRenameTextBox_LostFocus"
+                         Loaded="NodeRenameTextBox_Loaded">
+                    <TextBox.Style>
+                        <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
             </Grid>
         </DataTemplate>
 
@@ -385,51 +450,190 @@
                     <ItemsControl ItemsSource="{Binding Workspaces}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Button Style="{StaticResource GhostButton}"
-                                        Command="{Binding DataContext.SwitchWorkspaceCommand,
-                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding}"
-                                        HorizontalContentAlignment="Left"
-                                        Padding="8,6"
-                                        Margin="0,1">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="4"/>
-                                            <ColumnDefinition Width="8"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <!-- Color badge -->
-                                        <Border Grid.Column="0"
-                                                Width="4" Height="16"
-                                                CornerRadius="2"
-                                                Background="{Binding Color, Converter={StaticResource HexToBrush}}"/>
-                                        <!-- Name -->
-                                        <TextBlock Grid.Column="2"
-                                                   Text="{Binding Name}"
-                                                   Foreground="{DynamicResource TextBrush}"
-                                                   FontSize="12"
-                                                   VerticalAlignment="Center"
-                                                   TextTrimming="CharacterEllipsis"/>
-                                        <!-- Active indicator -->
-                                        <Ellipse Grid.Column="3"
-                                                 Width="6" Height="6"
-                                                 Fill="{DynamicResource AccentGreenBrush}"
-                                                 VerticalAlignment="Center"
-                                                 Margin="6,0,0,0">
-                                            <Ellipse.Style>
-                                                <Style TargetType="Ellipse">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Ellipse.Style>
-                                        </Ellipse>
-                                    </Grid>
-                                </Button>
+                                <Grid Margin="0,1">
+                                    <Grid.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Renomear"
+                                                      Command="{Binding DataContext.StartRenameWorkspaceCommand,
+                                                                        RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                      CommandParameter="{Binding}"/>
+                                            <MenuItem Header="Alterar Cor">
+                                                <MenuItem Header="Roxo">
+                                                    <MenuItem.CommandParameter>
+                                                        <MultiBinding StringFormat="{}{0}::#CBA6F7">
+                                                            <Binding Path="Id"/>
+                                                        </MultiBinding>
+                                                    </MenuItem.CommandParameter>
+                                                    <MenuItem.Command>
+                                                        <Binding Path="DataContext.ChangeWorkspaceColorCommand"
+                                                                 RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                    </MenuItem.Command>
+                                                    <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#CBA6F7"/></MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Azul">
+                                                    <MenuItem.CommandParameter>
+                                                        <MultiBinding StringFormat="{}{0}::#89B4FA">
+                                                            <Binding Path="Id"/>
+                                                        </MultiBinding>
+                                                    </MenuItem.CommandParameter>
+                                                    <MenuItem.Command>
+                                                        <Binding Path="DataContext.ChangeWorkspaceColorCommand"
+                                                                 RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                    </MenuItem.Command>
+                                                    <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#89B4FA"/></MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Verde">
+                                                    <MenuItem.CommandParameter>
+                                                        <MultiBinding StringFormat="{}{0}::#A6E3A1">
+                                                            <Binding Path="Id"/>
+                                                        </MultiBinding>
+                                                    </MenuItem.CommandParameter>
+                                                    <MenuItem.Command>
+                                                        <Binding Path="DataContext.ChangeWorkspaceColorCommand"
+                                                                 RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                    </MenuItem.Command>
+                                                    <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#A6E3A1"/></MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Amarelo">
+                                                    <MenuItem.CommandParameter>
+                                                        <MultiBinding StringFormat="{}{0}::#F9E2AF">
+                                                            <Binding Path="Id"/>
+                                                        </MultiBinding>
+                                                    </MenuItem.CommandParameter>
+                                                    <MenuItem.Command>
+                                                        <Binding Path="DataContext.ChangeWorkspaceColorCommand"
+                                                                 RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                    </MenuItem.Command>
+                                                    <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#F9E2AF"/></MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Laranja">
+                                                    <MenuItem.CommandParameter>
+                                                        <MultiBinding StringFormat="{}{0}::#FAB387">
+                                                            <Binding Path="Id"/>
+                                                        </MultiBinding>
+                                                    </MenuItem.CommandParameter>
+                                                    <MenuItem.Command>
+                                                        <Binding Path="DataContext.ChangeWorkspaceColorCommand"
+                                                                 RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                    </MenuItem.Command>
+                                                    <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#FAB387"/></MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Rosa">
+                                                    <MenuItem.CommandParameter>
+                                                        <MultiBinding StringFormat="{}{0}::#F38BA8">
+                                                            <Binding Path="Id"/>
+                                                        </MultiBinding>
+                                                    </MenuItem.CommandParameter>
+                                                    <MenuItem.Command>
+                                                        <Binding Path="DataContext.ChangeWorkspaceColorCommand"
+                                                                 RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                    </MenuItem.Command>
+                                                    <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#F38BA8"/></MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="Ciano">
+                                                    <MenuItem.CommandParameter>
+                                                        <MultiBinding StringFormat="{}{0}::#89DCEB">
+                                                            <Binding Path="Id"/>
+                                                        </MultiBinding>
+                                                    </MenuItem.CommandParameter>
+                                                    <MenuItem.Command>
+                                                        <Binding Path="DataContext.ChangeWorkspaceColorCommand"
+                                                                 RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                    </MenuItem.Command>
+                                                    <MenuItem.Icon><Border Width="12" Height="12" CornerRadius="2" Background="#89DCEB"/></MenuItem.Icon>
+                                                </MenuItem>
+                                            </MenuItem>
+                                            <MenuItem Header="Duplicar"
+                                                      Command="{Binding DataContext.DuplicateWorkspaceCommand,
+                                                                        RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                      CommandParameter="{Binding}"/>
+                                            <Separator/>
+                                            <MenuItem Header="Excluir"
+                                                      Command="{Binding DataContext.DeleteWorkspaceCommand,
+                                                                        RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                      CommandParameter="{Binding}"/>
+                                        </ContextMenu>
+                                    </Grid.ContextMenu>
+                                    <Button Style="{StaticResource GhostButton}"
+                                            Command="{Binding DataContext.SwitchWorkspaceCommand,
+                                                               RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            HorizontalContentAlignment="Left"
+                                            Padding="8,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="4"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <!-- Color badge -->
+                                            <Border Grid.Column="0"
+                                                    Width="4" Height="16"
+                                                    CornerRadius="2"
+                                                    Background="{Binding Color, Converter={StaticResource HexToBrush}}"/>
+                                            <!-- Name (hidden when this workspace is being renamed) -->
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{Binding Name}"
+                                                       Foreground="{DynamicResource TextBrush}"
+                                                       FontSize="12"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DataContext.EditingWorkspace,
+                                                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                         Value="{Binding}">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <!-- Inline rename TextBox -->
+                                            <TextBox Grid.Column="2"
+                                                     Text="{Binding DataContext.WorkspaceEditingName,
+                                                                    RelativeSource={RelativeSource AncestorType=UserControl},
+                                                                    UpdateSourceTrigger=PropertyChanged}"
+                                                     FontSize="12" Padding="2,1" VerticalAlignment="Center"
+                                                     KeyDown="WorkspaceRenameTextBox_KeyDown"
+                                                     LostFocus="WorkspaceRenameTextBox_LostFocus"
+                                                     Loaded="WorkspaceRenameTextBox_Loaded">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DataContext.EditingWorkspace,
+                                                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                         Value="{Binding}">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
+                                            <!-- Active indicator -->
+                                            <Ellipse Grid.Column="3"
+                                                     Width="6" Height="6"
+                                                     Fill="{DynamicResource AccentGreenBrush}"
+                                                     VerticalAlignment="Center"
+                                                     Margin="6,0,0,0">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                        </Grid>
+                                    </Button>
+                                </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

@@ -20,6 +20,7 @@ public interface IWorkspaceTreeService
     WorkspaceNodeModel AddTerminalNode(string name, string canvasItemId, string? parentId = null);
 
     void Rename(string nodeId, string newName);
+    void SetColor(string nodeId, string hexColor);
     void Move(string nodeId, string? newParentId, int sortOrder = 0);
     void Remove(string nodeId);
 
