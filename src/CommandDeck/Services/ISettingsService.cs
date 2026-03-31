@@ -8,6 +8,12 @@ public interface ISettingsService
     /// <summary>Gets the current settings, loading from disk on first access.</summary>
     Task<AppSettings> GetSettingsAsync();
 
+    /// <summary>
+    /// Returns the already-loaded settings synchronously (never blocks).
+    /// Returns a default instance if settings have not been loaded yet.
+    /// </summary>
+    AppSettings CurrentSettings { get; }
+
     /// <summary>Persists the provided settings to disk.</summary>
     Task SaveSettingsAsync(AppSettings settings);
 

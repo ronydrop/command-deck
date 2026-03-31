@@ -90,6 +90,9 @@ public partial class TerminalCanvasViewModel : ObservableObject
 
     [ObservableProperty] private bool _zoomRequiresCtrl = true;
 
+    /// <summary>True when at least one terminal/widget exists on the canvas.</summary>
+    [ObservableProperty] private bool _hasTerminals;
+
     // ─── Canvas wallpaper ───────────────────────────────────────────────
 
     [ObservableProperty] private ImageSource? _wallpaperSource;
@@ -139,6 +142,9 @@ public partial class TerminalCanvasViewModel : ObservableObject
 
         // Propagate AI agent state changes to the matching canvas item
         _aiAgentStateService.StateChanged += OnAiAgentStateChanged;
+
+        // Track whether any items exist (drives canvas lock overlay)
+        _hasTerminals = Items.Count > 0;
 
         // Recalculate tiled layout when items change
         _workspaceService.Items.CollectionChanged += OnItemsCollectionChanged;
@@ -281,6 +287,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
 
     private void OnItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        HasTerminals = Items.Count > 0;
         ScheduleTiledLayoutRecalculation();
     }
 

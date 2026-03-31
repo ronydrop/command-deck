@@ -24,6 +24,16 @@ public partial class AiOrbControl : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+
+        // AddHandler com handledEventsToo:true garante que o drag inicia mesmo quando
+        // ButtonBase.OnMouseLeftButtonDown() marca e.Handled = true internamente,
+        // o que bloqueava o drag quando o menu radial estava fechado.
+        AddHandler(UIElement.MouseLeftButtonDownEvent,
+            new MouseButtonEventHandler(OnMouseLeftButtonDownCore),
+            handledEventsToo: true);
+        AddHandler(UIElement.MouseLeftButtonUpEvent,
+            new MouseButtonEventHandler(OnMouseLeftButtonUpCore),
+            handledEventsToo: true);
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -56,23 +66,41 @@ public partial class AiOrbControl : UserControl
 
     // ─── Drag support ────────────────────────────────────────────────────────
 
-    protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
+    private void OnMouseLeftButtonDownCore(object sender, MouseButtonEventArgs e)
     {
         // Start tracking from anywhere on the control.
         // Mouse capture is deferred to OnMouseMove after the 5px threshold,
         // so the OrbButton's Click still fires on a plain tap (no drag).
         _isDragging = true;
         _wasDragged = false;
-        _dragStart = e.GetPosition(null);
-        _orbXAtDragStart = Canvas.GetLeft(this);
-        _orbYAtDragStart = Canvas.GetTop(this);
+
+        // Usar o Canvas pai como referência de coordenadas para ficar no mesmo
+        // espaço que Canvas.Left/Top e evitar discrepâncias com DWM/transforms.
+        var canvas = VisualTreeHelper.GetParent(this) as IInputElement;
+        _dragStart = e.GetPosition(canvas);
+
+        // Proteção contra NaN: Canvas.GetLeft retorna NaN se o binding ainda não
+        // foi avaliado. Nesse caso, usa o valor do ViewModel como fallback.
+        var leftVal = Canvas.GetLeft(this);
+        var topVal  = Canvas.GetTop(this);
+        if (DataContext is AiOrbViewModel vm)
+        {
+            _orbXAtDragStart = double.IsNaN(leftVal) ? vm.PositionX : leftVal;
+            _orbYAtDragStart = double.IsNaN(topVal)  ? vm.PositionY : topVal;
+        }
+        else
+        {
+            _orbXAtDragStart = double.IsNaN(leftVal) ? 0 : leftVal;
+            _orbYAtDragStart = double.IsNaN(topVal)  ? 0 : topVal;
+        }
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
         if (!_isDragging) return;
 
-        var current = e.GetPosition(null);
+        var canvas  = VisualTreeHelper.GetParent(this) as IInputElement;
+        var current = e.GetPosition(canvas);
         double dx = current.X - _dragStart.X;
         double dy = current.Y - _dragStart.Y;
 
@@ -102,7 +130,7 @@ public partial class AiOrbControl : UserControl
         }
     }
 
-    protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
+    private void OnMouseLeftButtonUpCore(object sender, MouseButtonEventArgs e)
     {
         if (!_isDragging) return;
         _isDragging = false;

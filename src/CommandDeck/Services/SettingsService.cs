@@ -248,6 +248,11 @@ public class SettingsService : ISettingsService, IDisposable
     }
 
     /// <summary>
+    /// Returns the already-loaded settings synchronously, or defaults if not yet loaded.
+    /// </summary>
+    public AppSettings CurrentSettings => _settings ?? new AppSettings();
+
+    /// <summary>
     /// Gets the current settings, loading from disk if necessary.
     /// </summary>
     public async Task<AppSettings> GetSettingsAsync()

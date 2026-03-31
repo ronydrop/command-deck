@@ -137,7 +137,7 @@ public class AiOrbService : IAiOrbService
         return response.IsError ? $"Erro: {response.Error}" : (response.Content ?? string.Empty);
     }
 
-    public Point GetSavedPosition() => new Point(32, 32);
+    public Point GetSavedPosition() => new Point(1316, 816); // canto inferior direito (padrão antes de settings carregarem)
 
     public async Task<Point> LoadSavedPositionAsync()
     {

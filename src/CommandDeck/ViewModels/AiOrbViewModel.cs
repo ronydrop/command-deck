@@ -19,8 +19,8 @@ public partial class AiOrbViewModel : ObservableObject
     private readonly IVoiceInputService _voiceService;
 
     [ObservableProperty] private OrbState _state = OrbState.Idle;
-    [ObservableProperty] private double _positionX = 32;
-    [ObservableProperty] private double _positionY = 32;
+    [ObservableProperty] private double _positionX = 1316; // canto inferior direito (1400 - 56 - 28)
+    [ObservableProperty] private double _positionY = 816;  // acima da barra de status (900 - 56 - 28)
     [ObservableProperty] private bool _isRadialMenuOpen;
     [ObservableProperty] private string _activeProvider = "Claude";
     [ObservableProperty] private string _activeProviderColor = "#CBA6F7";

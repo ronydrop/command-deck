@@ -179,8 +179,7 @@ public class NotificationService : INotificationService
     /// </summary>
     private bool IsSourceEnabled(NotificationSource source)
     {
-        // Get settings synchronously (already cached after first load)
-        var settings = Task.Run(() => _settingsService.GetSettingsAsync()).GetAwaiter().GetResult();
+        var settings = _settingsService.CurrentSettings;
 
         if (!settings.NotificationsEnabled)
             return false;
@@ -200,8 +199,7 @@ public class NotificationService : INotificationService
     {
         try
         {
-            var settings = Task.Run(() => _settingsService.GetSettingsAsync()).GetAwaiter().GetResult();
-            if (settings.NotificationSoundEnabled)
+            if (_settingsService.CurrentSettings.NotificationSoundEnabled)
                 System.Media.SystemSounds.Asterisk.Play();
         }
         catch { }

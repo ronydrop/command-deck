@@ -679,7 +679,8 @@
                 <Canvas x:Name="WorldCanvas"
                         HorizontalAlignment="Left"
                         VerticalAlignment="Top"
-                        Background="Transparent">
+                        Background="Transparent"
+                        IsHitTestVisible="{Binding CanvasViewModel.HasTerminals}">
                     <Canvas.RenderTransform>
                         <TransformGroup>
                             <ScaleTransform x:Name="CanvasScale" ScaleX="1" ScaleY="1" />
@@ -724,7 +725,33 @@
                     Margin="0,0,16,16"
                     Panel.ZIndex="100"
                     DataContext="{Binding CanvasViewModel.MiniMap}"
-                    Visibility="Visible" />
+                    Visibility="{Binding CanvasViewModel.HasTerminals, Converter={StaticResource BoolToVis}}" />
+
+                <!-- Lock overlay: covers canvas when no terminals exist, blocks interaction -->
+                <Border x:Name="CanvasLockOverlay"
+                        Background="#B21E1E2E"
+                        IsHitTestVisible="True"
+                        Visibility="{Binding CanvasViewModel.Items.Count,
+                                     Converter={StaticResource EmptyVisConverter}}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Path Data="M18,8H17V6A5,5 0 0,0 7,6V8H6A2,2 0 0,0 4,10V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V10A2,2 0 0,0 18,8M12,17A2,2 0 0,1 10,15A2,2 0 0,1 12,13A2,2 0 0,1 14,15A2,2 0 0,1 12,17M15.1,8H8.9V6A3.1,3.1 0 0,1 12,2.9A3.1,3.1 0 0,1 15.1,6V8Z"
+                              Width="40" Height="40"
+                              Fill="{DynamicResource Surface2Brush}"
+                              Stretch="Uniform"
+                              HorizontalAlignment="Center"
+                              Margin="0,0,0,16" />
+                        <TextBlock Text="Canvas bloqueado"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Surface2Brush}"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="Crie um terminal para começar a usar o canvas"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource Surface1Brush}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
 
                 <!-- Focus overlay (semi-transparent black, shown in focus mode) -->
                 <Rectangle x:Name="FocusOverlay"

@@ -695,6 +695,7 @@
         <Canvas Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="0" Grid.RowSpan="3"
                 Panel.ZIndex="1000">
             <controls:AiOrbControl
+                ClipToBounds="False"
                 DataContext="{Binding AiOrb}"
                 Canvas.Left="{Binding PositionX}"
                 Canvas.Top="{Binding PositionY}" />

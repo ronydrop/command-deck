@@ -327,6 +327,7 @@ public partial class MainViewModel : ObservableObject
 
         await ProjectList.LoadProjectsAsync();
         await WorkspaceTree.LoadAsync();
+        await AiOrb.InitializeAsync();
         RegisterBaseCommands();
 
         var settings = await _settingsService.GetSettingsAsync();

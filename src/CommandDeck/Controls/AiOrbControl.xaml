@@ -46,7 +46,7 @@
         <!-- ═══ Camada 1: visual do orb ══════════════════════════════════════
              BitmapCache removido: cortava o blur do DropShadowEffect nos
              limites dos 56px e causava blur em monitores com DPI > 100%. -->
-        <Grid x:Name="OrbRoot" Width="56" Height="56">
+        <Grid x:Name="OrbRoot" Width="56" Height="56" ClipToBounds="False">
             <Grid.RenderTransform>
                 <ScaleTransform x:Name="OrbScale" ScaleX="1" ScaleY="1" CenterX="28" CenterY="28" />
             </Grid.RenderTransform>
