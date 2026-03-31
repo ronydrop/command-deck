@@ -65,14 +65,11 @@ public partial class TerminalControl : UserControl
         {
             OutputArea.Document = _viewModel.OutputDocument;
 
-            // Throttled auto-scroll + cursor update coalesced into one Background dispatch
+            // Auto-scroll at Render priority so the document layout is always up-to-date
             _scrollHandler = (_, _) =>
             {
-                if (_scrollPending) return;
-                _scrollPending = true;
-                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, () =>
                 {
-                    _scrollPending = false;
                     var sv = GetScrollViewer(OutputArea);
                     if (sv != null && sv.ExtentHeight > sv.ViewportHeight)
                         OutputArea.ScrollToEnd();
@@ -88,9 +85,8 @@ public partial class TerminalControl : UserControl
                 Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, async () =>
                 {
                     var (cw, lh) = MeasureCharDimensions();
-                    short columns = (short)Math.Max(40, (int)(ActualWidth / cw));
-                    short rows = (short)Math.Max(10, (int)(ActualHeight / lh));
-                    await _viewModel.StartSessionAsync(columns, rows);
+                    var (cols, rows) = CalculateTerminalSize(cw, lh);
+                    await _viewModel.StartSessionAsync(cols, rows);
                 });
             }
         }
@@ -306,9 +302,8 @@ public partial class TerminalControl : UserControl
         if (_viewModel != null && ActualWidth > 0 && ActualHeight > 0)
         {
             var (charWidth, lineHeight) = MeasureCharDimensions();
-            short columns = (short)Math.Max(40, (int)(ActualWidth / charWidth));
-            short rows = (short)Math.Max(10, (int)(ActualHeight / lineHeight));
-            await _viewModel.StartSessionAsync(columns, rows);
+            var (cols, rows) = CalculateTerminalSize(charWidth, lineHeight);
+            await _viewModel.StartSessionAsync(cols, rows);
         }
 
         // Auto-focus after layout stabilizes so keystrokes reach HiddenInput
@@ -324,8 +319,7 @@ public partial class TerminalControl : UserControl
         if (_viewModel == null) return;
 
         var (charWidth, lineHeight) = MeasureCharDimensions();
-        short columns = (short)Math.Max(40, (int)(ActualWidth / charWidth));
-        short rows = (short)Math.Max(10, (int)(ActualHeight / lineHeight));
+        var (columns, rows) = CalculateTerminalSize(charWidth, lineHeight);
 
         // Fallback: if OnLoaded fired before the control had non-zero dimensions,
         // the session was never started. Try now that we have a valid size.
@@ -371,6 +365,28 @@ public partial class TerminalControl : UserControl
         {
             return (8.4, 18.0);
         }
+    }
+
+    /// <summary>
+    /// Converts pixel dimensions into terminal columns/rows, accounting for
+    /// the RichTextBox padding and FlowDocument page padding so ConPTY receives
+    /// the correct size rather than a slightly inflated one.
+    /// </summary>
+    private (short columns, short rows) CalculateTerminalSize(double charWidth, double lineHeight)
+    {
+        // Horizontal padding: OutputArea.Padding (left+right) + FlowDocument.PagePadding (left+right)
+        double hPad = OutputArea.Padding.Left  + OutputArea.Padding.Right
+                    + OutputArea.Document.PagePadding.Left + OutputArea.Document.PagePadding.Right;
+        // Vertical padding: OutputArea.Padding (top+bottom) + FlowDocument.PagePadding (top+bottom)
+        double vPad = OutputArea.Padding.Top   + OutputArea.Padding.Bottom
+                    + OutputArea.Document.PagePadding.Top  + OutputArea.Document.PagePadding.Bottom;
+
+        double usableWidth  = Math.Max(0, ActualWidth  - hPad);
+        double usableHeight = Math.Max(0, ActualHeight - vPad);
+
+        short columns = (short)Math.Max(40, (int)(usableWidth  / charWidth));
+        short rows    = (short)Math.Max(10, (int)(usableHeight / lineHeight));
+        return (columns, rows);
     }
 
     // ─── Key Translation ────────────────────────────────────────────────────

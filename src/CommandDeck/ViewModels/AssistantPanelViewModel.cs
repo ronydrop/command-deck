@@ -132,9 +132,7 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
             _                                => string.Empty
         };
 
-        // Set without triggering save via field assignment
-        _selectedModel = AvailableModels.Contains(currentModel) ? currentModel : (AvailableModels.FirstOrDefault() ?? string.Empty);
-        OnPropertyChanged(nameof(SelectedModel));
+        SelectedModel = AvailableModels.Contains(currentModel) ? currentModel : (AvailableModels.FirstOrDefault() ?? string.Empty);
     }
 
     // ─── Constructor ──────────────────────────────────────────────────────────
