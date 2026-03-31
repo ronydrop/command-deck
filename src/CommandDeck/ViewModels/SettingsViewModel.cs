@@ -21,6 +21,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IAssistantService _assistantService;
     private readonly ITerminalBackgroundService _terminalBackgroundService;
     private readonly IClaudeOAuthService _claudeOAuthService;
+    private readonly INotificationService _notificationService;
 
     // ─── Aparência ────────────────────────────────────────────────────────────
 
@@ -128,7 +129,7 @@ public partial class SettingsViewModel : ObservableObject
     private string _anthropicApiKey = string.Empty;
 
     [ObservableProperty]
-    private string _anthropicModel = "claude-sonnet-4-6-20250627";
+    private string _anthropicModel = "claude-sonnet-4-6";
 
     [ObservableProperty]
     private string _openRouterApiKey = string.Empty;
@@ -181,7 +182,7 @@ public partial class SettingsViewModel : ObservableObject
     // ─── Canvas Zoom ────────────────────────────────────────────────────
 
     [ObservableProperty]
-    private string _canvasZoomMode = "CtrlScroll";
+    private string _canvasZoomMode = "FreeScroll";
 
     public IReadOnlyList<string> AvailableZoomModes { get; } = new[]
     {
@@ -339,7 +340,7 @@ public partial class SettingsViewModel : ObservableObject
     public bool IsLocalProvider => AiProvider == "local";
     public bool IsOpenRouterProvider => AiProvider == "openrouter";
     public bool IsApiKeyProvider => IsOpenAiProvider || IsOpenRouterProvider || (IsAnthropicProvider && AnthropicAuthMode == "apikey");
-    public bool IsAnthropicOAuthMode => IsAnthropicProvider && AnthropicAuthMode == "claude_oauth";
+    public bool IsAnthropicOAuthMode => AnthropicAuthMode == "claude_oauth";
 
     public IReadOnlyList<string> AvailableAnthropicAuthModes { get; } = new[]
     {
@@ -354,9 +355,8 @@ public partial class SettingsViewModel : ObservableObject
 
     public IReadOnlyList<string> AvailableAnthropicModels { get; } = new[]
     {
-        "claude-sonnet-4-6-20250627", "claude-opus-4-6-20250626",
-        "claude-sonnet-4-20250514", "claude-opus-4-20250514",
-        "claude-haiku-4-5-20251001"
+        "claude-sonnet-4-6", "claude-opus-4-6",
+        "claude-sonnet-4-5-20241022", "claude-haiku-4-5-20251001"
     };
 
     public IReadOnlyList<string> AvailableOpenRouterModels { get; } = new[]
@@ -444,7 +444,8 @@ public partial class SettingsViewModel : ObservableObject
         IUpdateService updateService,
         IAssistantService assistantService,
         ITerminalBackgroundService terminalBackgroundService,
-        IClaudeOAuthService claudeOAuthService)
+        IClaudeOAuthService claudeOAuthService,
+        INotificationService notificationService)
     {
         _settingsService = settingsService;
         _secretStorageService = secretStorageService;
@@ -452,6 +453,7 @@ public partial class SettingsViewModel : ObservableObject
         _assistantService = assistantService;
         _terminalBackgroundService = terminalBackgroundService;
         _claudeOAuthService = claudeOAuthService;
+        _notificationService = notificationService;
         AppVersion = _updateService.CurrentVersion;
     }
 
@@ -500,7 +502,7 @@ public partial class SettingsViewModel : ObservableObject
             : (settings.AiProvider == "openai" ? settings.AiModel : "gpt-4o-mini");
         AnthropicModel = !string.IsNullOrWhiteSpace(settings.AnthropicProviderModel)
             ? settings.AnthropicProviderModel
-            : (settings.AiProvider == "anthropic" ? settings.AiModel : "claude-sonnet-4-6-20250627");
+            : (settings.AiProvider == "anthropic" ? settings.AiModel : "claude-sonnet-4-6");
         OpenRouterModel = !string.IsNullOrWhiteSpace(settings.OpenRouterProviderModel)
             ? settings.OpenRouterProviderModel
             : (settings.AiProvider == "openrouter" ? settings.AiModel : "anthropic/claude-sonnet-4.6");
@@ -683,6 +685,12 @@ public partial class SettingsViewModel : ObservableObject
         _assistantService.ApplySettings(AiProvider, AiModel, baseUrlToApply, AiApiKey, AnthropicAuthMode);
 
         await _settingsService.SaveSettingsAsync(settings);
+
+        _notificationService.Notify(
+            "Configurações salvas",
+            NotificationType.Success,
+            NotificationSource.System,
+            message: "As preferências foram aplicadas com sucesso.");
     }
 
     /// <summary>

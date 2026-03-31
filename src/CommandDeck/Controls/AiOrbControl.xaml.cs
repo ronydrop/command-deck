@@ -35,6 +35,7 @@ public partial class AiOrbControl : UserControl
         {
             newVm.PropertyChanged += OnViewModelPropertyChanged;
             ApplyProviderGlow(newVm.ActiveProviderColor);
+            ApplyState(newVm.State);
         }
     }
 
@@ -57,28 +58,14 @@ public partial class AiOrbControl : UserControl
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
-        // If the click originated inside the OrbButton (or any descendant), let the button handle it
-        if (IsInsideOrbButton(e.OriginalSource as DependencyObject)) return;
-
+        // Start tracking from anywhere on the control.
+        // Mouse capture is deferred to OnMouseMove after the 5px threshold,
+        // so the OrbButton's Click still fires on a plain tap (no drag).
         _isDragging = true;
         _wasDragged = false;
         _dragStart = e.GetPosition(null);
         _orbXAtDragStart = Canvas.GetLeft(this);
         _orbYAtDragStart = Canvas.GetTop(this);
-        CaptureMouse();
-        e.Handled = true;
-    }
-
-    /// <summary>Returns true if the element is OrbButton or any of its visual descendants.</summary>
-    private bool IsInsideOrbButton(DependencyObject? element)
-    {
-        var current = element;
-        while (current != null)
-        {
-            if (current == OrbButton) return true;
-            current = VisualTreeHelper.GetParent(current);
-        }
-        return false;
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
@@ -89,9 +76,14 @@ public partial class AiOrbControl : UserControl
         double dx = current.X - _dragStart.X;
         double dy = current.Y - _dragStart.Y;
 
-        // Require 5px movement to start drag (to not interfere with click)
+        // Require 5px movement to confirm drag (avoids interfering with clicks)
         if (!_wasDragged && Math.Abs(dx) < 5 && Math.Abs(dy) < 5) return;
-        _wasDragged = true;
+
+        if (!_wasDragged)
+        {
+            _wasDragged = true;
+            CaptureMouse(); // Capture only once drag is confirmed
+        }
 
         var parent = VisualTreeHelper.GetParent(this) as FrameworkElement;
         double maxX = (parent?.ActualWidth ?? 1400) - ActualWidth;
@@ -114,7 +106,8 @@ public partial class AiOrbControl : UserControl
     {
         if (!_isDragging) return;
         _isDragging = false;
-        ReleaseMouseCapture();
+
+        if (_wasDragged) ReleaseMouseCapture();
 
         if (_wasDragged && DataContext is AiOrbViewModel vm)
             vm.SavePosition();

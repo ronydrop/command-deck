@@ -24,7 +24,7 @@
     <!-- Root: toolbar (top) + workspace area (bottom) -->
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="44" />
+            <RowDefinition Height="40" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -408,14 +408,15 @@
                         <StackPanel Orientation="Horizontal">
                             <!-- Canvas mode button -->
                             <Button Padding="8,4"
-                                    Command="{Binding CanvasViewModel.ToggleLayoutModeCommand}"
+                                    Command="{Binding CanvasViewModel.SetCanvasModeCommand}"
                                     ToolTip="Modo Canvas — layout livre (Ctrl+Shift+L)"
                                     Cursor="Hand">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource LayoutModeButton}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding CanvasViewModel.IsCanvasMode}" Value="True">
-                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                                                 <Setter Property="Opacity" Value="1" />
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -440,14 +441,15 @@
 
                             <!-- Tiled mode button -->
                             <Button Padding="8,4"
-                                    Command="{Binding CanvasViewModel.ToggleLayoutModeCommand}"
+                                    Command="{Binding CanvasViewModel.SetTiledModeCommand}"
                                     ToolTip="Modo Tiled — layout em grade (Ctrl+Shift+L)"
                                     Cursor="Hand">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource LayoutModeButton}">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding CanvasViewModel.IsTiledMode}" Value="True">
-                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                                                 <Setter Property="Opacity" Value="1" />
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -481,16 +483,8 @@
                     <Button Padding="6,4"
                             Command="{Binding CanvasViewModel.AutoArrangeCommand}"
                             ToolTip="Organizar terminais automaticamente"
-                            Cursor="Hand">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="{DynamicResource Surface1Brush}" />
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
+                            Cursor="Hand"
+                            Style="{StaticResource LayoutModeButton}">
                         <!-- Grid/arrange icon (4 arrows pointing outward) -->
                         <Path Data="M4 1L4 5M1 4L5 4 M16 1L16 5M13 4L17 4 M4 15L4 19M1 16L5 16 M16 15L16 19M13 16L17 16 M7 7H13V13H7Z"
                               Stroke="{DynamicResource TextBrush}"
@@ -538,17 +532,9 @@
                                      RelativeSource={RelativeSource AncestorType=Window}}"
                             CommandParameter="{x:Static vm:ViewType.Browser}"
                             ToolTip="Abrir Browser do projeto"
-                            Cursor="Hand">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
-                                <Setter Property="Padding" Value="8,4" />
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="{DynamicResource Surface1Brush}" />
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
+                            Cursor="Hand"
+                            Style="{StaticResource LayoutModeButton}"
+                            Padding="8,4">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="🌐"
                                        FontSize="13"
@@ -574,7 +560,7 @@
             <Grid.ColumnDefinitions>
                 <!-- Canvas viewport -->
                 <ColumnDefinition Width="*" />
-                <!-- Sidebar (0 when hidden) -->
+                <!-- Sidebar (28px collapsed strip when hidden, 220px when expanded) -->
                 <ColumnDefinition>
                     <ColumnDefinition.Style>
                         <Style TargetType="ColumnDefinition">
@@ -583,7 +569,7 @@
                                 <DataTrigger Binding="{Binding DataContext.IsTerminalPanelVisible,
                                              RelativeSource={RelativeSource AncestorType=Window}}"
                                              Value="False">
-                                    <Setter Property="Width" Value="0" />
+                                    <Setter Property="Width" Value="28" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -746,17 +732,13 @@
                            Opacity="0"
                            IsHitTestVisible="False" />
 
-                <!-- Empty state (lives outside WorldCanvas but follows pan/zoom via its own transform) -->
+                <!-- Empty state — fixed in the viewport center, does not follow canvas pan -->
                 <StackPanel x:Name="EmptyState"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             IsHitTestVisible="False"
-                            RenderTransformOrigin="0.5,0.5"
                             Visibility="{Binding CanvasViewModel.Items.Count,
                                          Converter={StaticResource EmptyVisConverter}}">
-                    <StackPanel.RenderTransform>
-                        <TranslateTransform x:Name="EmptyStateTranslate" X="0" Y="0" />
-                    </StackPanel.RenderTransform>
                     <Path Data="{StaticResource TerminalIcon}"
                           Style="{StaticResource IconPathLarge}"
                           Width="56" Height="56"
@@ -781,17 +763,52 @@
             <Border Grid.Column="1"
                     Background="{DynamicResource GlassSidebarBrush}"
                     BorderBrush="{DynamicResource GlassBorderBrush}"
-                    BorderThickness="1,0,0,0"
-                    Visibility="{Binding DataContext.IsTerminalPanelVisible,
-                                 RelativeSource={RelativeSource AncestorType=Window},
-                                 Converter={StaticResource BoolToVis}}">
-                <DockPanel>
+                    BorderThickness="1,0,0,0">
+                <Grid>
+
+                    <!-- ── COLLAPSED STRIP (visible when panel is hidden) ── -->
+                    <Border Visibility="{Binding DataContext.IsTerminalPanelVisible,
+                                        RelativeSource={RelativeSource AncestorType=Window},
+                                        Converter={StaticResource BoolToVis},
+                                        ConverterParameter=Invert}"
+                            Background="Transparent"
+                            Cursor="Hand"
+                            ToolTip="Mostrar painel de terminais (Ctrl+Shift+B)">
+                        <Border.InputBindings>
+                            <MouseBinding MouseAction="LeftClick"
+                                          Command="{Binding DataContext.ToggleTerminalPanelCommand,
+                                                    RelativeSource={RelativeSource AncestorType=Window}}" />
+                        </Border.InputBindings>
+                        <Button Style="{StaticResource GhostButton}"
+                                Padding="0"
+                                Width="20" Height="20"
+                                VerticalAlignment="Top"
+                                Margin="4,10,0,0"
+                                Command="{Binding DataContext.ToggleTerminalPanelCommand,
+                                          RelativeSource={RelativeSource AncestorType=Window}}"
+                                ToolTip="Mostrar painel de terminais">
+                            <Path Data="M 7 1 L 3 5 L 7 9"
+                                  Stroke="{DynamicResource SubtextBrush}"
+                                  StrokeThickness="1.5"
+                                  StrokeLineJoin="Round"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  Fill="Transparent"
+                                  Width="8" Height="10"
+                                  Stretch="Uniform" />
+                        </Button>
+                    </Border>
+
+                    <!-- ── EXPANDED CONTENT ── -->
+                    <DockPanel Visibility="{Binding DataContext.IsTerminalPanelVisible,
+                                           RelativeSource={RelativeSource AncestorType=Window},
+                                           Converter={StaticResource BoolToVis}}">
 
                     <!-- ── Sidebar header with icon + label + collapse button ──── -->
                     <Border DockPanel.Dock="Top"
                             BorderBrush="{DynamicResource GlassBorderBrush}"
                             BorderThickness="0,0,0,1"
-                            Padding="12,10">
+                            Padding="12,7">
                         <DockPanel>
                             <!-- Collapse button (right) -->
                             <Button DockPanel.Dock="Right"
@@ -1104,6 +1121,8 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </DockPanel>
+
+                </Grid>
             </Border>
         </Grid>
     </Grid>

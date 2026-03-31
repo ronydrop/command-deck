@@ -107,7 +107,9 @@ public class AnsiParser
     // Cached compiled Regex for non-CSI escape sequences stripped in Parse()
     private static readonly Regex CharsetSelectRegex = new(@"\x1B[()][AB012]", RegexOptions.Compiled);
     private static readonly Regex KeypadModeRegex    = new(@"\x1B[=>]",        RegexOptions.Compiled);
-    private static readonly Regex DecPrivateRegex    = new(@"\x1B\x5B\?[0-9;]*[hlsr]", RegexOptions.Compiled);
+    private static readonly Regex DecPrivateRegex    = new(@"\x1B\x5B\?[0-9;]*[A-Za-z@`]", RegexOptions.Compiled);
+    // Private/extended CSI: ESC [ > ... or < ... or ! ... (e.g. ESC[>0q, ESC[>4m, ESC[<u sent by Claude Code)
+    private static readonly Regex PrivateCsiRegex    = new(@"\x1B\[[><!=][0-9;]*[A-Za-z@`]", RegexOptions.Compiled);
 
     // Frozen brush cache: avoids allocating a new SolidColorBrush per Run
     private static readonly Dictionary<Color, SolidColorBrush> BrushCache = new();
@@ -138,7 +140,8 @@ public class AnsiParser
         // Remove non-CSI escape sequences we don't handle (compiled, cached)
         input = CharsetSelectRegex.Replace(input, ""); // Character set selection
         input = KeypadModeRegex.Replace(input, "");    // Keypad mode
-        input = DecPrivateRegex.Replace(input, "");    // DEC private modes
+        input = DecPrivateRegex.Replace(input, "");    // DEC private modes (?...)
+        input = PrivateCsiRegex.Replace(input, "");    // Private CSI (>..., <..., !..., =...)
 
         // Handle bell character
         if (input.Contains('\x07'))
@@ -259,6 +262,7 @@ public class AnsiParser
         input = CharsetSelectRegex.Replace(input, "");
         input = KeypadModeRegex.Replace(input, "");
         input = DecPrivateRegex.Replace(input, "");
+        input = PrivateCsiRegex.Replace(input, "");
 
         // Handle bell character
         if (input.Contains('\x07'))
@@ -308,7 +312,7 @@ public class AnsiParser
                 char c = tail[i];
                 if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '@' || c == '`')
                     return -1; // Complete CSI sequence found
-                if (c != ';' && (c < '0' || c > '9') && c != '?')
+                if (c != ';' && (c < '0' || c > '9') && c != '?' && c != '>' && c != '<' && c != '!' && c != '=')
                     return -1; // Invalid char — not a partial CSI, let it through
             }
             return lastEsc; // Incomplete: has ESC[ + params but no final char

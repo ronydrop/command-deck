@@ -8,7 +8,7 @@
              d:DesignWidth="200" d:DesignHeight="140"
              d:DataContext="{d:DesignInstance Type={x:Type vm:MiniMapViewModel}}"
              Width="{Binding MiniMapWidth}"
-             Height="{Binding MiniMapHeight}"
+             Height="{Binding ControlHeight}"
              IsHitTestVisible="True"
              Focusable="False">
 
@@ -17,7 +17,8 @@
             Opacity="0.96"
             Background="{DynamicResource GlassBgBrush}"
             BorderBrush="{DynamicResource GlassBorderBrush}"
-            BorderThickness="1.5">
+            BorderThickness="1.5"
+            ClipToBounds="True">
 
         <Border.Effect>
             <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.20" Color="#000000" />
@@ -26,9 +27,20 @@
         <Grid>
             <Grid.RowDefinitions>
                 <!-- Header label row -->
-                <RowDefinition Height="18" />
-                <!-- Map canvas row -->
-                <RowDefinition Height="*" />
+                <RowDefinition Height="22" />
+                <!-- Map canvas row — collapses to 0 when minimized -->
+                <RowDefinition>
+                    <RowDefinition.Style>
+                        <Style TargetType="RowDefinition">
+                            <Setter Property="Height" Value="*" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                                    <Setter Property="Height" Value="0" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </RowDefinition.Style>
+                </RowDefinition>
             </Grid.RowDefinitions>
 
             <!-- ── Header ─────────────────────────────────────────────────── -->
@@ -36,16 +48,79 @@
                     Background="{DynamicResource GlassTitleBarBrush}"
                     CornerRadius="9,9,0,0"
                     Padding="8,0">
-                <TextBlock Text="Visão Geral"
-                           FontSize="10"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource SubtextBrush}"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Left" />
+                <Grid>
+                    <TextBlock Text="Minimap"
+                               FontSize="10"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource SubtextBrush}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Left" />
+
+                    <!-- Collapse / expand toggle button -->
+                    <Button Command="{Binding ToggleCollapsedCommand}"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Width="16" Height="16"
+                            Cursor="Hand"
+                            ToolTip="Minimizar / Maximizar">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bg" Background="Transparent" CornerRadius="3">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bg" Property="Background" Value="{DynamicResource Surface1Brush}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+
+                        <!-- Chevron: points UP (=collapse) when expanded, DOWN (=expand) when collapsed -->
+                        <Path x:Name="Chevron"
+                              Data="M6 9L12 15L18 9"
+                              Stroke="{DynamicResource SubtextBrush}"
+                              StrokeThickness="1.5"
+                              StrokeLineJoin="Round"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              Fill="Transparent"
+                              Width="9" Height="6"
+                              Stretch="Uniform"
+                              RenderTransformOrigin="0.5,0.5">
+                            <Path.RenderTransform>
+                                <RotateTransform x:Name="ChevronRotation" Angle="180" />
+                            </Path.RenderTransform>
+                            <Path.Style>
+                                <Style TargetType="Path">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                                            <Setter Property="RenderTransform">
+                                                <Setter.Value>
+                                                    <RotateTransform Angle="0" />
+                                                </Setter.Value>
+                                            </Setter>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Path.Style>
+                        </Path>
+                    </Button>
+                </Grid>
             </Border>
 
             <!-- ── Map canvas ─────────────────────────────────────────────── -->
-            <!-- ClipToBounds ensures nothing bleeds outside the 200x122 area -->
+            <!-- ClipToBounds ensures nothing bleeds outside the area -->
             <Canvas Grid.Row="1"
                     x:Name="MapCanvas"
                     ClipToBounds="True"

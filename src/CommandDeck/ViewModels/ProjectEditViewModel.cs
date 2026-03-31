@@ -13,6 +13,7 @@ public partial class ProjectEditViewModel : ObservableObject
 {
     private readonly IProjectService _projectService;
     private readonly IDialogService _dialogService;
+    private readonly INotificationService _notificationService;
     private bool _isEditing;
     private string? _originalId;
 
@@ -74,10 +75,11 @@ public partial class ProjectEditViewModel : ObservableObject
     /// </summary>
     public event Action<bool>? CloseRequested;
 
-    public ProjectEditViewModel(IProjectService projectService, IDialogService dialogService)
+    public ProjectEditViewModel(IProjectService projectService, IDialogService dialogService, INotificationService notificationService)
     {
         _projectService = projectService;
         _dialogService = dialogService;
+        _notificationService = notificationService;
     }
 
     /// <summary>
@@ -201,6 +203,12 @@ public partial class ProjectEditViewModel : ObservableObject
             };
             await _projectService.AddProjectAsync(project);
         }
+
+        _notificationService.Notify(
+            _isEditing ? "Projeto atualizado" : "Projeto adicionado",
+            NotificationType.Success,
+            NotificationSource.System,
+            message: Name.Trim());
 
         CloseRequested?.Invoke(true);
     }

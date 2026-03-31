@@ -43,32 +43,27 @@
     -->
     <Grid ClipToBounds="False">
 
-        <!-- ═══ Camada 1: visual estático do orb (BitmapCache) ═══
-             Contém apenas elementos que NÃO mudam durante operação normal:
-             glow, ellipses, anéis, botão.
-             Mudanças de cor do glow (ApplyProviderGlow) invalidam o cache
-             intencionalmente — acontece raramente (só ao trocar provider). -->
+        <!-- ═══ Camada 1: visual do orb ══════════════════════════════════════
+             BitmapCache removido: cortava o blur do DropShadowEffect nos
+             limites dos 56px e causava blur em monitores com DPI > 100%. -->
         <Grid x:Name="OrbRoot" Width="56" Height="56">
-            <Grid.CacheMode>
-                <BitmapCache EnableClearType="False" RenderAtScale="1" SnapsToDevicePixels="False" />
-            </Grid.CacheMode>
             <Grid.RenderTransform>
                 <ScaleTransform x:Name="OrbScale" ScaleX="1" ScaleY="1" CenterX="28" CenterY="28" />
             </Grid.RenderTransform>
 
-            <!-- Glow aura — DropShadowEffect é GPU-acelerado -->
+            <!-- Glow aura — maior que o orb para criar halo visível ao redor -->
             <Ellipse x:Name="GlowAura"
-                     Width="56" Height="56"
-                     Opacity="0.5">
+                     Width="64" Height="64"
+                     Opacity="0.85">
                 <Ellipse.Fill>
                     <SolidColorBrush x:Name="GlowBrush" Color="#CBA6F7" />
                 </Ellipse.Fill>
                 <Ellipse.Effect>
                     <DropShadowEffect x:Name="GlowAuraEffect"
                                       Color="#CBA6F7"
-                                      BlurRadius="22"
+                                      BlurRadius="32"
                                       ShadowDepth="0"
-                                      Opacity="0.6" />
+                                      Opacity="1.0" />
                 </Ellipse.Effect>
             </Ellipse>
 
@@ -85,9 +80,9 @@
                 <Ellipse.Effect>
                     <DropShadowEffect x:Name="OrbGlow"
                                       Color="#CBA6F7"
-                                      BlurRadius="18"
+                                      BlurRadius="24"
                                       ShadowDepth="0"
-                                      Opacity="0.75" />
+                                      Opacity="0.9" />
                 </Ellipse.Effect>
             </Ellipse>
 
@@ -147,13 +142,15 @@
                 </Button.Template>
 
                 <!-- Icon: Robot (idle/active), Mic (recording), Spinner dots (processing) -->
-                <Grid Width="24" Height="24">
-                    <!-- Robot icon (idle/active) -->
+                <Grid Width="28" Height="28">
+                    <!-- Robot icon (idle/active) — stroke adicionado para melhor legibilidade em qualquer DPI -->
                     <Path x:Name="RobotIcon"
                           Data="M12 2C13.1 2 14 2.9 14 4C14 4.74 13.6 5.39 13 5.73V7H15C16.1 7 17 7.9 17 9V18C17 19.1 16.1 20 15 20H9C7.9 20 7 19.1 7 18V9C7 7.9 7.9 7 9 7H11V5.73C10.4 5.39 10 4.74 10 4C10 2.9 10.9 2 12 2M9 9V18H15V9H9M10 10H11V12H10V10M13 10H14V12H13V10M10 14H14V16H10V14Z"
                           Fill="White"
+                          Stroke="White"
+                          StrokeThickness="0.3"
                           Stretch="Uniform"
-                          Opacity="0.95" />
+                          Opacity="1.0" />
 
                     <!-- Mic icon (recording) -->
                     <Path x:Name="MicIcon"

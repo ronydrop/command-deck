@@ -112,6 +112,10 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isProjectSwitching;
 
+    /// <summary>Controls visibility of the keyboard shortcuts cheat-sheet overlay.</summary>
+    [ObservableProperty]
+    private bool _isShortcutsOverlayOpen;
+
     /// <summary>Progress message shown on the loading overlay during project switch.</summary>
     [ObservableProperty]
     private string _projectSwitchMessage = string.Empty;
@@ -243,6 +247,26 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     [RelayCommand]
     private void ToggleAIPanel() => IsAIPanelOpen = !IsAIPanelOpen;
+
+    /// <summary>
+    /// Toggles both side panels (sidebar + AI chat) simultaneously (Ctrl+\).
+    /// Expands both if either is hidden; collapses both if both are open.
+    /// </summary>
+    [RelayCommand]
+    private void ToggleAllPanels()
+    {
+        bool expand = IsSidebarCollapsed || !IsAIPanelOpen;
+        IsSidebarCollapsed = !expand;
+        IsAIPanelOpen = expand;
+    }
+
+    /// <summary>Opens the keyboard shortcuts cheat-sheet overlay (Ctrl+/).</summary>
+    [RelayCommand]
+    private void OpenShortcutsOverlay() => IsShortcutsOverlayOpen = true;
+
+    /// <summary>Closes the keyboard shortcuts cheat-sheet overlay.</summary>
+    [RelayCommand]
+    private void CloseShortcutsOverlay() => IsShortcutsOverlayOpen = false;
 
     /// <summary>
     /// Dismiss a single notification by its ID.
@@ -442,7 +466,7 @@ public partial class MainViewModel : ObservableObject
         // Select adjacent tab
         if (Terminals.Count > 0)
         {
-            int newIndex = Math.Min(index, Terminals.Count - 1);
+            int newIndex = index >= 0 ? Math.Min(index, Terminals.Count - 1) : 0;
             ActiveTerminal = Terminals[newIndex];
         }
         else

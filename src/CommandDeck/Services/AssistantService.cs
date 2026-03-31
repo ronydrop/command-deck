@@ -18,6 +18,7 @@ public sealed class AssistantService : IAssistantService
     private readonly AssistantSettings _settings;
     private IAssistantProvider _active;
     private readonly IDatabaseService _db;
+    private readonly IClaudeUsageService _usageService;
 
     // ─── Expanded WSL state ───────────────────────────────────────────────
     private readonly Dictionary<string, IAssistantProvider> _providersByName = new(StringComparer.OrdinalIgnoreCase);
@@ -27,11 +28,13 @@ public sealed class AssistantService : IAssistantService
     public AssistantService(
         IEnumerable<IAssistantProvider> providers,
         AssistantSettings settings,
-        IDatabaseService db)
+        IDatabaseService db,
+        IClaudeUsageService usageService)
     {
         _providers = providers.ToList();
         _settings = settings;
         _db = db;
+        _usageService = usageService;
 
         // Build name lookup for WSL-style access
         foreach (var p in _providers)
@@ -53,11 +56,30 @@ public sealed class AssistantService : IAssistantService
 
     public bool IsAnyProviderAvailable => _providers.Any(p => p.IsAvailable);
 
-    public Task<string> ExplainTerminalOutputAsync(string output, CancellationToken ct = default)
-        => _active.ExplainAsync(output, ct);
+    public async Task<string> ExplainTerminalOutputAsync(string output, CancellationToken ct = default)
+    {
+        var messages = new List<AssistantMessage>
+        {
+            AssistantMessage.System("You are a helpful developer assistant. Explain the following terminal output concisely."),
+            AssistantMessage.User(output)
+        };
+        var response = await _active.ChatAsync(messages);
+        ReportUsage(response);
+        return response.IsError ? $"AI Error: {response.Error}" : response.Content ?? string.Empty;
+    }
 
-    public Task<string> SuggestCommandAsync(string description, string? shell = null, CancellationToken ct = default)
-        => _active.SuggestCommandAsync(description, shell, ct);
+    public async Task<string> SuggestCommandAsync(string description, string? shell = null, CancellationToken ct = default)
+    {
+        var shellPart = shell is not null ? $" Target shell: {shell}." : string.Empty;
+        var messages = new List<AssistantMessage>
+        {
+            AssistantMessage.System("You are a helpful developer assistant. Suggest a shell command. Reply with only the command."),
+            AssistantMessage.User($"Task: {description}{shellPart}")
+        };
+        var response = await _active.ChatAsync(messages);
+        ReportUsage(response);
+        return response.IsError ? $"AI Error: {response.Error}" : response.Content ?? string.Empty;
+    }
 
     public IAsyncEnumerable<string> StreamChatAsync(
         IEnumerable<(string role, string content)> history,
@@ -179,6 +201,24 @@ public sealed class AssistantService : IAssistantService
         var tasks = _providers.Select(p => p.InitializeAsync()).ToArray();
         return Task.WhenAll(tasks);
     }
+
+    // ─── Usage tracking helpers ───────────────────────────────────────────
+
+    private void ReportUsage(AssistantResponse response)
+    {
+        AssistantResponseReceived?.Invoke(response);
+        if (response.Usage is { } u)
+            _usageService.TrackUsage(u.PromptTokens, u.CompletionTokens, GetCurrentModel());
+    }
+
+    private string? GetCurrentModel() =>
+        _settings.ActiveProvider switch
+        {
+            AssistantProviderType.Anthropic  => _settings.AnthropicModel,
+            AssistantProviderType.OpenAI     => _settings.OpenAIModel,
+            AssistantProviderType.OpenRouter => _settings.OpenRouterModel,
+            _                                => _settings.OllamaModel
+        };
 
     // ─── IDisposable ──────────────────────────────────────────────────────
 

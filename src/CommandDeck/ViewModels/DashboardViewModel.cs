@@ -17,6 +17,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private readonly INotificationService _notificationService;
     private readonly IExternalEditorService _externalEditorService;
     private readonly IAssistantService _assistantService;
+    private readonly IClaudeUsageService _claudeUsage;
     private readonly DispatcherTimer _refreshTimer;
     private string? _lastKnownBranch;
 
@@ -71,6 +72,19 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isCommitInputVisible;
 
+    // ─── Claude usage stats ────────────────────────────────────────────────
+    [ObservableProperty]
+    private string _claudeTokensDisplay = "0";
+
+    [ObservableProperty]
+    private string _claudeCostUsdDisplay = "$0.0000";
+
+    [ObservableProperty]
+    private string _claudeCostBrlDisplay = "R$ 0,0000";
+
+    [ObservableProperty]
+    private string _claudeModelDisplay = "—";
+
     /// <summary>
     /// Event to request opening a terminal with a specific command.
     /// </summary>
@@ -93,7 +107,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         INotificationService notificationService,
         IExternalEditorService externalEditorService,
         IAssistantService assistantService,
-        WorktreeSelectorViewModel worktreeSelector)
+        WorktreeSelectorViewModel worktreeSelector,
+        IClaudeUsageService claudeUsage)
     {
         _gitService = gitService;
         _assistantService = assistantService;
@@ -101,7 +116,10 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _terminalService = terminalService;
         _notificationService = notificationService;
         _externalEditorService = externalEditorService;
+        _claudeUsage = claudeUsage;
         WorktreeSelector = worktreeSelector;
+
+        _claudeUsage.UsageUpdated += RefreshClaudeStats;
 
         _refreshTimer = new DispatcherTimer
         {
@@ -112,6 +130,20 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             try { await RefreshAsync(); }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DashboardTick] {ex}"); }
         };
+    }
+
+    private void RefreshClaudeStats()
+    {
+        var total = _claudeUsage.SessionTotalTokens;
+        ClaudeTokensDisplay = total >= 1_000_000
+            ? $"{total / 1_000_000.0:F1}M"
+            : total >= 1_000
+                ? $"{total / 1_000.0:F1}k"
+                : total.ToString();
+
+        ClaudeCostUsdDisplay = $"${_claudeUsage.SessionCostUsd:F4}";
+        ClaudeCostBrlDisplay = $"R$ {_claudeUsage.SessionCostBrl:F4}";
+        ClaudeModelDisplay   = _claudeUsage.CurrentModel ?? "—";
     }
 
     /// <summary>
@@ -332,6 +364,12 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private void ResetClaudeUsage()
+    {
+        _claudeUsage.Reset();
+    }
+
+    [RelayCommand]
     private void GitPush()
     {
         if (CurrentProject == null) return;
@@ -436,6 +474,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _claudeUsage.UsageUpdated -= RefreshClaudeStats;
         _refreshTimer.Stop();
         GC.SuppressFinalize(this);
     }

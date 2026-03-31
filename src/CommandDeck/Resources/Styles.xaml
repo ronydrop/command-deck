@@ -147,11 +147,11 @@
         </Setter>
     </Style>
 
-    <!-- Layout mode toggle buttons (Canvas / Tiled) — hover identical to AccentButton -->
+    <!-- Layout mode toggle buttons (Canvas / Tiled) — surface-based, distinct from AccentButton -->
     <Style x:Key="LayoutModeButton" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-        <Setter Property="Opacity" Value="0.55" />
+        <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
+        <Setter Property="Opacity" Value="0.65" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="8,4" />
         <Setter Property="Cursor" Value="Hand" />
@@ -162,22 +162,18 @@
                             Background="{TemplateBinding Background}"
                             CornerRadius="3"
                             Padding="{TemplateBinding Padding}">
-                        <Border x:Name="overlay"
-                                Background="Transparent"
-                                CornerRadius="3">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center" />
-                        </Border>
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource AccentBrush}" />
-                            <Setter TargetName="overlay" Property="Background" Value="#33FFFFFF" />
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource Surface1Brush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                             <Setter Property="Opacity" Value="1" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource AccentBrush}" />
-                            <Setter TargetName="overlay" Property="Background" Value="#11FFFFFF" />
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource Surface2Brush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                             <Setter Property="Opacity" Value="1" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -850,21 +846,28 @@
     <Style TargetType="MenuItem">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Padding" Value="12,7" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
                     <Border x:Name="border"
                             Background="{TemplateBinding Background}"
                             CornerRadius="4"
+                            Margin="2,1"
                             Padding="{TemplateBinding Padding}">
-                        <ContentPresenter ContentSource="Header"
-                                          VerticalAlignment="Center" />
+                        <ContentPresenter x:Name="content"
+                                          ContentSource="Header"
+                                          VerticalAlignment="Center"
+                                          TextElement.Foreground="{TemplateBinding Foreground}" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="border" Property="Background"
                                     Value="{DynamicResource Surface1Brush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="content" Property="Opacity" Value="0.4" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

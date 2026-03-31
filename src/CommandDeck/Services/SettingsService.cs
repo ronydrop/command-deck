@@ -103,7 +103,7 @@ public partial class AppSettings : ObservableObject
     /// Per-provider model for Anthropic.
     /// </summary>
     [ObservableProperty]
-    private string _anthropicProviderModel = "claude-sonnet-4-6-20250627";
+    private string _anthropicProviderModel = "claude-sonnet-4-6";
 
     /// <summary>
     /// Per-provider model for OpenAI.
@@ -185,12 +185,12 @@ public partial class AppSettings : ObservableObject
     private double _aiOrbPositionX = 32;
 
     [ObservableProperty]
-    private double _aiOrbPositionY = 400;
+    private double _aiOrbPositionY = 32;
 
     // ─── Canvas Zoom Settings ──────────────────────────────────────────
 
     [ObservableProperty]
-    private string _canvasZoomMode = "CtrlScroll";
+    private string _canvasZoomMode = "FreeScroll";
 
     // ─── Terminal Background Settings ──────────────────────────────────
 

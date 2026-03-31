@@ -20,7 +20,7 @@ public partial class AiOrbViewModel : ObservableObject
 
     [ObservableProperty] private OrbState _state = OrbState.Idle;
     [ObservableProperty] private double _positionX = 32;
-    [ObservableProperty] private double _positionY = 400;
+    [ObservableProperty] private double _positionY = 32;
     [ObservableProperty] private bool _isRadialMenuOpen;
     [ObservableProperty] private string _activeProvider = "Claude";
     [ObservableProperty] private string _activeProviderColor = "#CBA6F7";

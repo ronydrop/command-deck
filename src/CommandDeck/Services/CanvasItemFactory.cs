@@ -33,8 +33,8 @@ public class CanvasItemFactory
             Type = CanvasItemType.Terminal,
             X = x,
             Y = y,
-            Width = 620,
-            Height = 420
+            Width = 780,
+            Height = 520
         };
 
         if (terminal.Session is not null)

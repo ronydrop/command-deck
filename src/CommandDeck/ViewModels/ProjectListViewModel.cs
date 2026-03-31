@@ -13,6 +13,7 @@ public partial class ProjectListViewModel : ObservableObject
 {
     private readonly IProjectService _projectService;
     private readonly ISettingsService _settingsService;
+    private readonly INotificationService _notificationService;
 
     [ObservableProperty]
     private ObservableCollection<Project> _projects = new();
@@ -47,10 +48,11 @@ public partial class ProjectListViewModel : ObservableObject
     /// </summary>
     public event Action? AddProjectRequested;
 
-    public ProjectListViewModel(IProjectService projectService, ISettingsService settingsService)
+    public ProjectListViewModel(IProjectService projectService, ISettingsService settingsService, INotificationService notificationService)
     {
         _projectService = projectService;
         _settingsService = settingsService;
+        _notificationService = notificationService;
 
         _projectService.ProjectsChanged += async () =>
         {
@@ -123,7 +125,13 @@ public partial class ProjectListViewModel : ObservableObject
     private async Task DeleteProject(Project? project)
     {
         if (project == null) return;
+        var name = project.Name;
         await _projectService.DeleteProjectAsync(project.Id);
+        _notificationService.Notify(
+            "Projeto removido",
+            NotificationType.Info,
+            NotificationSource.System,
+            message: name);
     }
 
     /// <summary>
@@ -155,6 +163,11 @@ public partial class ProjectListViewModel : ObservableObject
             {
                 await _projectService.AddProjectAsync(project);
             }
+
+            _notificationService.Notify(
+                detected.Count > 0 ? $"{detected.Count} projeto(s) encontrado(s)" : "Nenhum projeto novo encontrado",
+                detected.Count > 0 ? NotificationType.Success : NotificationType.Info,
+                NotificationSource.System);
         }
         finally
         {

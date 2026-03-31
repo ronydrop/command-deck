@@ -49,10 +49,11 @@
             <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="2"/>
+            <Setter Property="Width" Value="118"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="TabBorder" Padding="16,8" Cursor="Hand"
+                        <Border x:Name="TabBorder" Padding="8,8" Cursor="Hand"
                                 Background="Transparent" CornerRadius="7">
                             <TextBlock x:Name="HeaderText"
                                        Text="{TemplateBinding Header}"
@@ -293,7 +294,13 @@
                                 <TextBox Style="{StaticResource DarkTextBox}" Text="{Binding ToggleSidebarShortcut, UpdateSourceTrigger=PropertyChanged}" Tag="Ctrl+B" Margin="0,0,0,10"/>
 
                                 <TextBlock Text="Focar Terminal" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                <TextBox Style="{StaticResource DarkTextBox}" Text="{Binding FocusTerminalShortcut, UpdateSourceTrigger=PropertyChanged}" Tag="Ctrl+`"/>
+                                <TextBox Style="{StaticResource DarkTextBox}" Text="{Binding FocusTerminalShortcut, UpdateSourceTrigger=PropertyChanged}" Tag="Ctrl+`" Margin="0,0,0,10"/>
+
+                                <TextBlock Text="Expandir/Fechar Painéis Laterais" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
+                                <TextBox Style="{StaticResource DarkTextBox}" Text="Ctrl+\" IsReadOnly="True" Margin="0,0,0,10"/>
+
+                                <TextBlock Text="Ver Todos os Atalhos" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
+                                <TextBox Style="{StaticResource DarkTextBox}" Text="Ctrl+/" IsReadOnly="True"/>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -558,21 +565,11 @@
                     <StackPanel>
                         <!-- General AI settings -->
                         <Border Style="{StaticResource Card}" Margin="0,0,0,16">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <CheckBox IsChecked="{Binding AiAssistantVisible}" VerticalAlignment="Center" Margin="0,0,8,0">
-                                        <TextBlock Text="Mostrar painel do Assistente" Foreground="{DynamicResource TextBrush}" FontSize="13"/>
-                                    </CheckBox>
-                                </StackPanel>
-                                <Button Grid.Column="1" Content="Desativar IA" Style="{StaticResource GhostButton}"
-                                        Command="{Binding SetActiveProviderCommand}" CommandParameter="none"
-                                        Padding="12,6" FontSize="12"
-                                        Visibility="{Binding IsAiEnabled, Converter={StaticResource BoolToVis}}"/>
-                            </Grid>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <CheckBox IsChecked="{Binding AiAssistantVisible}" VerticalAlignment="Center" Margin="0,0,8,0">
+                                    <TextBlock Text="Mostrar painel do Assistente" Foreground="{DynamicResource TextBrush}" FontSize="13"/>
+                                </CheckBox>
+                            </StackPanel>
                         </Border>
 
                         <!-- Provider cards 2x2 -->
@@ -612,8 +609,6 @@
                                             </TextBlock>
                                         </Border>
                                     </Grid>
-                                    <TextBlock Text="Modelo" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                    <ComboBox Style="{StaticResource DarkComboBox}" ItemsSource="{Binding AvailableAnthropicModels}" SelectedItem="{Binding AnthropicModel}" Tag="Selecione um modelo" Margin="0,0,0,12"/>
                                     <TextBlock Text="Autenticação" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
                                     <ComboBox Style="{StaticResource DarkComboBox}" ItemsSource="{Binding AvailableAnthropicAuthModes}" SelectedItem="{Binding AnthropicAuthMode}" Tag="Selecione o tipo" Margin="0,0,0,12"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12" Visibility="{Binding IsAnthropicOAuthMode, Converter={StaticResource BoolToVis}}">
@@ -629,10 +624,10 @@
                                     </StackPanel>
                                     <Button Command="{Binding SetActiveProviderCommand}" CommandParameter="anthropic" IsEnabled="{Binding CanActivateAnthropic}" Padding="12,7" HorizontalAlignment="Stretch" Cursor="Hand" FontSize="12" FontWeight="SemiBold">
                                         <Button.Style>
-                                            <Style TargetType="Button"><Setter Property="Background" Value="{DynamicResource Surface0Brush}"/><Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/><Setter Property="Content" Value="Definir como Ativo"/><Setter Property="Template" Value="{StaticResource ProviderButtonTemplate}"/>
+                                            <Style TargetType="Button"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="Content" Value="Definir como Ativo"/><Setter Property="Template" Value="{StaticResource ProviderButtonTemplate}"/>
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding AiProvider}" Value="anthropic"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="Content" Value="Provedor Ativo"/></DataTrigger>
-                                                    <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger>
+                                                    <DataTrigger Binding="{Binding AiProvider}" Value="anthropic"><Setter Property="Content" Value="Provedor Ativo"/><Setter Property="Opacity" Value="0.5"/><Setter Property="Cursor" Value="Arrow"/></DataTrigger>
+                                                    <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/><Setter Property="Cursor" Value="Arrow"/></Trigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Button.Style>
@@ -659,12 +654,10 @@
                                             <TextBlock FontSize="11" FontWeight="SemiBold"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="Inativo"/><Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="openai"><Setter Property="Text" Value="Ativo"/><Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                                         </Border>
                                     </Grid>
-                                    <TextBlock Text="Modelo" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                    <ComboBox Style="{StaticResource DarkComboBox}" ItemsSource="{Binding AvailableOpenAiModels}" SelectedItem="{Binding OpenAiModel}" Tag="Selecione um modelo" Margin="0,0,0,12"/>
                                     <TextBlock Text="API Key" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
                                     <PasswordBox Style="{StaticResource DarkPasswordBox}" helpers:PasswordBoxHelper.BoundPassword="{Binding OpenAiApiKey, Mode=TwoWay}" Tag="sk-..." Margin="0,0,0,12"/>
                                     <Button Command="{Binding SetActiveProviderCommand}" CommandParameter="openai" IsEnabled="{Binding CanActivateOpenAi}" Padding="12,7" HorizontalAlignment="Stretch" Cursor="Hand" FontSize="12" FontWeight="SemiBold">
-                                        <Button.Style><Style TargetType="Button"><Setter Property="Background" Value="{DynamicResource Surface0Brush}"/><Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/><Setter Property="Content" Value="Definir como Ativo"/><Setter Property="Template" Value="{StaticResource ProviderButtonTemplate}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="openai"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="Content" Value="Provedor Ativo"/></DataTrigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger></Style.Triggers></Style></Button.Style>
+                                        <Button.Style><Style TargetType="Button"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="Content" Value="Definir como Ativo"/><Setter Property="Template" Value="{StaticResource ProviderButtonTemplate}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="openai"><Setter Property="Content" Value="Provedor Ativo"/><Setter Property="Opacity" Value="0.5"/><Setter Property="Cursor" Value="Arrow"/></DataTrigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/><Setter Property="Cursor" Value="Arrow"/></Trigger></Style.Triggers></Style></Button.Style>
                                     </Button>
                                 </StackPanel>
                             </Border>
@@ -688,12 +681,10 @@
                                             <TextBlock FontSize="11" FontWeight="SemiBold"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="Inativo"/><Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="openrouter"><Setter Property="Text" Value="Ativo"/><Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                                         </Border>
                                     </Grid>
-                                    <TextBlock Text="Modelo" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                    <ComboBox Style="{StaticResource DarkComboBox}" IsEditable="True" ItemsSource="{Binding AvailableOpenRouterModels}" Text="{Binding OpenRouterModel}" Tag="Selecione ou digite um modelo" Margin="0,0,0,12"/>
                                     <TextBlock Text="API Key" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
                                     <PasswordBox Style="{StaticResource DarkPasswordBox}" helpers:PasswordBoxHelper.BoundPassword="{Binding OpenRouterApiKey, Mode=TwoWay}" Tag="sk-or-..." Margin="0,0,0,12"/>
                                     <Button Command="{Binding SetActiveProviderCommand}" CommandParameter="openrouter" IsEnabled="{Binding CanActivateOpenRouter}" Padding="12,7" HorizontalAlignment="Stretch" Cursor="Hand" FontSize="12" FontWeight="SemiBold">
-                                        <Button.Style><Style TargetType="Button"><Setter Property="Background" Value="{DynamicResource Surface0Brush}"/><Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/><Setter Property="Content" Value="Definir como Ativo"/><Setter Property="Template" Value="{StaticResource ProviderButtonTemplate}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="openrouter"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="Content" Value="Provedor Ativo"/></DataTrigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger></Style.Triggers></Style></Button.Style>
+                                        <Button.Style><Style TargetType="Button"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="Content" Value="Definir como Ativo"/><Setter Property="Template" Value="{StaticResource ProviderButtonTemplate}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="openrouter"><Setter Property="Content" Value="Provedor Ativo"/><Setter Property="Opacity" Value="0.5"/><Setter Property="Cursor" Value="Arrow"/></DataTrigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/><Setter Property="Cursor" Value="Arrow"/></Trigger></Style.Triggers></Style></Button.Style>
                                     </Button>
                                 </StackPanel>
                             </Border>
@@ -717,12 +708,10 @@
                                             <TextBlock FontSize="11" FontWeight="SemiBold"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="Inativo"/><Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="local"><Setter Property="Text" Value="Ativo"/><Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                                         </Border>
                                     </Grid>
-                                    <TextBlock Text="Modelo" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                    <TextBox Style="{StaticResource DarkTextBox}" Text="{Binding OllamaModel, UpdateSourceTrigger=PropertyChanged}" Tag="llama3.2" Margin="0,0,0,12"/>
                                     <TextBlock Text="Base URL" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
                                     <TextBox Style="{StaticResource DarkTextBox}" Text="{Binding OllamaBaseUrl, UpdateSourceTrigger=PropertyChanged}" Tag="http://localhost:11434" Margin="0,0,0,12"/>
                                     <Button Command="{Binding SetActiveProviderCommand}" CommandParameter="local" Padding="12,7" HorizontalAlignment="Stretch" Cursor="Hand" FontSize="12" FontWeight="SemiBold">
-                                        <Button.Style><Style TargetType="Button"><Setter Property="Background" Value="{DynamicResource Surface0Brush}"/><Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/><Setter Property="Content" Value="Definir como Ativo"/><Setter Property="Template" Value="{StaticResource ProviderButtonTemplate}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="local"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="Content" Value="Provedor Ativo"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                                        <Button.Style><Style TargetType="Button"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="Content" Value="Definir como Ativo"/><Setter Property="Template" Value="{StaticResource ProviderButtonTemplate}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="local"><Setter Property="Content" Value="Provedor Ativo"/><Setter Property="Opacity" Value="0.5"/><Setter Property="Cursor" Value="Arrow"/></DataTrigger></Style.Triggers></Style></Button.Style>
                                     </Button>
                                 </StackPanel>
                             </Border>
@@ -835,7 +824,17 @@
                                     <Rectangle Height="1" Fill="{DynamicResource Surface1Brush}" Opacity="0.4" Margin="16,0" />
                                     <Grid Margin="16,12"><Grid.ColumnDefinitions><ColumnDefinition Width="70" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="Repo" FontFamily="{StaticResource MonoFont}" FontWeight="SemiBold" FontSize="11" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1" Text="github.com/ronydrop/dev-workspace-hub" Style="{StaticResource BodyText}" FontFamily="{StaticResource MonoFont}" FontSize="12" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Path Data="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.931.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+                                                  Fill="{DynamicResource SubtextBrush}" Width="13" Height="13"
+                                                  Stretch="Uniform" Margin="0,0,6,0" Opacity="0.7" />
+                                            <TextBlock Style="{StaticResource BodyText}" FontFamily="{StaticResource MonoFont}" FontSize="12">
+                                                <Hyperlink NavigateUri="https://github.com/ronydrop/dev-workspace-hub"
+                                                           RequestNavigate="OnLinkNavigate"
+                                                           Foreground="{DynamicResource AccentBrush}"
+                                                           TextDecorations="None">github.com/ronydrop/dev-workspace-hub</Hyperlink>
+                                            </TextBlock>
+                                        </StackPanel>
                                     </Grid>
                                     <Rectangle Height="1" Fill="{DynamicResource Surface1Brush}" Opacity="0.4" Margin="16,0" />
                                     <Grid Margin="16,12"><Grid.ColumnDefinitions><ColumnDefinition Width="70" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
@@ -845,18 +844,29 @@
                                 </StackPanel>
                             </Border>
                             <TextBlock Text="ATUALIZAÇÕES" Style="{StaticResource CaptionText}" FontWeight="SemiBold" Foreground="{DynamicResource SubtextBrush}" Opacity="0.7" FontSize="10" Margin="4,0,0,8" />
-                            <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8" Padding="16,14">
+                            <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8" Padding="16,10">
                                 <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                                         <Button Style="{StaticResource AccentButton}" Content="Verificar Atualizações" Command="{Binding CheckForUpdateCommand}" Padding="16,8" FontSize="13" Margin="0,0,10,0" />
                                         <Button Style="{StaticResource GhostButton}" Content="Baixar Atualização" Command="{Binding OpenUpdatePageCommand}" Visibility="{Binding HasUpdate, Converter={StaticResource BoolToVis}}" Padding="16,8" FontSize="13" />
                                     </StackPanel>
                                     <TextBlock Text="{Binding UpdateStatusText}" Style="{StaticResource CaptionText}" Opacity="0.6" Visibility="{Binding UpdateStatusText, Converter={StaticResource NullToVis}}" />
                                 </StackPanel>
                             </Border>
-                            <TextBlock HorizontalAlignment="Center" Style="{StaticResource CaptionText}" Opacity="0.35" FontSize="11" Margin="0,20,0,0">
-                                <Run Text="Made with C# and WPF" />
-                            </TextBlock>
+                            <StackPanel HorizontalAlignment="Center" Margin="0,20,0,0">
+                                <TextBlock HorizontalAlignment="Center" Style="{StaticResource CaptionText}" Opacity="0.75" FontSize="13">
+                                    <Run Text="Command Deck " /><Run Text="{Binding AppVersion, Mode=OneWay}" FontFamily="{StaticResource MonoFont}" FontWeight="SemiBold" />
+                                </TextBlock>
+                                <TextBlock HorizontalAlignment="Center" Style="{StaticResource CaptionText}" Opacity="0.55" FontSize="12" Margin="0,4,0,0">
+                                    <Run Text="Desenvolvido por " /><Run Text="Rony Oliveira" FontWeight="Bold" />
+                                </TextBlock>
+                                <TextBlock HorizontalAlignment="Center" FontSize="12" Margin="0,3,0,0">
+                                    <Hyperlink NavigateUri="https://www.instagram.com/rony_drop/"
+                                               RequestNavigate="OnLinkNavigate"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               TextDecorations="None">@rony_drop</Hyperlink>
+                                </TextBlock>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </ScrollViewer>

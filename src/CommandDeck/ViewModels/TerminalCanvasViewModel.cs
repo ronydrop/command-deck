@@ -173,6 +173,12 @@ public partial class TerminalCanvasViewModel : ObservableObject
             : LayoutMode.FreeCanvas;
     }
 
+    [RelayCommand]
+    private void SetCanvasMode() => LayoutMode = LayoutMode.FreeCanvas;
+
+    [RelayCommand]
+    private void SetTiledMode() => LayoutMode = LayoutMode.Tiled;
+
     /// <summary>Called from View when the viewport size changes.</summary>
     public void OnViewportSizeChanged(double width, double height)
     {

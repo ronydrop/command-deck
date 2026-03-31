@@ -60,6 +60,83 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _selectedProviderLabel = "Nenhum";
 
+    [ObservableProperty]
+    private System.Collections.ObjectModel.ObservableCollection<string> _availableModels = new();
+
+    [ObservableProperty]
+    private string _selectedModel = string.Empty;
+
+    partial void OnSelectedModelChanged(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+        // Update the active provider's model in AssistantSettings
+        switch (_assistantSettings.ActiveProvider)
+        {
+            case AssistantProviderType.Anthropic:  _assistantSettings.AnthropicModel  = value; break;
+            case AssistantProviderType.OpenAI:     _assistantSettings.OpenAIModel     = value; break;
+            case AssistantProviderType.OpenRouter: _assistantSettings.OpenRouterModel = value; break;
+            case AssistantProviderType.Ollama:     _assistantSettings.OllamaModel     = value; break;
+        }
+        // Persist model choice
+        _ = PersistModelAsync(value);
+    }
+
+    private async Task PersistModelAsync(string model)
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            settings.AiModel = model;
+            // Also update per-provider field
+            switch (_assistantSettings.ActiveProvider)
+            {
+                case AssistantProviderType.Anthropic:  settings.AnthropicProviderModel  = model; break;
+                case AssistantProviderType.OpenAI:     settings.OpenAiProviderModel     = model; break;
+                case AssistantProviderType.OpenRouter: settings.OpenRouterProviderModel = model; break;
+                case AssistantProviderType.Ollama:     settings.OllamaProviderModel     = model; break;
+            }
+            await _settingsService.SaveSettingsAsync(settings);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AssistantPanel] PersistModel failed: {ex.Message}");
+        }
+    }
+
+    private void RefreshAvailableModels()
+    {
+        var models = _assistantSettings.ActiveProvider switch
+        {
+            AssistantProviderType.Anthropic => new[] { "claude-sonnet-4-6", "claude-opus-4-6", "claude-sonnet-4-5-20241022", "claude-haiku-4-5-20251001" },
+            AssistantProviderType.OpenAI => new[] { "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo", "o3-mini", "o1-mini" },
+            AssistantProviderType.OpenRouter => new[] {
+                "anthropic/claude-sonnet-4.6", "anthropic/claude-opus-4.6",
+                "anthropic/claude-sonnet-4", "anthropic/claude-opus-4",
+                "openai/gpt-4o", "openai/gpt-4o-mini",
+                "google/gemini-2.5-pro", "google/gemini-2.5-flash",
+                "meta-llama/llama-4-maverick", "deepseek/deepseek-r1"
+            },
+            AssistantProviderType.Ollama => new[] { "llama3.2", "llama3.1", "mistral", "codellama", "phi3" },
+            _ => Array.Empty<string>()
+        };
+
+        AvailableModels.Clear();
+        foreach (var m in models) AvailableModels.Add(m);
+
+        var currentModel = _assistantSettings.ActiveProvider switch
+        {
+            AssistantProviderType.Anthropic  => _assistantSettings.AnthropicModel,
+            AssistantProviderType.OpenAI     => _assistantSettings.OpenAIModel,
+            AssistantProviderType.OpenRouter => _assistantSettings.OpenRouterModel,
+            AssistantProviderType.Ollama     => _assistantSettings.OllamaModel,
+            _                                => string.Empty
+        };
+
+        // Set without triggering save via field assignment
+        _selectedModel = AvailableModels.Contains(currentModel) ? currentModel : (AvailableModels.FirstOrDefault() ?? string.Empty);
+        OnPropertyChanged(nameof(SelectedModel));
+    }
+
     // ─── Constructor ──────────────────────────────────────────────────────────
 
     private readonly AssistantSettings _assistantSettings;
@@ -427,6 +504,7 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
                     AssistantProviderType.OpenRouter => "OpenRouter indisponível. Verifique sua API key nas Configurações.",
                     _ => "OpenAI indisponível. Verifique sua API key nas Configurações."
                 };
+            RefreshAvailableModels();
         }
         catch (Exception ex)
         {

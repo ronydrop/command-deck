@@ -104,6 +104,7 @@ public partial class App : Application
         services.AddSingleton<IAssistantProvider>(sp => new OpenRouterProvider(
             sp.GetService<ISecretStorageService>(),
             sp.GetRequiredService<AssistantSettings>()));
+        services.AddSingleton<IClaudeUsageService, ClaudeUsageService>();
         services.AddSingleton<IAssistantService, AssistantService>();
 
         // ─── AI Orb ──────────────────────────────────────────────────────
@@ -186,6 +187,11 @@ public partial class App : Application
     }
 
     /// <summary>
+    /// Raised after a theme is applied. The argument is the theme's BaseBg color.
+    /// </summary>
+    public static event Action<System.Windows.Media.Color>? ThemeApplied;
+
+    /// <summary>
     /// Swaps the active theme ResourceDictionary (always at index 0 in MergedDictionaries).
     /// </summary>
     public static void ApplyTheme(string themeName)
@@ -193,6 +199,9 @@ public partial class App : Application
         var uri = new Uri($"Resources/Themes/{themeName}.xaml", UriKind.Relative);
         var dict = new ResourceDictionary { Source = uri };
         Current.Resources.MergedDictionaries[0] = dict;
+
+        if (Current.Resources["BaseBg"] is System.Windows.Media.Color baseBg)
+            ThemeApplied?.Invoke(baseBg);
     }
 
     protected override void OnStartup(StartupEventArgs e)

@@ -212,7 +212,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <!-- Provider/mode selector pill -->
+                            <!-- Provider pill (status dot + name) -->
                             <Border Grid.Column="0"
                                     CornerRadius="5"
                                     Background="{DynamicResource Surface1Brush}"
@@ -220,7 +220,6 @@
                                     Margin="0,0,6,0"
                                     VerticalAlignment="Center">
                                 <StackPanel Orientation="Horizontal">
-                                    <!-- Status dot -->
                                     <Ellipse Width="6" Height="6"
                                              Margin="0,0,5,0"
                                              VerticalAlignment="Center">
@@ -243,18 +242,121 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- Model name pill -->
-                            <Border Grid.Column="1"
-                                    CornerRadius="5"
-                                    Background="Transparent"
-                                    Padding="4,3"
-                                    VerticalAlignment="Center"
-                                    Visibility="{Binding IsProviderAvailable, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="{Binding ProviderInfo}"
-                                           Foreground="{DynamicResource Overlay0Brush}"
-                                           FontSize="10.5"
-                                           VerticalAlignment="Center" />
-                            </Border>
+                            <!-- Model selector ComboBox -->
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding AvailableModels}"
+                                      SelectedItem="{Binding SelectedModel, Mode=TwoWay}"
+                                      Visibility="{Binding IsProviderAvailable, Converter={StaticResource BoolToVis}}"
+                                      VerticalAlignment="Center"
+                                      FontSize="10.5"
+                                      MinWidth="80"
+                                      MaxWidth="180"
+                                      Padding="6,2"
+                                      Margin="0,0,4,0"
+                                      Focusable="False"
+                                      IsTabStop="False">
+                                <ComboBox.Style>
+                                    <Style TargetType="ComboBox">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="Foreground" Value="{DynamicResource Overlay0Brush}" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ComboBox">
+                                                    <Grid>
+                                                        <ToggleButton x:Name="ToggleButton"
+                                                                      Background="Transparent"
+                                                                      BorderThickness="0"
+                                                                      Focusable="False"
+                                                                      IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                                                      ClickMode="Press"
+                                                                      Cursor="Hand">
+                                                            <ToggleButton.Template>
+                                                                <ControlTemplate TargetType="ToggleButton">
+                                                                    <Border Background="Transparent" Padding="0">
+                                                                        <ContentPresenter />
+                                                                    </Border>
+                                                                </ControlTemplate>
+                                                            </ToggleButton.Template>
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding SelectedItem, RelativeSource={RelativeSource TemplatedParent}}"
+                                                                           Foreground="{DynamicResource Overlay0Brush}"
+                                                                           FontSize="10.5"
+                                                                           VerticalAlignment="Center"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           MaxWidth="150" />
+                                                                <Path Data="M0,0 L4,4 L8,0"
+                                                                      Stroke="{DynamicResource Overlay0Brush}"
+                                                                      StrokeThickness="1.2"
+                                                                      Fill="Transparent"
+                                                                      Width="8" Height="4"
+                                                                      Stretch="Uniform"
+                                                                      Margin="4,1,0,0"
+                                                                      VerticalAlignment="Center" />
+                                                            </StackPanel>
+                                                        </ToggleButton>
+                                                        <Popup x:Name="Popup"
+                                                               Placement="Bottom"
+                                                               IsOpen="{TemplateBinding IsDropDownOpen}"
+                                                               AllowsTransparency="True"
+                                                               Focusable="False"
+                                                               PopupAnimation="Slide">
+                                                            <Border Background="{DynamicResource Surface0Brush}"
+                                                                    BorderBrush="{DynamicResource Surface1Brush}"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="6"
+                                                                    MinWidth="{TemplateBinding ActualWidth}"
+                                                                    MaxHeight="200">
+                                                                <Border.Effect>
+                                                                    <DropShadowEffect ShadowDepth="0" BlurRadius="12" Opacity="0.4" Color="#000000" />
+                                                                </Border.Effect>
+                                                                <ScrollViewer SnapsToDevicePixels="True">
+                                                                    <StackPanel IsItemsHost="True"
+                                                                                KeyboardNavigation.DirectionalNavigation="Contained" />
+                                                                </ScrollViewer>
+                                                            </Border>
+                                                        </Popup>
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Setter Property="ItemContainerStyle">
+                                            <Setter.Value>
+                                                <Style TargetType="ComboBoxItem">
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
+                                                    <Setter Property="FontSize" Value="11" />
+                                                    <Setter Property="Padding" Value="10,5" />
+                                                    <Setter Property="Cursor" Value="Hand" />
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ComboBoxItem">
+                                                                <Border x:Name="Bd"
+                                                                        Background="{TemplateBinding Background}"
+                                                                        Padding="{TemplateBinding Padding}">
+                                                                    <TextBlock Text="{TemplateBinding Content}"
+                                                                               FontSize="{TemplateBinding FontSize}"
+                                                                               Foreground="{TemplateBinding Foreground}"
+                                                                               TextTrimming="CharacterEllipsis" />
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsHighlighted" Value="True">
+                                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Surface1Brush}" />
+                                                                        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ComboBox.Style>
+                            </ComboBox>
 
                             <!-- Quick actions: Explain Output -->
                             <Button Grid.Column="3"

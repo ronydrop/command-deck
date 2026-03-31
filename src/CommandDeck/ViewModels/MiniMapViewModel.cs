@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using CommandDeck.Models;
 using CommandDeck.Services;
 
@@ -29,6 +30,19 @@ public partial class MiniMapViewModel : ObservableObject
 
     [ObservableProperty] private double _miniMapWidth  = 200;
     [ObservableProperty] private double _miniMapHeight = 140;
+
+    // ─── Collapsed state ─────────────────────────────────────────────────────
+
+    [ObservableProperty] private bool _isCollapsed;
+
+    /// <summary>Total control height: header-only when collapsed, full size otherwise.</summary>
+    public double ControlHeight => IsCollapsed ? 22 : MiniMapHeight;
+
+    partial void OnIsCollapsedChanged(bool value)   => OnPropertyChanged(nameof(ControlHeight));
+    partial void OnMiniMapHeightChanged(double value) => OnPropertyChanged(nameof(ControlHeight));
+
+    [RelayCommand]
+    private void ToggleCollapsed() => IsCollapsed = !IsCollapsed;
 
     // ─── World bounding-box ──────────────────────────────────────────────────
 

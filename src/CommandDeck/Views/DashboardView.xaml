@@ -577,6 +577,154 @@
                      ═══════════════════════════════════════════════════════ -->
                 <StackPanel Grid.Column="2">
 
+                    <!-- ═══════════════════════════════════════════════════
+                         CLAUDE USAGE CARD
+                         ═══════════════════════════════════════════════════ -->
+                    <Border Margin="0,0,0,12" CornerRadius="12"
+                            ClipToBounds="True"
+                            BorderThickness="1"
+                            BorderBrush="#40CC785C">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#1A1A1A" Offset="0"/>
+                                <GradientStop Color="#1C1512" Offset="0.5"/>
+                                <GradientStop Color="#1A150E" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Grid Margin="16,14,16,14">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="10" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Header: Logo + Title -->
+                            <DockPanel Grid.Row="0">
+                                <!-- Reset button -->
+                                <Button DockPanel.Dock="Right"
+                                        Style="{StaticResource GhostButton}"
+                                        Padding="4,2"
+                                        ToolTip="Resetar estatísticas da sessão"
+                                        Command="{Binding ResetClaudeUsageCommand}">
+                                    <TextBlock Text="↺" FontSize="13"
+                                               Foreground="#80CC785C" />
+                                </Button>
+
+                                <!-- Model badge -->
+                                <Border DockPanel.Dock="Right"
+                                        Background="#20CC785C"
+                                        CornerRadius="4"
+                                        Padding="6,2"
+                                        Margin="0,0,6,0"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding ClaudeModelDisplay}"
+                                               FontSize="10"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               Foreground="#CC785C"
+                                               MaxWidth="120"
+                                               TextTrimming="CharacterEllipsis" />
+                                </Border>
+
+                                <!-- Claude icon + label -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <!-- Anthropic ✦ symbol -->
+                                    <Border Width="22" Height="22"
+                                            CornerRadius="6"
+                                            Margin="0,0,8,0">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                <GradientStop Color="#CC785C" Offset="0"/>
+                                                <GradientStop Color="#A0522D" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <TextBlock Text="✦"
+                                                   FontSize="12"
+                                                   FontWeight="Bold"
+                                                   Foreground="White"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel>
+                                        <TextBlock Text="Claude"
+                                                   FontSize="14"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#E8C4A0" />
+                                        <TextBlock Text="uso desta sessão"
+                                                   FontSize="10"
+                                                   Foreground="#60CC785C" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </DockPanel>
+
+                            <!-- Divider -->
+                            <Rectangle Grid.Row="1"
+                                       Height="1"
+                                       Fill="#20CC785C"
+                                       HorizontalAlignment="Stretch"
+                                       Margin="0,4" />
+
+                            <!-- Tokens stat -->
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="TOKENS"
+                                               FontSize="9"
+                                               FontWeight="Bold"
+                                               Foreground="#60CC785C" />
+                                    <TextBlock Text="{Binding ClaudeTokensDisplay}"
+                                               FontSize="26"
+                                               FontWeight="Bold"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               Foreground="#E8C4A0" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Right"
+                                            VerticalAlignment="Bottom">
+                                    <!-- USD cost -->
+                                    <StackPanel Orientation="Horizontal"
+                                                HorizontalAlignment="Right"
+                                                Margin="0,0,0,2">
+                                        <TextBlock Text="USD  "
+                                                   FontSize="10"
+                                                   Foreground="#50CC785C"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding ClaudeCostUsdDisplay}"
+                                                   FontSize="15"
+                                                   FontWeight="SemiBold"
+                                                   FontFamily="{StaticResource MonoFont}"
+                                                   Foreground="#E8C4A0" />
+                                    </StackPanel>
+                                    <!-- BRL cost -->
+                                    <StackPanel Orientation="Horizontal"
+                                                HorizontalAlignment="Right">
+                                        <TextBlock Text="BRL  "
+                                                   FontSize="10"
+                                                   Foreground="#50CC785C"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding ClaudeCostBrlDisplay}"
+                                                   FontSize="15"
+                                                   FontWeight="SemiBold"
+                                                   FontFamily="{StaticResource MonoFont}"
+                                                   Foreground="#CC9966" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Footer: exchange rate note -->
+                            <TextBlock Grid.Row="4"
+                                       Text="câmbio estimado R$ 5,70/USD · preços Anthropic API"
+                                       FontSize="9"
+                                       Foreground="#30CC785C"
+                                       HorizontalAlignment="Right" />
+                        </Grid>
+                    </Border>
+
                     <!-- RECENT COMMITS -->
                     <Border Style="{StaticResource Card}" Margin="0,0,0,12"
                             Visibility="{Binding HasGitInfo, Converter={StaticResource BoolToVis}}">

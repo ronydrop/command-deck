@@ -32,6 +32,8 @@
         <KeyBinding Key="Tab" Modifiers="Ctrl" Command="{Binding NextTerminalCommand}" />
         <KeyBinding Key="Tab" Modifiers="Ctrl+Shift" Command="{Binding PreviousTerminalCommand}" />
         <KeyBinding Key="B" Modifiers="Ctrl" Command="{Binding ToggleSidebarCommand}" />
+        <KeyBinding Key="OemBackslash" Modifiers="Ctrl" Command="{Binding ToggleAllPanelsCommand}" />
+        <KeyBinding Key="OemQuestion" Modifiers="Ctrl" Command="{Binding OpenShortcutsOverlayCommand}" />
         <KeyBinding Key="K" Modifiers="Ctrl" Command="{Binding OpenCommandPaletteCommand}" />
         <KeyBinding Key="I" Modifiers="Ctrl" Command="{Binding ToggleAIPanelCommand}" />
         <KeyBinding Key="B" Modifiers="Ctrl+Shift" Command="{Binding ToggleTerminalPanelCommand}" />
@@ -143,20 +145,56 @@
 
                 <!-- AI Assistant toggle -->
                 <Button Grid.Column="4"
-                        Style="{StaticResource IconButton}"
-                        Width="32" Height="32"
+                        Padding="10,5"
+                        Height="30"
                         Command="{Binding ToggleAIPanelCommand}"
-                        ToolTip="Assistente IA (Ctrl+I)">
-                    <Border Width="16" Height="16"
-                            CornerRadius="3"
-                            Background="{DynamicResource AccentBrush}">
+                        ToolTip="Assistente IA (Ctrl+I)"
+                        Cursor="Hand">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bg"
+                                                Background="{TemplateBinding Background}"
+                                                CornerRadius="6"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bg" Property="Background" Value="#44FFFFFF" />
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="bg" Property="Background" Value="#22FFFFFF" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Path Data="{StaticResource ChatIcon}"
+                              Stroke="White"
+                              StrokeThickness="1.6"
+                              StrokeLineJoin="Round"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              Fill="Transparent"
+                              Width="14" Height="14"
+                              Stretch="Uniform"
+                              VerticalAlignment="Center"
+                              Margin="0,0,5,0" />
                         <TextBlock Text="AI"
                                    Foreground="White"
-                                   FontSize="8"
+                                   FontSize="12"
                                    FontWeight="Bold"
-                                   HorizontalAlignment="Center"
                                    VerticalAlignment="Center" />
-                    </Border>
+                    </StackPanel>
                 </Button>
             </Grid>
         </Border>
@@ -190,14 +228,51 @@
                     </Grid.RowDefinitions>
 
                     <!-- Sidebar Header -->
-                    <StackPanel Grid.Row="0" Margin="16,20,16,2" HorizontalAlignment="Stretch">
-                        <TextBlock Text="Command Deck"
-                                   Style="{StaticResource SubheadingText}"
-                                   FontSize="26"
-                                   FontWeight="Bold"
-                                   HorizontalAlignment="Center"
-                                   TextAlignment="Center" />
-                    </StackPanel>
+                    <Border Grid.Row="0" Padding="16,14,16,10">
+                        <StackPanel HorizontalAlignment="Center">
+                            <!-- App icon badge -->
+                            <Border Width="28" Height="28"
+                                    CornerRadius="8"
+                                    Background="{DynamicResource AccentBrush}"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,0,0,8">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="14" ShadowDepth="0" Opacity="0.5" Color="#000000" />
+                                </Border.Effect>
+                                <Path Data="{StaticResource TerminalIcon}"
+                                      Stroke="White"
+                                      StrokeThickness="1.6"
+                                      StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Fill="Transparent"
+                                      Width="13" Height="13"
+                                      Stretch="Uniform" />
+                            </Border>
+                            <!-- Brand text -->
+                            <StackPanel HorizontalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock Text="Command "
+                                               FontSize="15"
+                                               FontWeight="Bold"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="Deck"
+                                               FontSize="15"
+                                               FontWeight="Bold"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <TextBlock Text="dev workspace"
+                                           FontSize="10"
+                                           FontWeight="Normal"
+                                           Foreground="{DynamicResource SubtextBrush}"
+                                           HorizontalAlignment="Center"
+                                           Opacity="0.65"
+                                           Margin="0,2,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
 
                     <!-- Workspace Tree View -->
                     <views:WorkspaceTreeView Grid.Row="1"
@@ -369,6 +444,161 @@
         </Grid>
 
         <!-- Settings overlay removed — now inline in main content area -->
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             KEYBOARD SHORTCUTS OVERLAY (Ctrl+/)
+             ═══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="0" Grid.RowSpan="3"
+              Panel.ZIndex="980"
+              Visibility="{Binding IsShortcutsOverlayOpen, Converter={StaticResource BoolToVis}}">
+            <!-- Backdrop — click to close -->
+            <Border Background="#88000000"
+                    MouseDown="OnShortcutsBackdropClick" />
+
+            <!-- Modal card -->
+            <Border Background="{DynamicResource GlassBgBrush}"
+                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    Width="520"
+                    MaxHeight="620"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="0" BlurRadius="40" Opacity="0.55" Color="#000000" />
+                </Border.Effect>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <Border Grid.Row="0"
+                            Background="{DynamicResource GlassTitleBarBrush}"
+                            CornerRadius="14,14,0,0"
+                            Padding="20,14">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource TerminalIcon}"
+                                      Stroke="{DynamicResource AccentBrush}"
+                                      StrokeThickness="1.6"
+                                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Fill="Transparent"
+                                      Width="16" Height="16"
+                                      Stretch="Uniform"
+                                      Margin="0,0,10,0"
+                                      VerticalAlignment="Center" />
+                                <TextBlock Text="Atalhos de Teclado"
+                                           FontSize="15"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <Button HorizontalAlignment="Right"
+                                    Command="{Binding CloseShortcutsOverlayCommand}"
+                                    Style="{StaticResource IconButton}"
+                                    Width="28" Height="28">
+                                <Path Data="{StaticResource CloseIcon}"
+                                      Stroke="{DynamicResource SubtextBrush}"
+                                      StrokeThickness="1.5"
+                                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Stretch="Uniform" Width="11" Height="11" />
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- Shortcuts list -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20,16">
+                        <StackPanel>
+
+                            <!-- Terminal -->
+                            <TextBlock Text="Terminal"
+                                       FontSize="11" FontWeight="Bold"
+                                       Foreground="{DynamicResource AccentBrush}"
+                                       Margin="0,0,0,8" />
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Novo Terminal" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
+                                <Border Grid.Row="0" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+Shift+T" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Fechar Terminal" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
+                                <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+Shift+W" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Próximo Terminal" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
+                                <Border Grid.Row="2" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+Tab" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Terminal Anterior" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
+                                <Border Grid.Row="3" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+Shift+Tab" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Modo Canvas / Tiled" Foreground="{DynamicResource SubtextBrush}" FontSize="13" VerticalAlignment="Center"/>
+                                <Border Grid.Row="4" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3"><TextBlock Text="Ctrl+Shift+L" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                            </Grid>
+
+                            <!-- Interface -->
+                            <TextBlock Text="Interface"
+                                       FontSize="11" FontWeight="Bold"
+                                       Foreground="{DynamicResource AccentBrush}"
+                                       Margin="0,0,0,8" />
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Alternar Sidebar" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
+                                <Border Grid.Row="0" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+B" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Alternar Chat IA" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
+                                <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+I" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Expandir/Fechar Painéis" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
+                                <Border Grid.Row="2" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+\" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Paleta de Comandos" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
+                                <Border Grid.Row="3" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+K" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Ver Atalhos" Foreground="{DynamicResource SubtextBrush}" FontSize="13" VerticalAlignment="Center"/>
+                                <Border Grid.Row="4" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3"><TextBlock Text="Ctrl+/" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                            </Grid>
+
+                            <!-- Git & Projetos -->
+                            <TextBlock Text="Git &amp; Projetos"
+                                       FontSize="11" FontWeight="Bold"
+                                       Foreground="{DynamicResource AccentBrush}"
+                                       Margin="0,0,0,8" />
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Seletor de Branch" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
+                                <Border Grid.Row="0" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+Shift+G" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Próximo Projeto" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
+                                <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Shift+Tab" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Lançar Claude" Foreground="{DynamicResource SubtextBrush}" FontSize="13" VerticalAlignment="Center"/>
+                                <Border Grid.Row="2" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3"><TextBlock Text="Ctrl+Shift+C" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                            </Grid>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- ═══════════════════════════════════════════════════════════════
              NOTIFICATION TOAST OVERLAY (top-right corner)

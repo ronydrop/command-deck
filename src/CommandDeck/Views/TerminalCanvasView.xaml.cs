@@ -106,7 +106,6 @@ public partial class TerminalCanvasView : UserControl
             };
         }
 
-        SyncEmptyStatePosition();
 
         // Feed viewport size to ViewModel for tiled layout calculation
         ViewportArea.SizeChanged += OnViewportSizeChanged;
@@ -256,7 +255,6 @@ public partial class TerminalCanvasView : UserControl
         if (_canvasVm?.IsTiledMode != true)
             CanvasTranslate.Y = _panOriginY + pos.Y - _panStart.Y;
 
-        SyncEmptyStatePosition();
 
         var now = DateTime.UtcNow;
         double dt = (now - _lastPanTime).TotalSeconds;
@@ -369,7 +367,6 @@ public partial class TerminalCanvasView : UserControl
         CanvasTranslate.X  = _zoomCurrentTransX;
         CanvasTranslate.Y  = _zoomCurrentTransY;
 
-        SyncEmptyStatePosition();
 
         // Check convergence
         bool converged =
@@ -430,7 +427,6 @@ public partial class TerminalCanvasView : UserControl
         if (_canvasVm?.IsTiledMode != true)
             CanvasTranslate.Y += _momentumVelY * frameSeconds;
 
-        SyncEmptyStatePosition();
     }
 
     // ─── Empty state parallax ──────────────────────────────────────────────
@@ -440,15 +436,7 @@ public partial class TerminalCanvasView : UserControl
     /// giving the impression that it floats on the canvas like a terminal card.
     /// Uses a damped factor so it moves slightly less than the canvas (parallax feel).
     /// </summary>
-    private void SyncEmptyStatePosition()
-    {
-        // A factor < 1 gives a subtle parallax; 1.0 = exact 1:1 with canvas
-        const double Parallax = 0.55;
-        EmptyStateTranslate.X = CanvasTranslate.X * Parallax;
-        EmptyStateTranslate.Y = CanvasTranslate.Y * Parallax;
-    }
-
-    // ─── Card routed events ───────────────────────────────────────────────
+// ─── Card routed events ───────────────────────────────────────────────
 
     private void OnCardActivated(object sender, RoutedEventArgs e)
     {
@@ -963,21 +951,6 @@ public partial class TerminalCanvasView : UserControl
         CanvasTranslate.BeginAnimation(TranslateTransform.XProperty, transXAnim);
         CanvasTranslate.BeginAnimation(TranslateTransform.YProperty,
             new DoubleAnimation(targetTransY, duration) { EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd });
-
-        // Animate empty state placeholder in sync
-        const double parallax = 0.55;
-        var emptyXAnim = new DoubleAnimation(targetTransX * parallax, duration)
-            { EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd };
-        emptyXAnim.Completed += (_, _) =>
-        {
-            EmptyStateTranslate.BeginAnimation(TranslateTransform.XProperty, null);
-            EmptyStateTranslate.BeginAnimation(TranslateTransform.YProperty, null);
-            EmptyStateTranslate.X = finalTransX * parallax;
-            EmptyStateTranslate.Y = finalTransY * parallax;
-        };
-        EmptyStateTranslate.BeginAnimation(TranslateTransform.XProperty, emptyXAnim);
-        EmptyStateTranslate.BeginAnimation(TranslateTransform.YProperty,
-            new DoubleAnimation(targetTransY * parallax, duration) { EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd });
 
         UpdateZoomLabel(targetScale);
     }
