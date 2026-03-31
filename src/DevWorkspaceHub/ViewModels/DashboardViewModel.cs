@@ -14,7 +14,9 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private readonly IGitService _gitService;
     private readonly IProcessMonitorService _processMonitorService;
     private readonly ITerminalService _terminalService;
+    private readonly INotificationService _notificationService;
     private readonly DispatcherTimer _refreshTimer;
+    private string? _lastKnownBranch;
 
     [ObservableProperty]
     private Project? _currentProject;
@@ -32,7 +34,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private int _runningProcessCount;
 
     [ObservableProperty]
-    private string _welcomeMessage = "Welcome, Rony Oliveira";
+    private string _welcomeMessage = $"Welcome, {Environment.UserName}";
 
     [ObservableProperty]
     private string _currentTime = DateTime.Now.ToString("HH:mm:ss");
@@ -52,6 +54,15 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private List<string> _startupCommands = new();
 
+    [ObservableProperty]
+    private List<GitCommitInfo> _recentCommits = new();
+
+    [ObservableProperty]
+    private List<GitFileChange> _changedFiles = new();
+
+    [ObservableProperty]
+    private bool _hasChangedFiles;
+
     /// <summary>
     /// Event to request opening a terminal with a specific command.
     /// </summary>
@@ -60,17 +71,23 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     public DashboardViewModel(
         IGitService gitService,
         IProcessMonitorService processMonitorService,
-        ITerminalService terminalService)
+        ITerminalService terminalService,
+        INotificationService notificationService)
     {
         _gitService = gitService;
         _processMonitorService = processMonitorService;
         _terminalService = terminalService;
+        _notificationService = notificationService;
 
         _refreshTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(5)
         };
-        _refreshTimer.Tick += async (_, _) => await RefreshAsync();
+        _refreshTimer.Tick += async (_, _) =>
+        {
+            try { await RefreshAsync(); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[DashboardTick] {ex}"); }
+        };
     }
 
     /// <summary>
@@ -105,7 +122,14 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 GitInfo = await _gitService.GetGitInfoAsync(CurrentProject.Path);
                 HasGitInfo = GitInfo != null;
                 if (GitInfo != null)
+                {
                     CurrentProject.GitInfo = GitInfo;
+                    CheckGitNotifications(GitInfo);
+                }
+
+                RecentCommits = await _gitService.GetRecentCommitsAsync(CurrentProject.Path);
+                ChangedFiles = await _gitService.GetChangedFilesAsync(CurrentProject.Path);
+                HasChangedFiles = ChangedFiles.Count > 0;
             }
 
             // Update process count
@@ -135,11 +159,71 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Executes a Git action (pull, push, fetch, stash) in a new terminal.
+    /// </summary>
+    [RelayCommand]
+    private void RunGitAction(string? action)
+    {
+        if (string.IsNullOrEmpty(action) || CurrentProject == null) return;
+        var command = action switch
+        {
+            "pull" => "git pull",
+            "push" => "git push",
+            "fetch" => "git fetch",
+            "stash" => "git stash",
+            _ => null
+        };
+        if (command != null)
+        {
+            _notificationService.Notify(
+                $"Executando {command}...",
+                NotificationType.Progress,
+                NotificationSource.Git);
+            RunCommandRequested?.Invoke(command);
+        }
+    }
+
+    /// <summary>
+    /// Checks git state changes and emits notifications for important events.
+    /// </summary>
+    private void CheckGitNotifications(GitInfo info)
+    {
+        // Branch change detection
+        if (_lastKnownBranch != null && _lastKnownBranch != info.Branch)
+        {
+            _notificationService.Notify(
+                $"Branch alterada: {_lastKnownBranch} → {info.Branch}",
+                NotificationType.Info,
+                NotificationSource.Git);
+        }
+        _lastKnownBranch = info.Branch;
+
+        // Conflict detection
+        if (info.ConflictedFiles > 0)
+        {
+            _notificationService.Notify(
+                $"{info.ConflictedFiles} arquivo(s) em conflito",
+                NotificationType.Warning,
+                NotificationSource.Git,
+                message: "Resolva os conflitos antes de continuar.");
+        }
+    }
+
+    /// <summary>
     /// Stops auto-refresh when this view is not visible.
     /// </summary>
     public void StopRefresh()
     {
         _refreshTimer.Stop();
+    }
+
+    /// <summary>
+    /// Resumes auto-refresh when navigating back to the dashboard.
+    /// </summary>
+    public void ResumeRefresh()
+    {
+        if (CurrentProject != null)
+            _refreshTimer.Start();
     }
 
     public void Dispose()

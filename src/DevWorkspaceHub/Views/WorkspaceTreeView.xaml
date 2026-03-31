@@ -1,0 +1,569 @@
+<UserControl x:Class="DevWorkspaceHub.Views.WorkspaceTreeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:conv="clr-namespace:DevWorkspaceHub.Converters"
+             xmlns:vm="clr-namespace:DevWorkspaceHub.ViewModels"
+             xmlns:models="clr-namespace:DevWorkspaceHub.Models"
+             mc:Ignorable="d"
+             d:DesignWidth="280" d:DesignHeight="250">
+
+    <UserControl.Resources>
+
+        <!-- Converters (local instances — same classes as in MainWindow.Resources) -->
+        <conv:BoolToVisibilityConverter  x:Key="BoolToVis"/>
+        <conv:NullToVisibilityConverter  x:Key="NullToVis"/>
+        <conv:CountToVisibilityConverter x:Key="CountToVis"/>
+        <conv:HexColorToBrushConverter   x:Key="HexToBrush"/>
+        <conv:StringToVisibilityConverter x:Key="StringToVis"/>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             SHARED NODE VISUAL TEMPLATE
+             Used by both the hierarchical TreeView and the flat search ListBox.
+             DataContext for this template is WorkspaceTreeNodeViewModel.
+             ═══════════════════════════════════════════════════════════════ -->
+        <DataTemplate x:Key="NodeVisualTemplate"
+                      DataType="{x:Type vm:WorkspaceTreeNodeViewModel}">
+            <Grid Margin="0,1"
+                  Cursor="Hand">
+                <Grid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Renomear"
+                                  Tag="{Binding Model.Id}"/>
+                        <MenuItem Header="Alterar Cor"
+                                  Tag="{Binding Model.Id}"/>
+                        <Separator/>
+                        <MenuItem Header="Excluir"
+                                  Command="{Binding DataContext.DeleteSelectedCommand,
+                                                     RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    </ContextMenu>
+                </Grid.ContextMenu>
+                <Grid.ColumnDefinitions>
+                    <!-- Col 0: chevron slot (always 16 px so items stay aligned) -->
+                    <ColumnDefinition Width="16"/>
+                    <!-- Col 1: small gap -->
+                    <ColumnDefinition Width="5"/>
+                    <!-- Col 2: color badge (3 px wide) -->
+                    <ColumnDefinition Width="3"/>
+                    <!-- Col 3: gap -->
+                    <ColumnDefinition Width="5"/>
+                    <!-- Col 4: type icon -->
+                    <ColumnDefinition Width="14"/>
+                    <!-- Col 5: gap -->
+                    <ColumnDefinition Width="5"/>
+                    <!-- Col 6: name + caption -->
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- ── Chevron: visible only when the node has children ── -->
+                <Button Grid.Column="0"
+                        Style="{StaticResource GhostButton}"
+                        Padding="0"
+                        Width="16" Height="16"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Command="{Binding ToggleExpandCommand}"
+                        Visibility="{Binding Children.Count,
+                                             Converter={StaticResource CountToVis}}">
+                    <Path Width="9" Height="9"
+                          Stretch="Uniform"
+                          StrokeThickness="2"
+                          StrokeLineJoin="Round"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          Fill="Transparent"
+                          Stroke="{DynamicResource SubtextBrush}">
+                        <Path.Style>
+                            <Style TargetType="Path">
+                                <Setter Property="Data" Value="{StaticResource ChevronRightIcon}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                        <Setter Property="Data" Value="{StaticResource ChevronDownIcon}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Path.Style>
+                    </Path>
+                </Button>
+
+                <!-- ── Color badge: 3 × 14 px ── -->
+                <Border Grid.Column="2"
+                        Width="3" Height="14"
+                        CornerRadius="2"
+                        VerticalAlignment="Center"
+                        Background="{Binding Color, Converter={StaticResource HexToBrush}}"/>
+
+                <!-- ── Type icon (driven by NodeType via DataTrigger) ── -->
+                <Path Grid.Column="4"
+                      Width="14" Height="14"
+                      Stretch="Uniform"
+                      StrokeThickness="1.5"
+                      StrokeLineJoin="Round"
+                      StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round"
+                      Fill="Transparent"
+                      VerticalAlignment="Center">
+                    <Path.Style>
+                        <Style TargetType="Path">
+                            <!-- Default: Group → FolderIcon, SubtextBrush -->
+                            <Setter Property="Stroke" Value="{DynamicResource SubtextBrush}"/>
+                            <Setter Property="Data"   Value="{StaticResource FolderIcon}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding NodeType}"
+                                             Value="{x:Static models:WorkspaceNodeType.Project}">
+                                    <Setter Property="Data"   Value="{StaticResource FolderIcon}"/>
+                                    <Setter Property="Stroke" Value="{DynamicResource AccentYellowBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding NodeType}"
+                                             Value="{x:Static models:WorkspaceNodeType.Terminal}">
+                                    <Setter Property="Data"   Value="{StaticResource TerminalIcon}"/>
+                                    <Setter Property="Stroke" Value="{DynamicResource AccentGreenBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Path.Style>
+                </Path>
+
+                <!-- ── Name + type caption ── -->
+                <StackPanel Grid.Column="6"
+                            VerticalAlignment="Center"
+                            Margin="0,0,4,0">
+                    <TextBlock Text="{Binding Name}"
+                               Foreground="{DynamicResource TextBrush}"
+                               FontSize="12"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding NodeType}"
+                               Style="{StaticResource CaptionText}"
+                               FontSize="10"
+                               Margin="0,1,0,0"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             TREEVIEWITEM STYLE
+             - Removes native connection lines, expand toggle and focus rect
+             - Provides hover (Surface0) and selected (Surface1) backgrounds
+             - Indents children by 16 px
+             - Binds IsExpanded TwoWay so the chevron button drives expansion
+             - Self-references ItemContainerStyle so every nesting level inherits
+             ═══════════════════════════════════════════════════════════════ -->
+        <Style x:Key="WorkspaceTreeItemStyle" TargetType="TreeViewItem">
+            <Setter Property="Background"       Value="Transparent"/>
+            <Setter Property="Foreground"       Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Padding"          Value="4,2"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="IsExpanded"       Value="{Binding IsExpanded, Mode=TwoWay}"/>
+            <!-- Recursively apply this same style to all child containers -->
+            <Setter Property="ItemContainerStyle" Value="{StaticResource WorkspaceTreeItemStyle}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TreeViewItem">
+                        <StackPanel>
+                            <!-- Row that holds the node content -->
+                            <Border x:Name="Bd"
+                                    Background="Transparent"
+                                    CornerRadius="4"
+                                    Margin="2,0"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter x:Name="PART_Header"
+                                                  ContentSource="Header"
+                                                  HorizontalAlignment="Stretch"/>
+                            </Border>
+
+                            <!-- Children (collapsed when IsExpanded = false) -->
+                            <ItemsPresenter x:Name="ItemsHost"
+                                            Margin="16,0,0,0"/>
+                        </StackPanel>
+
+                        <ControlTemplate.Triggers>
+                            <!-- Hide children when collapsed -->
+                            <Trigger Property="IsExpanded" Value="False">
+                                <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed"/>
+                            </Trigger>
+                            <!-- Hover (only when not already selected) -->
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsSelected"  Value="False"/>
+                                </MultiTrigger.Conditions>
+                                <MultiTrigger.Setters>
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{DynamicResource Surface0Brush}"/>
+                                </MultiTrigger.Setters>
+                            </MultiTrigger>
+                            <!-- Selected -->
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource Surface1Brush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             LISTBOXITEM STYLE (flat search results)
+             ═══════════════════════════════════════════════════════════════ -->
+        <Style x:Key="SearchResultItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Background"       Value="Transparent"/>
+            <Setter Property="Foreground"       Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Padding"          Value="4,2"/>
+            <Setter Property="Margin"           Value="2,0"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Margin="{TemplateBinding Margin}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="IsSelected"  Value="False"/>
+                                </MultiTrigger.Conditions>
+                                <MultiTrigger.Setters>
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{DynamicResource Surface0Brush}"/>
+                                </MultiTrigger.Setters>
+                            </MultiTrigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource Surface1Brush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+    </UserControl.Resources>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         MAIN LAYOUT
+         ═══════════════════════════════════════════════════════════════ -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Header row -->
+            <RowDefinition Height="Auto"/>
+            <!-- Search box -->
+            <RowDefinition Height="Auto"/>
+            <!-- Tree / flat list / empty state -->
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ── Header: Workspace selector + action buttons ── -->
+        <Grid Grid.Row="0" Margin="8,8,8,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Workspace Selector Button (acts as dropdown trigger) -->
+            <Button Grid.Column="0"
+                    Style="{StaticResource GhostButton}"
+                    Command="{Binding ToggleWorkspaceSelectorCommand}"
+                    HorizontalContentAlignment="Left"
+                    Padding="6,4"
+                    ToolTip="Alternar Workspace">
+                <StackPanel Orientation="Horizontal">
+                    <!-- Color badge -->
+                    <Border Width="4" Height="16"
+                            CornerRadius="2"
+                            VerticalAlignment="Center"
+                            Margin="0,0,6,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+                    <TextBlock Text="{Binding ActiveWorkspace.Name, FallbackValue='Workspace'}"
+                               Style="{StaticResource SubheadingText}"
+                               FontSize="13"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"/>
+                    <!-- Chevron down -->
+                    <Path Data="{StaticResource ChevronDownIcon}"
+                          Stroke="{DynamicResource SubtextBrush}"
+                          StrokeThickness="1.5"
+                          StrokeLineJoin="Round"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="10" Height="10"
+                          VerticalAlignment="Center"
+                          Margin="6,1,0,0"/>
+                </StackPanel>
+            </Button>
+
+            <!-- Add Group button -->
+            <Button Grid.Column="1"
+                    Style="{StaticResource GhostButton}"
+                    Command="{Binding AddGroupCommand}"
+                    Padding="4"
+                    Width="24" Height="24"
+                    ToolTip="Adicionar Grupo">
+                <Path Data="{StaticResource PlusIcon}"
+                      Style="{StaticResource IconPathSmall}"/>
+            </Button>
+
+            <!-- Create new workspace button -->
+            <Button Grid.Column="2"
+                    Style="{StaticResource GhostButton}"
+                    Command="{Binding CreateWorkspaceCommand}"
+                    Padding="4"
+                    Width="24" Height="24"
+                    ToolTip="Novo Workspace"
+                    Margin="2,0,0,0">
+                <Grid>
+                    <Path Data="{StaticResource FolderIcon}"
+                          Stroke="{DynamicResource AccentBrush}"
+                          StrokeThickness="1.2"
+                          StrokeLineJoin="Round"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="12" Height="12"/>
+                </Grid>
+            </Button>
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             WORKSPACE SELECTOR POPUP
+             Shown when IsWorkspaceSelectorOpen is true.
+             Lists all workspaces; clicking one switches context.
+             ═══════════════════════════════════════════════════════════════ -->
+        <Popup IsOpen="{Binding IsWorkspaceSelectorOpen}"
+               Placement="Bottom"
+               PlacementTarget="{Binding ElementName=SearchBox}"
+               StaysOpen="False"
+               AllowsTransparency="True"
+               PopupAnimation="Fade"
+               HorizontalOffset="-4">
+            <Border Background="{DynamicResource MantelBrush}"
+                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="4"
+                    MinWidth="240"
+                    MaxHeight="300">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="2" BlurRadius="12" Opacity="0.3"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="Workspaces"
+                               Style="{StaticResource CaptionText}"
+                               FontSize="10"
+                               Margin="8,4,8,6"/>
+                    <ItemsControl ItemsSource="{Binding Workspaces}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource GhostButton}"
+                                        Command="{Binding DataContext.SwitchWorkspaceCommand,
+                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        HorizontalContentAlignment="Left"
+                                        Padding="8,6"
+                                        Margin="0,1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="4"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <!-- Color badge -->
+                                        <Border Grid.Column="0"
+                                                Width="4" Height="16"
+                                                CornerRadius="2"
+                                                Background="{Binding Color, Converter={StaticResource HexToBrush}}"/>
+                                        <!-- Name -->
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding Name}"
+                                                   Foreground="{DynamicResource TextBrush}"
+                                                   FontSize="12"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <!-- Active indicator -->
+                                        <Ellipse Grid.Column="3"
+                                                 Width="6" Height="6"
+                                                 Fill="{DynamicResource AccentGreenBrush}"
+                                                 VerticalAlignment="Center"
+                                                 Margin="6,0,0,0">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <!-- ── Search box (hidden when workspace is empty) ── -->
+        <Grid Grid.Row="1" Margin="8,0,8,6"
+              Visibility="{Binding RootNodes.Count, Converter={StaticResource CountToVis}}">
+            <TextBox x:Name="SearchBox"
+                     Style="{StaticResource DarkTextBox}"
+                     Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                     Padding="24,5,8,5"
+                     FontSize="12"/>
+            <Path Data="{StaticResource SearchIcon}"
+                  Style="{StaticResource IconPathSmall}"
+                  HorizontalAlignment="Left"
+                  VerticalAlignment="Center"
+                  Margin="8,0,0,0"
+                  IsHitTestVisible="False"/>
+            <TextBlock Text="Buscar workspace..."
+                       Foreground="{DynamicResource Overlay0Brush}"
+                       FontSize="12"
+                       VerticalAlignment="Center"
+                       Margin="25,0,0,0"
+                       IsHitTestVisible="False">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </Grid>
+
+        <!-- ══════════════════════════════════════════════════════════
+             HIERARCHICAL TREE VIEW
+             Shown when SearchQuery is empty (NullToVis + Invert).
+             ItemContainerStyle removes default WPF tree guides.
+             HierarchicalDataTemplate drives child expansion.
+             ══════════════════════════════════════════════════════════ -->
+        <!-- ══════════════════════════════════════════════════════════
+             EMPTY STATE (shown when no nodes exist)
+             ══════════════════════════════════════════════════════════ -->
+        <StackPanel Grid.Row="2"
+                    HorizontalAlignment="Center"
+                    Margin="16,12">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding RootNodes.Count}" Value="0">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+            <Path Data="{StaticResource FolderIcon}"
+                  Stroke="{DynamicResource Overlay0Brush}"
+                  StrokeThickness="1.5"
+                  StrokeLineJoin="Round"
+                  StrokeStartLineCap="Round"
+                  StrokeEndLineCap="Round"
+                  Fill="Transparent"
+                  Stretch="Uniform"
+                  Width="28" Height="28"
+                  HorizontalAlignment="Center"
+                  Margin="0,0,0,8"/>
+            <TextBlock Text="Workspace vazio"
+                       Foreground="{DynamicResource SubtextBrush}"
+                       FontSize="12"
+                       HorizontalAlignment="Center"/>
+            <TextBlock Text="Adicione grupos e projetos"
+                       Style="{StaticResource CaptionText}"
+                       FontSize="10"
+                       HorizontalAlignment="Center"
+                       Margin="0,2,0,8"/>
+            <Button Style="{StaticResource GhostButton}"
+                    Command="{Binding AddGroupCommand}"
+                    HorizontalAlignment="Center"
+                    Padding="12,6">
+                <StackPanel Orientation="Horizontal">
+                    <Path Data="{StaticResource PlusIcon}"
+                          Style="{StaticResource IconPathSmall}"
+                          Margin="0,0,6,0"/>
+                    <TextBlock Text="Adicionar Grupo"
+                               FontSize="12"/>
+                </StackPanel>
+            </Button>
+        </StackPanel>
+
+        <TreeView x:Name="HierarchyTree"
+                  Grid.Row="2"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  Padding="4,0,4,4"
+                  FocusVisualStyle="{x:Null}"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                  ItemsSource="{Binding RootNodes}"
+                  ItemContainerStyle="{StaticResource WorkspaceTreeItemStyle}"
+                  SelectedItemChanged="HierarchyTree_SelectedItemChanged"
+                  MouseDoubleClick="HierarchyTree_MouseDoubleClick">
+            <TreeView.Style>
+                <Style TargetType="TreeView">
+                    <Setter Property="Visibility" Value="{Binding RootNodes.Count, Converter={StaticResource CountToVis}}"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding SearchQuery, Converter={StaticResource StringToVis}}" Value="Visible">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TreeView.Style>
+            <TreeView.ItemTemplate>
+                <!--
+                    HierarchicalDataTemplate:
+                    - ItemsSource feeds the children to the nested TreeViewItems
+                    - ContentControl re-uses the shared NodeVisualTemplate
+                -->
+                <HierarchicalDataTemplate DataType="{x:Type vm:WorkspaceTreeNodeViewModel}"
+                                          ItemsSource="{Binding Children}">
+                    <ContentControl Content="{Binding}"
+                                    ContentTemplate="{StaticResource NodeVisualTemplate}"
+                                    Focusable="False"/>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+
+        <!-- ══════════════════════════════════════════════════════════
+             FLAT LIST (SEARCH RESULTS)
+             Shown when SearchQuery is non-empty.
+             SelectedItem is TwoWay-bound to WorkspaceTreeViewModel.SelectedNode.
+             ══════════════════════════════════════════════════════════ -->
+        <ListBox x:Name="SearchResultsList"
+                 Grid.Row="2"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Padding="4,0,4,4"
+                 FocusVisualStyle="{x:Null}"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ItemsSource="{Binding VisibleNodes}"
+                 SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
+                 ItemContainerStyle="{StaticResource SearchResultItemStyle}"
+                 ItemTemplate="{StaticResource NodeVisualTemplate}"
+                 Visibility="{Binding SearchQuery, Converter={StaticResource StringToVis}}"
+                 MouseDoubleClick="SearchResultsList_MouseDoubleClick"/>
+
+    </Grid>
+</UserControl>

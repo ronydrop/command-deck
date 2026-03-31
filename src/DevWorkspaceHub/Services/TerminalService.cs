@@ -13,6 +13,7 @@ public class TerminalService : ITerminalService, IDisposable
     private readonly ConcurrentDictionary<string, TerminalSession> _sessions = new();
     private readonly ConcurrentDictionary<string, ConPtyHelper.ConPtySession> _conPtySessions = new();
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _readCancellations = new();
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _closeLocks = new();
 
     public event Action<string, string>? OutputReceived;
     public event Action<string>? SessionExited;
@@ -62,14 +63,27 @@ public class TerminalService : ITerminalService, IDisposable
 
             _ = Task.Run(async () =>
             {
-                await ConPtyHelper.ReadOutputAsync(conPtySession, output =>
+                try
                 {
-                    OutputReceived?.Invoke(session.Id, output);
-                }, cts.Token);
-
-                // Session exited
-                session.Status = TerminalStatus.Stopped;
-                SessionExited?.Invoke(session.Id);
+                    await ConPtyHelper.ReadOutputAsync(conPtySession, output =>
+                    {
+                        OutputReceived?.Invoke(session.Id, output);
+                    }, cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Normal shutdown via cancellation token
+                }
+                catch (Exception)
+                {
+                    // I/O error from process exit or unexpected failure
+                }
+                finally
+                {
+                    // Always mark session as stopped and notify subscribers
+                    session.Status = TerminalStatus.Stopped;
+                    SessionExited?.Invoke(session.Id);
+                }
             });
         }
         catch (Exception ex)
@@ -113,20 +127,31 @@ public class TerminalService : ITerminalService, IDisposable
 
     public async Task CloseSessionAsync(string sessionId)
     {
-        if (_readCancellations.TryRemove(sessionId, out var cts))
+        // Per-session semaphore prevents double-dispose if two callers race on the same ID.
+        var closeLock = _closeLocks.GetOrAdd(sessionId, _ => new SemaphoreSlim(1, 1));
+        await closeLock.WaitAsync();
+        try
         {
-            await cts.CancelAsync();
-            cts.Dispose();
-        }
+            if (_readCancellations.TryRemove(sessionId, out var cts))
+            {
+                await cts.CancelAsync();
+                cts.Dispose();
+            }
 
-        if (_conPtySessions.TryRemove(sessionId, out var conPtySession))
-        {
-            conPtySession.Dispose();
-        }
+            if (_conPtySessions.TryRemove(sessionId, out var conPtySession))
+            {
+                conPtySession.Dispose();
+            }
 
-        if (_sessions.TryRemove(sessionId, out var session))
+            if (_sessions.TryRemove(sessionId, out var session))
+            {
+                session.Status = TerminalStatus.Stopped;
+            }
+        }
+        finally
         {
-            session.Status = TerminalStatus.Stopped;
+            closeLock.Release();
+            _closeLocks.TryRemove(sessionId, out _);
         }
     }
 
@@ -147,7 +172,15 @@ public class TerminalService : ITerminalService, IDisposable
 
     public void Dispose()
     {
-        Task.Run(CloseAllSessionsAsync).Wait(TimeSpan.FromSeconds(5));
+        // Run cleanup on the thread pool to avoid deadlocking a SynchronizationContext
+        // (e.g. WPF UI thread). By this point OnExit already closed sessions, so
+        // this call is typically a fast no-op.
+        try
+        {
+            Task.Run(CloseAllSessionsAsync).GetAwaiter().GetResult();
+        }
+        catch { }
+
         GC.SuppressFinalize(this);
     }
 }

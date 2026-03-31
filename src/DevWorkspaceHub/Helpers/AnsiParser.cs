@@ -74,6 +74,17 @@ public class AnsiParser
         @"\x1B\](?<id>\d+);(?<text>[^\x07\x1B]*?)(?:\x07|\x1B\\)",
         RegexOptions.Compiled);
 
+    // Cached compiled Regex for non-CSI escape sequences stripped in Parse()
+    private static readonly Regex CharsetSelectRegex = new(@"\x1B[()][AB012]", RegexOptions.Compiled);
+    private static readonly Regex KeypadModeRegex    = new(@"\x1B[=>]",        RegexOptions.Compiled);
+    private static readonly Regex DecPrivateRegex    = new(@"\x1B\x5B\?[0-9;]*[hlsr]", RegexOptions.Compiled);
+
+    // Frozen brush cache: avoids allocating a new SolidColorBrush per Run
+    private static readonly Dictionary<Color, SolidColorBrush> BrushCache = new();
+
+    // Buffer for incomplete escape sequences split across ConPTY read chunks
+    private string _pendingInput = string.Empty;
+
     /// <summary>
     /// Parses a string containing ANSI escape codes and returns a list of WPF Inline elements.
     /// </summary>
@@ -85,18 +96,19 @@ public class AnsiParser
         // Handle OSC sequences first (window titles, etc.)
         input = OscRegex.Replace(input, match =>
         {
-            int id = int.Parse(match.Groups["id"].Value);
-            string text = match.Groups["text"].Value;
-            if (id is 0 or 2) // Set window title
-                TitleChanged?.Invoke(text);
+            if (int.TryParse(match.Groups["id"].Value, out int id))
+            {
+                string text = match.Groups["text"].Value;
+                if (id is 0 or 2) // Set window title
+                    TitleChanged?.Invoke(text);
+            }
             return string.Empty;
         });
 
-        // Remove non-CSI escape sequences we don't handle
-        // Keep CSI sequences for processing below
-        input = Regex.Replace(input, @"\x1B[()][AB012]", ""); // Character set selection
-        input = Regex.Replace(input, @"\x1B[=>]", "");        // Keypad mode
-        input = Regex.Replace(input, @"\x1B\x5B\?[0-9;]*[hlsr]", ""); // DEC private modes
+        // Remove non-CSI escape sequences we don't handle (compiled, cached)
+        input = CharsetSelectRegex.Replace(input, ""); // Character set selection
+        input = KeypadModeRegex.Replace(input, "");    // Keypad mode
+        input = DecPrivateRegex.Replace(input, "");    // DEC private modes
 
         // Handle bell character
         if (input.Contains('\x07'))
@@ -109,14 +121,9 @@ public class AnsiParser
         int lastIndex = 0;
         foreach (Match match in CsiRegex.Matches(input))
         {
-            // Add text before this escape sequence
+            // Add text before this escape sequence (handles \x08 backspace)
             if (match.Index > lastIndex)
-            {
-                string textBefore = input[lastIndex..match.Index];
-                string cleanText = StripControlChars(textBefore);
-                if (cleanText.Length > 0)
-                    inlines.Add(CreateRun(cleanText));
-            }
+                AppendTextWithControls(input[lastIndex..match.Index], inlines);
 
             // Process the escape sequence
             ProcessCsiSequence(match.Groups["params"].Value, match.Groups["final"].Value[0]);
@@ -125,14 +132,49 @@ public class AnsiParser
 
         // Add remaining text after last escape sequence
         if (lastIndex < input.Length)
-        {
-            string remainingText = input[lastIndex..];
-            string cleanText = StripControlChars(remainingText);
-            if (cleanText.Length > 0)
-                inlines.Add(CreateRun(cleanText));
-        }
+            AppendTextWithControls(input[lastIndex..], inlines);
 
         return inlines;
+    }
+
+    /// <summary>
+    /// Appends text to the inline list, handling backspace (\x08) by removing
+    /// the previous character and skipping other non-printable control chars.
+    /// This enables correct visual display of shell backspace-erase sequences
+    /// like BS + SPACE + BS that readline produces when the user presses Backspace.
+    /// </summary>
+    private void AppendTextWithControls(string text, List<Inline> inlines)
+    {
+        var sb = new StringBuilder(text.Length);
+
+        foreach (char c in text)
+        {
+            if (c == '\x08') // Backspace in terminal output — erase previous char
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Length--;
+                }
+                else if (inlines.Count > 0 && inlines[^1] is Run lastRun)
+                {
+                    // Remove last char from the most recently added Run
+                    var t = lastRun.Text;
+                    if (t.Length > 1)
+                        lastRun.Text = t[..^1];
+                    else
+                        inlines.RemoveAt(inlines.Count - 1);
+                }
+            }
+            else if (c == '\n' || c == '\r' || c == '\t' || !char.IsControl(c))
+            {
+                // Flush pending buffer when formatting might change at CSI boundary
+                sb.Append(c);
+            }
+            // All other control chars (e.g. \x07 bell already removed, \x7F, etc.) are skipped
+        }
+
+        if (sb.Length > 0)
+            inlines.Add(CreateRun(sb.ToString()));
     }
 
     /// <summary>
@@ -143,6 +185,251 @@ public class AnsiParser
         var inlines = Parse(input);
         foreach (var inline in inlines)
             paragraph.Inlines.Add(inline);
+    }
+
+    /// <summary>
+    /// Parses ANSI escape codes and renders directly into the given Paragraph.
+    /// Unlike Parse(), this method handles cursor/erase operations (\r, ESC[K, ESC[J)
+    /// by manipulating the Paragraph's Inlines in-place.
+    /// Buffers incomplete escape sequences across calls to avoid garbled output.
+    /// </summary>
+    public void ParseAndRender(string input, Paragraph paragraph)
+    {
+        if (string.IsNullOrEmpty(input) && _pendingInput.Length == 0) return;
+
+        // Prepend any leftover partial escape sequence from the previous call
+        if (_pendingInput.Length > 0)
+        {
+            input = _pendingInput + input;
+            _pendingInput = string.Empty;
+        }
+
+        // Check for incomplete escape sequence at the end of input and save it
+        int trailingEsc = FindTrailingPartialEscape(input);
+        if (trailingEsc >= 0)
+        {
+            _pendingInput = input[trailingEsc..];
+            input = input[..trailingEsc];
+            if (input.Length == 0) return;
+        }
+
+        // Handle OSC sequences (window titles, etc.)
+        input = OscRegex.Replace(input, match =>
+        {
+            if (int.TryParse(match.Groups["id"].Value, out int id))
+            {
+                string text = match.Groups["text"].Value;
+                if (id is 0 or 2)
+                    TitleChanged?.Invoke(text);
+            }
+            return string.Empty;
+        });
+
+        // Remove non-CSI escape sequences we don't handle
+        input = CharsetSelectRegex.Replace(input, "");
+        input = KeypadModeRegex.Replace(input, "");
+        input = DecPrivateRegex.Replace(input, "");
+
+        // Handle bell character
+        if (input.Contains('\x07'))
+        {
+            BellReceived?.Invoke();
+            input = input.Replace("\x07", "");
+        }
+
+        // Split by CSI sequences and process
+        int lastIndex = 0;
+        foreach (Match match in CsiRegex.Matches(input))
+        {
+            if (match.Index > lastIndex)
+                RenderTextToDocument(input[lastIndex..match.Index], paragraph);
+
+            ProcessCsiWithDocument(match.Groups["params"].Value, match.Groups["final"].Value[0], paragraph);
+            lastIndex = match.Index + match.Length;
+        }
+
+        if (lastIndex < input.Length)
+            RenderTextToDocument(input[lastIndex..], paragraph);
+    }
+
+    /// <summary>
+    /// Detects an incomplete escape sequence at the end of the input.
+    /// Returns the start index of the partial sequence, or -1 if none found.
+    /// </summary>
+    private static int FindTrailingPartialEscape(string input)
+    {
+        // Search backward for the last ESC character
+        int lastEsc = input.LastIndexOf('\x1B');
+        if (lastEsc < 0) return -1;
+
+        string tail = input[lastEsc..];
+
+        // ESC alone at end → definitely incomplete
+        if (tail.Length == 1) return lastEsc;
+
+        char second = tail[1];
+
+        // CSI sequence: ESC [ params finalChar
+        if (second == '[')
+        {
+            // Check if there's a valid final character (letter or @`)
+            for (int i = 2; i < tail.Length; i++)
+            {
+                char c = tail[i];
+                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '@' || c == '`')
+                    return -1; // Complete CSI sequence found
+                if (c != ';' && (c < '0' || c > '9') && c != '?')
+                    return -1; // Invalid char — not a partial CSI, let it through
+            }
+            return lastEsc; // Incomplete: has ESC[ + params but no final char
+        }
+
+        // OSC sequence: ESC ] id ; text (BEL | ST)
+        if (second == ']')
+        {
+            // Check for terminator: BEL (\x07) or ST (ESC \)
+            if (tail.Contains('\x07') || tail.Contains("\x1B\\"))
+                return -1; // Complete OSC
+            return lastEsc; // Incomplete OSC
+        }
+
+        // Other 2-char sequences (charset, keypad): ESC ( A, ESC =, etc.
+        if (tail.Length >= 2)
+            return -1; // 2+ chars is enough for these short sequences
+
+        return lastEsc;
+    }
+
+    /// <summary>
+    /// Renders plain text (with control chars like \r, \n, \x08) directly into a Paragraph.
+    /// Handles carriage return (\r) by clearing the current line's inlines so subsequent
+    /// text overwrites instead of appending.
+    /// </summary>
+    private void RenderTextToDocument(string text, Paragraph paragraph)
+    {
+        var sb = new StringBuilder(text.Length);
+
+        for (int i = 0; i < text.Length; i++)
+        {
+            char c = text[i];
+
+            if (c == '\r')
+            {
+                // \r\n → normal newline
+                if (i + 1 < text.Length && text[i + 1] == '\n')
+                {
+                    sb.Append('\n');
+                    i++; // skip \n
+                }
+                else
+                {
+                    // Standalone \r → discard pending text, clear current line
+                    // (the line will be redrawn by subsequent text from the shell)
+                    sb.Clear();
+                    ClearCurrentLine(paragraph);
+                }
+            }
+            else if (c == '\x08') // Backspace
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Length--;
+                }
+                else
+                {
+                    // Remove last char from the paragraph's last Run
+                    var lastInline = paragraph.Inlines.LastInline;
+                    if (lastInline is Run lastRun)
+                    {
+                        var t = lastRun.Text;
+                        if (t.Length > 1)
+                            lastRun.Text = t[..^1];
+                        else
+                            paragraph.Inlines.Remove(lastInline);
+                    }
+                }
+            }
+            else if (c == '\n' || c == '\t' || !char.IsControl(c))
+            {
+                sb.Append(c);
+            }
+            // Other control chars are skipped
+        }
+
+        if (sb.Length > 0)
+            paragraph.Inlines.Add(CreateRun(sb.ToString()));
+    }
+
+    /// <summary>
+    /// Removes all inlines on the current line (everything after the last \n).
+    /// Used when \r (carriage return) is received to allow overwriting.
+    /// </summary>
+    private static void ClearCurrentLine(Paragraph paragraph)
+    {
+        // Collect inlines to remove (walking backward from the end)
+        var toRemove = new List<Inline>();
+        var current = paragraph.Inlines.LastInline;
+
+        while (current != null)
+        {
+            if (current is Run run && run.Text.Contains('\n'))
+            {
+                // Keep text up to and including the last \n
+                int lastNewline = run.Text.LastIndexOf('\n');
+                if (lastNewline == run.Text.Length - 1)
+                {
+                    // \n is the very last char — keep this Run entirely
+                    break;
+                }
+                // Trim: keep up to \n, discard the rest
+                run.Text = run.Text[..(lastNewline + 1)];
+                break;
+            }
+
+            toRemove.Add(current);
+            current = current.PreviousInline;
+        }
+
+        foreach (var inline in toRemove)
+            paragraph.Inlines.Remove(inline);
+    }
+
+    /// <summary>
+    /// Processes a CSI sequence with direct access to the Paragraph for erase operations.
+    /// </summary>
+    private void ProcessCsiWithDocument(string paramString, char finalChar, Paragraph paragraph)
+    {
+        switch (finalChar)
+        {
+            case 'm':
+                ProcessSgr(paramString);
+                break;
+
+            case 'J': // Erase in Display
+            {
+                int mode = string.IsNullOrEmpty(paramString) ? 0 : int.TryParse(paramString, out int p) ? p : 0;
+                if (mode is 2 or 3)
+                    paragraph.Inlines.Clear();
+                break;
+            }
+
+            case 'K': // Erase in Line
+            {
+                int mode = string.IsNullOrEmpty(paramString) ? 0 : int.TryParse(paramString, out int p) ? p : 0;
+                if (mode is 1 or 2)
+                    ClearCurrentLine(paragraph);
+                // mode 0 (erase to end of line) is no-op in append-only model
+                break;
+            }
+
+            // Cursor movement — not fully supported in append-only model
+            case 'A': case 'B': case 'C': case 'D':
+            case 'H': case 'f':
+            case 'S': case 'T':
+            case 'L': case 'M': case 'P': case '@':
+            case 's': case 'u': case 'r':
+                break;
+        }
     }
 
     /// <summary>
@@ -158,9 +445,25 @@ public class AnsiParser
         _isDim = false;
         _isStrikethrough = false;
         _isInverse = false;
+        _pendingInput = string.Empty;
     }
 
     // ─── Private Methods ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns a frozen SolidColorBrush for the given color, reusing cached instances.
+    /// Frozen brushes are thread-safe and cheaper to use in WPF rendering.
+    /// </summary>
+    private static SolidColorBrush GetBrush(Color color)
+    {
+        if (!BrushCache.TryGetValue(color, out var brush))
+        {
+            brush = new SolidColorBrush(color);
+            brush.Freeze();
+            BrushCache[color] = brush;
+        }
+        return brush;
+    }
 
     /// <summary>
     /// Creates a Run with current formatting state.
@@ -177,13 +480,13 @@ public class AnsiParser
 
         var run = new Run(text)
         {
-            Foreground = new SolidColorBrush(fg),
+            Foreground = GetBrush(fg),
             FontWeight = _isBold ? FontWeights.Bold : FontWeights.Normal,
             FontStyle = _isItalic ? FontStyles.Italic : FontStyles.Normal,
         };
 
         if (bg != _defaultBackground)
-            run.Background = new SolidColorBrush(bg);
+            run.Background = GetBrush(bg);
 
         if (_isUnderline)
         {
@@ -406,17 +709,4 @@ public class AnsiParser
         }
     }
 
-    /// <summary>
-    /// Strips control characters (except newline and tab) from text.
-    /// </summary>
-    private static string StripControlChars(string text)
-    {
-        var sb = new StringBuilder(text.Length);
-        foreach (char c in text)
-        {
-            if (c == '\n' || c == '\r' || c == '\t' || !char.IsControl(c))
-                sb.Append(c);
-        }
-        return sb.ToString();
-    }
 }

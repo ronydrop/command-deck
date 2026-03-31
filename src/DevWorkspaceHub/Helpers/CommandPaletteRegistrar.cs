@@ -219,6 +219,7 @@ public static class CommandPaletteRegistrar
         var aiContextService = serviceProvider.GetRequiredService<IAiContextService>();
         var aiModelConfig = serviceProvider.GetRequiredService<IAiModelConfigService>();
         var aiHistory = serviceProvider.GetRequiredService<IAiSessionHistoryService>();
+        var aiLauncher = serviceProvider.GetRequiredService<IAiTerminalLauncher>();
 
         commandService.RegisterCommand(new CommandDefinition
         {
@@ -227,7 +228,7 @@ public static class CommandPaletteRegistrar
             Category = "AI",
             Shortcut = "Ctrl+Shift+A",
             Icon = "\uE945",
-            Action = () => LaunchAiTerminalAsync(mainViewModel, aiTerminalService, terminalSessionService, workspaceService, AiSessionType.Cc),
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.Cc),
             Keywords = "ai cc claude terminal agent"
         });
 
@@ -237,7 +238,7 @@ public static class CommandPaletteRegistrar
             Title = "AI: Run Sonnet",
             Category = "AI",
             Icon = "\uE945",
-            Action = () => LaunchAiTerminalAsync(mainViewModel, aiTerminalService, terminalSessionService, workspaceService, AiSessionType.CcRun, "sonnet"),
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.CcRun, "sonnet"),
             Keywords = "ai sonnet modelo model"
         });
 
@@ -247,7 +248,7 @@ public static class CommandPaletteRegistrar
             Title = "AI: Run Opus",
             Category = "AI",
             Icon = "\uE945",
-            Action = () => LaunchAiTerminalAsync(mainViewModel, aiTerminalService, terminalSessionService, workspaceService, AiSessionType.CcRun, "opus"),
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.CcRun, "opus"),
             Keywords = "ai opus modelo model"
         });
 
@@ -257,7 +258,7 @@ public static class CommandPaletteRegistrar
             Title = "AI: Run Haiku",
             Category = "AI",
             Icon = "\uE945",
-            Action = () => LaunchAiTerminalAsync(mainViewModel, aiTerminalService, terminalSessionService, workspaceService, AiSessionType.CcRun, "haiku"),
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.CcRun, "haiku"),
             Keywords = "ai haiku rapido fast"
         });
 
@@ -267,7 +268,7 @@ public static class CommandPaletteRegistrar
             Title = "AI: Run Agent",
             Category = "AI",
             Icon = "\uE945",
-            Action = () => LaunchAiTerminalAsync(mainViewModel, aiTerminalService, terminalSessionService, workspaceService, AiSessionType.CcRun, "agent"),
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.CcRun, "agent"),
             Keywords = "ai agent autonomo autonomous"
         });
 
@@ -277,18 +278,29 @@ public static class CommandPaletteRegistrar
             Title = "AI: OpenRouter",
             Category = "AI",
             Icon = "\uE945",
-            Action = () => LaunchAiTerminalAsync(mainViewModel, aiTerminalService, terminalSessionService, workspaceService, AiSessionType.CcOpenRouter),
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.CcOpenRouter),
             Keywords = "ai openrouter or modelos picker"
         });
 
         commandService.RegisterCommand(new CommandDefinition
         {
             Id = "ai.launch.claude",
-            Title = "AI: Open Claude (direct)",
+            Title = "AI: Open Claude",
+            Category = "AI",
+            Shortcut = "Ctrl+Shift+C",
+            Icon = "\uE945",
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.Claude),
+            Keywords = "ai claude direto direct"
+        });
+
+        commandService.RegisterCommand(new CommandDefinition
+        {
+            Id = "ai.launch.claude.resume",
+            Title = "AI: Resume Claude Session",
             Category = "AI",
             Icon = "\uE945",
-            Action = () => LaunchAiTerminalAsync(mainViewModel, aiTerminalService, terminalSessionService, workspaceService, AiSessionType.Claude),
-            Keywords = "ai claude direto fallback"
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.ClaudeResume),
+            Keywords = "ai claude resume retomar continuar session"
         });
 
         commandService.RegisterCommand(new CommandDefinition
@@ -354,7 +366,7 @@ public static class CommandPaletteRegistrar
                     var cli = await aiTerminalService.DetectCliAsync();
                     if (cli.CcAvailable)
                     {
-                        await LaunchAiTerminalAsync(mainViewModel, aiTerminalService, terminalSessionService, workspaceService, AiSessionType.CcRun, routing.ModelOrAlias);
+                        await aiLauncher.LaunchAsync(AiSessionType.CcRun, routing.ModelOrAlias);
                         await Task.Delay(1500);
                         var activeSession = mainViewModel.ActiveTerminal?.Session;
                         if (activeSession is not null)
@@ -403,7 +415,7 @@ public static class CommandPaletteRegistrar
 
                 try
                 {
-                    await LaunchAiTerminalAsync(mainViewModel, aiTerminalService, terminalSessionService, workspaceService, AiSessionType.Cc);
+                    await aiLauncher.LaunchAsync(AiSessionType.Cc);
                     await Task.Delay(1500);
                     var activeSession = mainViewModel.ActiveTerminal?.Session;
                     if (activeSession is not null)
@@ -512,35 +524,6 @@ public static class CommandPaletteRegistrar
         // ═══════════════════════════════════════════════════════════════
 
         return serviceProvider.GetRequiredService<CommandPaletteViewModel>();
-    }
-
-    private static async Task LaunchAiTerminalAsync(
-        MainViewModel mainViewModel,
-        IAiTerminalService aiTerminalService,
-        ITerminalSessionService terminalSessionService,
-        IWorkspaceService workspaceService,
-        AiSessionType sessionType,
-        string? modelOrAlias = null)
-    {
-        await mainViewModel.NewTerminalCommand.ExecuteAsync(null);
-
-        var activeVm = mainViewModel.ActiveTerminal;
-        if (activeVm?.Session is null)
-            return;
-
-        var sessionModel = terminalSessionService.GetSession(activeVm.Session.Id);
-        if (sessionModel is null)
-            return;
-
-        aiTerminalService.TagSession(sessionModel, sessionType, modelOrAlias);
-
-        activeVm.Title = sessionModel.Title;
-
-        var canvasItem = workspaceService.TerminalItems
-            .FirstOrDefault(t => t.Terminal == activeVm);
-        canvasItem?.UpdateAiMetadata(sessionModel.AiSessionType, sessionModel.AiModelUsed);
-
-        await aiTerminalService.InjectAiCommandAsync(activeVm.Session.Id, sessionType, modelOrAlias);
     }
 
     private static string GetLastLines(string text, int count)

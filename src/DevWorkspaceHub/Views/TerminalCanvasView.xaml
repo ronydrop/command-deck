@@ -4,49 +4,54 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:conv="clr-namespace:DevWorkspaceHub.Converters"
+             xmlns:ctrl="clr-namespace:DevWorkspaceHub.Controls"
              mc:Ignorable="d"
              d:DesignWidth="1200" d:DesignHeight="800"
-             Background="{StaticResource BaseBgBrush}"
-             Loaded="OnLoaded">
+             Background="{DynamicResource BaseBgBrush}"
+             Loaded="OnLoaded"
+             KeyDown="OnKeyDown">
 
     <UserControl.Resources>
-        <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
-        <conv:TerminalStatusToColorConverter x:Key="StatusToColor" />
+        <conv:BoolToVisibilityConverter     x:Key="BoolToVis" />
+        <conv:InverseCountToVisibilityConverter x:Key="EmptyVisConverter" />
+        <conv:ShellTypeToIconConverter      x:Key="ShellIconConverter" />
+        <conv:CanvasItemTypeIconConverter   x:Key="ItemTypeIconConverter" />
+        <conv:FirstLetterConverter          x:Key="FirstLetterConverter" />
+        <conv:ZoomLevelConverter            x:Key="ZoomLevelConverter" />
     </UserControl.Resources>
 
+    <!-- Root: toolbar (top) + workspace area (bottom) -->
     <Grid>
         <Grid.RowDefinitions>
-            <!-- Toolbar -->
-            <RowDefinition Height="40" />
-            <!-- Canvas area -->
+            <RowDefinition Height="44" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════════
-             BARRA DE FERRAMENTAS DO CANVAS
+             TOOLBAR — premium with grouped separators and smart zoom badge
              ═══════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="0"
-                Background="{StaticResource MantelBgBrush}"
-                BorderBrush="{StaticResource Surface0Brush}"
+                Background="{DynamicResource GlassToolbarBrush}"
+                BorderBrush="{DynamicResource GlassBorderBrush}"
                 BorderThickness="0,0,0,1">
-            <DockPanel Margin="8,0">
+            <DockPanel Margin="10,0">
 
-                <!-- Lado direito: indicador de zoom + ver todos -->
+                <!-- ── RIGHT GROUP: zoom badge + fit-all + exit-focus ─────────── -->
                 <StackPanel DockPanel.Dock="Right"
                             Orientation="Horizontal"
                             VerticalAlignment="Center">
 
-                    <!-- Botão "Ver Todos" - visível quando focado em um terminal -->
+                    <!-- Exit focus mode button (collapsed by default) -->
                     <Button x:Name="BtnVerTodos"
                             Style="{StaticResource GhostButton}"
                             Padding="10,4"
                             Margin="4,0"
                             Visibility="Collapsed"
                             Click="OnVerTodosClick"
-                            ToolTip="Voltar à visão geral (todos os terminais)">
+                            ToolTip="Voltar à visão geral (ESC)">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="M 2 2 L 10 2 L 10 10 L 2 10 Z M 14 2 L 22 2 L 22 10 L 14 10 Z M 2 14 L 10 14 L 10 22 L 2 22 Z M 14 14 L 22 14 L 22 22 L 14 22 Z"
-                                  Stroke="{StaticResource SubtextBrush}"
+                                  Stroke="{DynamicResource SubtextBrush}"
                                   Fill="Transparent"
                                   StrokeThickness="1.5"
                                   Width="12" Height="12"
@@ -60,97 +65,780 @@
                         </StackPanel>
                     </Button>
 
-                    <!-- Indicador de zoom -->
-                    <Border Background="{StaticResource Surface0Brush}"
+                    <!-- Toggle terminal panel button (visible when panel is hidden) -->
+                    <Button Style="{StaticResource GhostButton}"
+                            Padding="6,4"
+                            Margin="4,0"
+                            Command="{Binding DataContext.ToggleTerminalPanelCommand,
+                                      RelativeSource={RelativeSource AncestorType=Window}}"
+                            ToolTip="Mostrar painel de terminais"
+                            Visibility="{Binding DataContext.IsTerminalPanelVisible,
+                                         RelativeSource={RelativeSource AncestorType=Window},
+                                         Converter={StaticResource BoolToVis},
+                                         ConverterParameter=Invert}">
+                        <Path Data="{StaticResource TerminalIcon}"
+                              Stroke="{DynamicResource SubtextBrush}"
+                              StrokeThickness="1.5"
+                              StrokeLineJoin="Round"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              Fill="Transparent"
+                              Stretch="Uniform"
+                              Width="14" Height="14" />
+                    </Button>
+
+                    <!-- Vertical separator before zoom badge (hidden in tiled mode) -->
+                    <Rectangle Width="1" Height="20"
+                               Fill="{DynamicResource Surface1Brush}"
+                               Opacity="0.6"
+                               Margin="6,0"
+                               Visibility="{Binding CanvasViewModel.IsCanvasMode, Converter={StaticResource BoolToVis}}" />
+
+                    <!-- Zoom badge — hidden in tiled mode -->
+                    <Border x:Name="ZoomBadge"
+                            Visibility="{Binding CanvasViewModel.IsCanvasMode, Converter={StaticResource BoolToVis}}"
                             CornerRadius="4"
                             Padding="8,3"
                             Margin="4,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <!-- Default: Surface0 neutral -->
+                                <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                <Style.Triggers>
+                                    <!-- Low zoom  (< 50 %)  → yellow accent background -->
+                                    <DataTrigger Binding="{Binding CanvasViewModel.ZoomPercent,
+                                                     Converter={StaticResource ZoomLevelConverter}}"
+                                                 Value="low">
+                                        <Setter Property="Background" Value="{DynamicResource AccentYellowBrush}" />
+                                    </DataTrigger>
+                                    <!-- High zoom (> 150 %) → blue accent background -->
+                                    <DataTrigger Binding="{Binding CanvasViewModel.ZoomPercent,
+                                                     Converter={StaticResource ZoomLevelConverter}}"
+                                                 Value="high">
+                                        <Setter Property="Background" Value="{DynamicResource AccentBlueBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
                         <TextBlock x:Name="ZoomLabel"
                                    Text="100%"
-                                   Style="{StaticResource CaptionText}"
                                    FontFamily="{StaticResource MonoFont}"
-                                   VerticalAlignment="Center" />
+                                   FontSize="11"
+                                   VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+                                    <!-- Default colour from CaptionText (Overlay0) -->
+                                    <Style.Triggers>
+                                        <!-- On low/high the badge bg is coloured → use dark text -->
+                                        <DataTrigger Binding="{Binding CanvasViewModel.ZoomPercent,
+                                                         Converter={StaticResource ZoomLevelConverter}}"
+                                                     Value="low">
+                                            <Setter Property="Foreground" Value="{DynamicResource CrustBgBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding CanvasViewModel.ZoomPercent,
+                                                         Converter={StaticResource ZoomLevelConverter}}"
+                                                     Value="high">
+                                            <Setter Property="Foreground" Value="{DynamicResource CrustBgBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </Border>
                 </StackPanel>
 
-                <!-- Lado esquerdo: botão novo terminal + título -->
+                <!-- ── LEFT GROUP: new terminal + title label ─────────────────── -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- Novo Terminal -->
+
+                    <!-- Novo Terminal button with refined icon -->
                     <Button Style="{StaticResource AccentButton}"
-                            Padding="12,4"
-                            Command="{Binding DataContext.NewTerminalCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            Padding="12,5"
+                            Command="{Binding DataContext.NewTerminalCommand,
+                                      RelativeSource={RelativeSource AncestorType=Window}}"
                             ToolTip="Novo Terminal (Ctrl+Shift+T)">
                         <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource PlusIcon}"
-                                  Style="{StaticResource IconPathSmall}"
-                                  Margin="0,0,6,0" />
+                            <!-- Terminal icon (> _) -->
+                            <Grid Width="14" Height="14"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,7,0">
+                                <!-- Chevron ">" -->
+                                <Path Data="M2 3 L7 7 L2 11"
+                                      Stroke="White"
+                                      StrokeThickness="1.8"
+                                      StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Fill="Transparent"
+                                      Stretch="None" />
+                                <!-- Cursor underscore -->
+                                <Rectangle Width="5" Height="1.5"
+                                           Fill="White"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"
+                                           Margin="0,2,0,0" />
+                            </Grid>
                             <TextBlock Text="Novo Terminal"
                                        FontSize="12"
+                                       FontWeight="SemiBold"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
 
-                    <!-- Título da seção -->
-                    <TextBlock Text="Canvas de Terminais"
-                               Style="{StaticResource CaptionText}"
+                    <!-- ── AI Quick-Launch Split Button ──────────────────── -->
+                    <Border CornerRadius="6"
+                            Margin="6,0,0,0"
+                            Background="{DynamicResource Surface0Brush}">
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Main: launch claude -->
+                            <Button Style="{StaticResource GhostButton}"
+                                    Padding="10,5"
+                                    Command="{Binding DataContext.LaunchClaudeCommand,
+                                              RelativeSource={RelativeSource AncestorType=Window}}"
+                                    ToolTip="Abrir Claude (Ctrl+Shift+C)">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="16" Height="16"
+                                            CornerRadius="3"
+                                            Background="{DynamicResource AccentBrush}"
+                                            Margin="0,0,6,0">
+                                        <TextBlock Text="AI"
+                                                   Foreground="White"
+                                                   FontSize="8"
+                                                   FontWeight="Bold"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Text="Claude"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Dropdown chevron -->
+                            <Rectangle Width="1" Height="18"
+                                       Fill="{DynamicResource Surface1Brush}"
+                                       Opacity="0.5" />
+                            <Button x:Name="AiDropdownBtn"
+                                    Style="{StaticResource GhostButton}"
+                                    Padding="5,5"
+                                    ToolTip="Mais opções AI"
+                                    Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    Click="OnAiDropdownClick">
+                                <Path Data="{StaticResource ChevronDownIcon}"
+                                      Stroke="{DynamicResource SubtextBrush}"
+                                      StrokeThickness="1.5"
+                                      StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Fill="Transparent"
+                                      Width="10" Height="10"
+                                      Stretch="Uniform" />
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="claude"
+                                                  Command="{Binding PlacementTarget.Tag.LaunchClaudeCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="claude --resume"
+                                                  Command="{Binding PlacementTarget.Tag.LaunchClaudeResumeCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <Separator />
+                                        <MenuItem Header="cc (Claude Code)"
+                                                  Command="{Binding PlacementTarget.Tag.LaunchCcCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="cc run sonnet"
+                                                  Command="{Binding PlacementTarget.Tag.LaunchCcSonnetCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="cc run opus"
+                                                  Command="{Binding PlacementTarget.Tag.LaunchCcOpusCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="cc run haiku"
+                                                  Command="{Binding PlacementTarget.Tag.LaunchCcHaikuCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="cc run agent"
+                                                  Command="{Binding PlacementTarget.Tag.LaunchCcAgentCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <Separator />
+                                        <MenuItem Header="cc or (OpenRouter)"
+                                                  Command="{Binding PlacementTarget.Tag.LaunchCcOpenRouterCommand,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ── Layout mode toggle (Canvas / Tiled) ──────────── -->
+                    <Border CornerRadius="6"
+                            Margin="6,0,0,0"
+                            Background="{DynamicResource Surface0Brush}"
+                            Padding="2">
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Canvas mode button -->
+                            <Button Padding="8,4"
+                                    Command="{Binding CanvasViewModel.ToggleLayoutModeCommand}"
+                                    ToolTip="Modo Canvas — layout livre (Ctrl+Shift+L)"
+                                    Cursor="Hand">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                                        <Setter Property="Opacity" Value="0.5" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanvasViewModel.IsCanvasMode}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="Opacity" Value="1" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="M2 2H8V8H2Z M12 2H18V8H12Z M2 12H8V18H2Z M12 14H18V18H12Z"
+                                          Stroke="{DynamicResource TextBrush}"
+                                          StrokeThickness="1.2"
+                                          Fill="Transparent"
+                                          Width="12" Height="12"
+                                          Stretch="Uniform"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,5,0" />
+                                    <TextBlock Text="Canvas"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Tiled mode button -->
+                            <Button Padding="8,4"
+                                    Command="{Binding CanvasViewModel.ToggleLayoutModeCommand}"
+                                    ToolTip="Modo Tiled — layout em grade (Ctrl+Shift+L)"
+                                    Cursor="Hand">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                                        <Setter Property="Opacity" Value="0.5" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanvasViewModel.IsTiledMode}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="Opacity" Value="1" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="M2 2H10V10H2Z M12 2H20V10H12Z M2 12H10V20H2Z M12 12H20V20H12Z"
+                                          Stroke="{DynamicResource TextBrush}"
+                                          StrokeThickness="1.2"
+                                          Fill="Transparent"
+                                          Width="12" Height="12"
+                                          Stretch="Uniform"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,5,0" />
+                                    <TextBlock Text="Tiled"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Vertical separator -->
+                    <Rectangle Width="1" Height="20"
+                               Fill="{DynamicResource Surface1Brush}"
+                               Opacity="0.6"
+                               Margin="10,0" />
+
+                    <!-- Project name label -->
+                    <TextBlock Text="{Binding DataContext.CurrentProject.Name,
+                                     RelativeSource={RelativeSource AncestorType=Window},
+                                     FallbackValue='Workspace'}"
+                               Style="{StaticResource BodyText}"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextBrush}"
                                VerticalAlignment="Center"
-                               Margin="16,0,0,0"
-                               Opacity="0.6" />
+                               Opacity="0.85" />
                 </StackPanel>
             </DockPanel>
         </Border>
 
         <!-- ═══════════════════════════════════════════════════════════════
-             ÁREA DO CANVAS (FUNDO ARRASTÁVEL)
+             WORKSPACE AREA
              ═══════════════════════════════════════════════════════════════ -->
-        <Grid Grid.Row="1"
-              x:Name="CanvasArea"
-              Background="{StaticResource CrustBgBrush}"
-              ClipToBounds="True"
-              MouseDown="OnCanvasMouseDown"
-              MouseMove="OnCanvasMouseMove"
-              MouseUp="OnCanvasMouseUp"
-              MouseWheel="OnCanvasMouseWheel"
-              Cursor="Arrow">
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <!-- Canvas viewport -->
+                <ColumnDefinition Width="*" />
+                <!-- Sidebar (0 when hidden) -->
+                <ColumnDefinition>
+                    <ColumnDefinition.Style>
+                        <Style TargetType="ColumnDefinition">
+                            <Setter Property="Width" Value="220" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DataContext.IsTerminalPanelVisible,
+                                             RelativeSource={RelativeSource AncestorType=Window}}"
+                                             Value="False">
+                                    <Setter Property="Width" Value="0" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ColumnDefinition.Style>
+                </ColumnDefinition>
+            </Grid.ColumnDefinitions>
 
-            <!-- Container principal com TranslateTransform + ScaleTransform -->
-            <Grid x:Name="RootCanvas"
-                  HorizontalAlignment="Left"
-                  VerticalAlignment="Top"
-                  Visibility="Collapsed">
-                <Grid.RenderTransform>
-                    <TransformGroup>
-                        <ScaleTransform x:Name="CanvasScale" ScaleX="1" ScaleY="1" />
-                        <TranslateTransform x:Name="CanvasTranslate" X="0" Y="0" />
-                    </TransformGroup>
-                </Grid.RenderTransform>
+            <!-- ── Infinite canvas viewport ──────────────────────────────── -->
+            <Grid Grid.Column="0"
+                  x:Name="ViewportArea"
+                  Background="{DynamicResource CanvasDepthBrush}"
+                  ClipToBounds="True"
+                  MouseDown="OnViewportMouseDown"
+                  MouseMove="OnViewportMouseMove"
+                  MouseUp="OnViewportMouseUp"
+                  MouseWheel="OnViewportMouseWheel"
+                  AllowDrop="True"
+                  Drop="OnViewportDrop"
+                  DragOver="OnViewportDragOver"
+                  Cursor="Arrow">
 
-                <!-- WrapPanel que contém os cards dos terminais -->
-                <WrapPanel x:Name="TerminalsPanel"
-                           Orientation="Horizontal"
-                           Margin="24" />
+                <!-- ── Wallpaper background layer (hidden in tiled mode) ── -->
+                <Image Source="{Binding WallpaperSource}"
+                       Stretch="{Binding WallpaperStretch}"
+                       Opacity="{Binding WallpaperOpacity}"
+                       Visibility="{Binding HasWallpaper, Converter={StaticResource BoolToVis}}"
+                       IsHitTestVisible="False">
+                    <Image.Style>
+                        <Style TargetType="Image">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanvasViewModel.IsTiledMode}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Image.Style>
+                </Image>
+
+                <!-- ── Dot-grid background (hidden in tiled mode) ── -->
+                <Canvas IsHitTestVisible="False">
+                    <Canvas.Style>
+                        <Style TargetType="Canvas">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanvasViewModel.IsTiledMode}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Canvas.Style>
+                    <Canvas.Background>
+                        <DrawingBrush TileMode="Tile"
+                                      ViewportUnits="Absolute"
+                                      Viewport="0,0,32,32">
+                            <DrawingBrush.Drawing>
+                                <DrawingGroup>
+
+                                    <!-- Layer 1: dot at each tile origin -->
+                                    <GeometryDrawing>
+                                        <GeometryDrawing.Brush>
+                                            <SolidColorBrush Color="{DynamicResource Surface0}"
+                                                             Opacity="0.35" />
+                                        </GeometryDrawing.Brush>
+                                        <GeometryDrawing.Geometry>
+                                            <EllipseGeometry Center="2,2"
+                                                             RadiusX="1.2"
+                                                             RadiusY="1.2" />
+                                        </GeometryDrawing.Geometry>
+                                    </GeometryDrawing>
+
+                                    <!-- Layer 2a: very faint horizontal hairline every 128 px
+                                         (4 × 32 px tile = rendered at tile row 0 height 0.5)
+                                         We draw it as a 0-height line at the very top edge
+                                         of the tile, visible when 4 tiles stack to 128 px. -->
+                                    <GeometryDrawing>
+                                        <GeometryDrawing.Pen>
+                                            <Pen Thickness="0.5">
+                                                <Pen.Brush>
+                                                    <SolidColorBrush Color="{DynamicResource Surface1}"
+                                                                     Opacity="0.08" />
+                                                </Pen.Brush>
+                                            </Pen>
+                                        </GeometryDrawing.Pen>
+                                        <!-- Horizontal line across full tile width at y=0 -->
+                                        <GeometryDrawing.Geometry>
+                                            <LineGeometry StartPoint="0,0" EndPoint="32,0" />
+                                        </GeometryDrawing.Geometry>
+                                    </GeometryDrawing>
+
+                                    <!-- Layer 2b: very faint vertical hairline every 128 px -->
+                                    <GeometryDrawing>
+                                        <GeometryDrawing.Pen>
+                                            <Pen Thickness="0.5">
+                                                <Pen.Brush>
+                                                    <SolidColorBrush Color="{DynamicResource Surface1}"
+                                                                     Opacity="0.08" />
+                                                </Pen.Brush>
+                                            </Pen>
+                                        </GeometryDrawing.Pen>
+                                        <!-- Vertical line down full tile height at x=0 -->
+                                        <GeometryDrawing.Geometry>
+                                            <LineGeometry StartPoint="0,0" EndPoint="0,32" />
+                                        </GeometryDrawing.Geometry>
+                                    </GeometryDrawing>
+
+                                </DrawingGroup>
+                            </DrawingBrush.Drawing>
+                        </DrawingBrush>
+                    </Canvas.Background>
+                </Canvas>
+
+                <!-- World canvas: holds all items, panned + zoomed via RenderTransform -->
+                <Canvas x:Name="WorldCanvas"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Background="Transparent">
+                    <Canvas.RenderTransform>
+                        <TransformGroup>
+                            <ScaleTransform x:Name="CanvasScale" ScaleX="1" ScaleY="1" />
+                            <TranslateTransform x:Name="CanvasTranslate" X="40" Y="40" />
+                        </TransformGroup>
+                    </Canvas.RenderTransform>
+
+                    <!-- ItemsControl: binds to TerminalCanvasViewModel.Items
+                         Each item is positioned absolutely via Canvas.Left/Top bindings -->
+                    <ItemsControl x:Name="ItemsHost"
+                                  ItemsSource="{Binding CanvasViewModel.Items}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                <Setter Property="Canvas.Top"  Value="{Binding Y}" />
+                                <Setter Property="Panel.ZIndex" Value="{Binding ZIndex}" />
+                                <Setter Property="Width"  Value="{Binding Width}" />
+                                <Setter Property="Height" Value="{Binding Height}" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <ctrl:CanvasCardControl
+                                    CardCloseRequested="OnCardCloseRequested"
+                                    CardFocusRequested="OnCardFocusRequested"
+                                    CardActivated="OnCardActivated"
+                                    AiActionRequested="OnAiActionRequested" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Canvas>
+
+                <!-- Mini-map overlay — hidden in tiled mode -->
+                <ctrl:MiniMapControl
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,16,16"
+                    Panel.ZIndex="100"
+                    DataContext="{Binding CanvasViewModel.MiniMap}"
+                    Visibility="{Binding CanvasViewModel.IsCanvasMode, Converter={StaticResource BoolToVis}}" />
+
+                <!-- Focus overlay (semi-transparent black, shown in focus mode) -->
+                <Rectangle x:Name="FocusOverlay"
+                           Fill="#000000"
+                           Opacity="0"
+                           IsHitTestVisible="False" />
+
+                <!-- Empty state -->
+                <StackPanel x:Name="EmptyState"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            IsHitTestVisible="False"
+                            Visibility="{Binding CanvasViewModel.Items.Count,
+                                         Converter={StaticResource EmptyVisConverter}}">
+                    <Path Data="{StaticResource TerminalIcon}"
+                          Style="{StaticResource IconPathLarge}"
+                          Width="56" Height="56"
+                          Stroke="{DynamicResource Surface2Brush}"
+                          HorizontalAlignment="Center"
+                          Margin="0,0,0,20" />
+                    <TextBlock Text="Nenhum terminal aberto"
+                               Style="{StaticResource SubheadingText}"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource Surface2Brush}" />
+                    <TextBlock Text="Clique em &quot;Novo Terminal&quot; ou pressione Ctrl+Shift+T"
+                               Style="{StaticResource CaptionText}"
+                               HorizontalAlignment="Center"
+                               Margin="0,8,0,0" />
+                </StackPanel>
             </Grid>
 
-            <!-- Estado vazio: nenhum terminal aberto -->
-            <StackPanel x:Name="EmptyState"
-                        VerticalAlignment="Center"
-                        HorizontalAlignment="Center"
-                        IsHitTestVisible="False">
-                <Path Data="{StaticResource TerminalIcon}"
-                      Style="{StaticResource IconPathLarge}"
-                      Width="56" Height="56"
-                      Stroke="{StaticResource Surface2Brush}"
-                      HorizontalAlignment="Center"
-                      Margin="0,0,0,20" />
-                <TextBlock Text="Nenhum terminal aberto"
-                           Style="{StaticResource SubheadingText}"
-                           HorizontalAlignment="Center"
-                           Foreground="{StaticResource Surface2Brush}" />
-                <TextBlock Text="Clique em &quot;Novo Terminal&quot; ou pressione Ctrl+Shift+T"
-                           Style="{StaticResource CaptionText}"
-                           HorizontalAlignment="Center"
-                           Margin="0,8,0,0" />
-            </StackPanel>
+            <!-- ═══════════════════════════════════════════════════════════
+                 RIGHT SIDEBAR — premium with avatar, accent indicator,
+                 rounded items and hover transitions
+                 ═══════════════════════════════════════════════════════════ -->
+            <Border Grid.Column="1"
+                    Background="{DynamicResource GlassSidebarBrush}"
+                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                    BorderThickness="1,0,0,0"
+                    Visibility="{Binding DataContext.IsTerminalPanelVisible,
+                                 RelativeSource={RelativeSource AncestorType=Window},
+                                 Converter={StaticResource BoolToVis}}">
+                <DockPanel>
+
+                    <!-- ── Sidebar header with icon + label + collapse button ──── -->
+                    <Border DockPanel.Dock="Top"
+                            BorderBrush="{DynamicResource GlassBorderBrush}"
+                            BorderThickness="0,0,0,1"
+                            Padding="12,10">
+                        <DockPanel>
+                            <!-- Collapse button (right) -->
+                            <Button DockPanel.Dock="Right"
+                                    Style="{StaticResource GhostButton}"
+                                    Padding="2"
+                                    Width="20" Height="20"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding DataContext.ToggleTerminalPanelCommand,
+                                              RelativeSource={RelativeSource AncestorType=Window}}"
+                                    ToolTip="Ocultar painel (Ctrl+Shift+B)">
+                                <Path Data="M 3 1 L 7 5 L 3 9"
+                                      Stroke="{DynamicResource SubtextBrush}"
+                                      StrokeThickness="1.5"
+                                      StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Fill="Transparent"
+                                      Width="8" Height="10"
+                                      Stretch="Uniform" />
+                            </Button>
+                            <!-- Icon + label (left) -->
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource TerminalIcon}"
+                                      Stroke="{DynamicResource AccentBrush}"
+                                      StrokeThickness="1.5"
+                                      StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Fill="Transparent"
+                                      Stretch="Uniform"
+                                      Width="14" Height="14"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,7,0" />
+                                <TextBlock Text="Terminais"
+                                           Style="{StaticResource CaptionText}"
+                                           Foreground="{DynamicResource SubtextBrush}"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- ── Toggle widget buttons ──────────────────────────────────── -->
+                    <StackPanel DockPanel.Dock="Bottom" Margin="8,8">
+                        <Button Content="Widget Git"
+                                Style="{StaticResource GhostButton}"
+                                HorizontalContentAlignment="Left"
+                                Padding="8,5"
+                                FontSize="11"
+                                Click="OnToggleGitWidgetClick"
+                                Margin="0,2" />
+                        <Button Content="Widget Processos"
+                                Style="{StaticResource GhostButton}"
+                                HorizontalContentAlignment="Left"
+                                Padding="8,5"
+                                FontSize="11"
+                                Click="OnToggleProcessWidgetClick"
+                                Margin="0,2" />
+                        <Button Content="Widget Notas"
+                                Style="{StaticResource GhostButton}"
+                                HorizontalContentAlignment="Left"
+                                Padding="8,5"
+                                FontSize="11"
+                                Click="OnAddNoteWidgetClick"
+                                Margin="0,2" />
+                    </StackPanel>
+
+                    <Separator DockPanel.Dock="Bottom"
+                               Background="{DynamicResource Surface1Brush}"
+                               Margin="0" />
+
+                    <!-- ── Terminal list ──────────────────────────────────────────── -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  Padding="6,4">
+                        <ItemsControl ItemsSource="{Binding CanvasViewModel.TerminalItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <!-- Outer container holds accent bar + item body -->
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <!-- 3 px accent bar (left) -->
+                                            <ColumnDefinition Width="3" />
+                                            <!-- Item body -->
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Accent indicator bar (visible only when IsSelected) -->
+                                        <Rectangle Grid.Column="0"
+                                                   RadiusX="2" RadiusY="2"
+                                                   Fill="{DynamicResource AccentBrush}">
+                                            <Rectangle.Style>
+                                                <Style TargetType="Rectangle">
+                                                    <Setter Property="Opacity" Value="0" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                            <Setter Property="Opacity" Value="1" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Rectangle.Style>
+                                        </Rectangle>
+
+                                        <!-- Item body -->
+                                        <!-- F. Sidebar hover uses an opacity-animated overlay instead of
+                                             instant Background swap, avoiding SolidColorBrush clone issues.
+                                             A second Border (HoverOverlay) sits behind the content at Opacity=0
+                                             and fades in/out via EventTrigger MouseEnter/MouseLeave. -->
+                                        <Border Grid.Column="1"
+                                                x:Name="SidebarItem"
+                                                CornerRadius="6"
+                                                Padding="10,7"
+                                                Margin="3,0,0,0"
+                                                Cursor="Hand"
+                                                MouseDown="OnSidebarItemClick">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                            <Setter Property="Background"
+                                                                    Value="{DynamicResource Surface0Brush}" />
+                                                        </DataTrigger>
+                                                        <!-- Removed instant IsMouseOver trigger — replaced by
+                                                             animated overlay below -->
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+
+                                            <!-- F. Mouse enter/leave: animate hover overlay opacity -->
+                                            <Border.Triggers>
+                                                <EventTrigger RoutedEvent="Border.MouseEnter">
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation
+                                                                Storyboard.TargetName="HoverOverlay"
+                                                                Storyboard.TargetProperty="Opacity"
+                                                                To="1"
+                                                                Duration="0:0:0.150">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <QuadraticEase EasingMode="EaseOut" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </EventTrigger>
+                                                <EventTrigger RoutedEvent="Border.MouseLeave">
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation
+                                                                Storyboard.TargetName="HoverOverlay"
+                                                                Storyboard.TargetProperty="Opacity"
+                                                                To="0"
+                                                                Duration="0:0:0.200">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <QuadraticEase EasingMode="EaseOut" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </EventTrigger>
+                                            </Border.Triggers>
+
+                                            <!-- F. Grid wraps HoverOverlay (behind) + DockPanel (in front).
+                                                 Border Padding="10,7" still applies to this Grid. -->
+                                            <Grid>
+
+                                                <!-- F. Hover background overlay — fades in/out via EventTrigger above.
+                                                     Negative margin pulls it out to the full padded area of SidebarItem. -->
+                                                <Border x:Name="HoverOverlay"
+                                                        CornerRadius="6"
+                                                        Background="{DynamicResource Surface0Brush}"
+                                                        Opacity="0"
+                                                        IsHitTestVisible="False"
+                                                        Margin="-10,-7,-10,-7" />
+
+                                            <DockPanel>
+
+                                                <!-- Status dot (right-aligned) -->
+                                                <Ellipse DockPanel.Dock="Right"
+                                                         Width="7" Height="7"
+                                                         VerticalAlignment="Center"
+                                                         Margin="4,0,0,0">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Fill"
+                                                                    Value="{DynamicResource Surface2Brush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Terminal.IsConnected}"
+                                                                             Value="True">
+                                                                    <Setter Property="Fill"
+                                                                            Value="{DynamicResource AccentGreenBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+
+                                                <!-- Avatar circle with first letter of title -->
+                                                <Border DockPanel.Dock="Left"
+                                                        Width="26" Height="26"
+                                                        CornerRadius="13"
+                                                        Background="{DynamicResource Surface1Brush}"
+                                                        VerticalAlignment="Center"
+                                                        Margin="0,0,8,0">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsSelected}"
+                                                                             Value="True">
+                                                                    <Setter Property="Background"
+                                                                            Value="{DynamicResource AccentBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock
+                                                        Text="{Binding Title,
+                                                               Converter={StaticResource FirstLetterConverter}}"
+                                                        FontSize="11"
+                                                        FontWeight="SemiBold"
+                                                        FontFamily="{StaticResource MonoFont}"
+                                                        Foreground="{DynamicResource TextBrush}"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center" />
+                                                </Border>
+
+                                                <!-- Title + working directory -->
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}"
+                                                               FontSize="12"
+                                                               Foreground="{DynamicResource TextBrush}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock
+                                                        Text="{Binding Terminal.Session.WorkingDirectory}"
+                                                        FontSize="10"
+                                                        Foreground="{DynamicResource SubtextBrush}"
+                                                        TextTrimming="CharacterEllipsis"
+                                                        Opacity="0.7"
+                                                        Margin="0,1,0,0" />
+                                                </StackPanel>
+                                            </DockPanel>
+
+                                            </Grid><!-- end HoverOverlay wrapper Grid (F) -->
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
         </Grid>
     </Grid>
 </UserControl>

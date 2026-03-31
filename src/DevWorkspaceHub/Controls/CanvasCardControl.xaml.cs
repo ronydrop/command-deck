@@ -3,8 +3,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Media.Animation;
 using DevWorkspaceHub.Models;
+using DevWorkspaceHub.Services;
 using DevWorkspaceHub.ViewModels;
 
 namespace DevWorkspaceHub.Controls;
@@ -16,6 +16,7 @@ namespace DevWorkspaceHub.Controls;
 /// </summary>
 public partial class CanvasCardControl : UserControl
 {
+    private AgentSelectorViewModel? _agentSelectorVm;
     // ─── Routed events (bubble up to TerminalCanvasView) ────────────────────
 
     public static readonly RoutedEvent CardCloseRequestedEvent =
@@ -91,13 +92,13 @@ public partial class CanvasCardControl : UserControl
 
         if (DataContext is not CanvasItemViewModel vm) return;
 
+        // No drag in tiled mode
+        if (IsTiledMode()) return;
+
         _isDragging = true;
         _dragStart = e.GetPosition(null); // screen coords
         _itemXAtDragStart = vm.X;
         _itemYAtDragStart = vm.Y;
-
-        // B. Drag lift: scale card up to 1.03 in 120ms
-        AnimateDragScale(1.0, 1.03, TimeSpan.FromMilliseconds(120));
 
         TitleBar.CaptureMouse();
         e.Handled = true;
@@ -136,9 +137,6 @@ public partial class CanvasCardControl : UserControl
         _isDragging = false;
         TitleBar.ReleaseMouseCapture();
 
-        // B. Drag release: animate scale back to 1.0 in 150ms
-        AnimateDragScale(1.03, 1.0, TimeSpan.FromMilliseconds(150));
-
         // Return keyboard focus to the terminal so arrow keys work immediately after drag.
         var terminal = FindVisualChild<DevWorkspaceHub.Controls.TerminalControl>(this);
         terminal?.FocusInput();
@@ -165,6 +163,9 @@ public partial class CanvasCardControl : UserControl
     {
         if (DataContext is not CanvasItemViewModel vm) return;
 
+        // No resize in tiled mode
+        if (IsTiledMode()) return;
+
         double zoom = GetCanvasZoom();
         vm.Width = Math.Max(320, vm.Width + e.HorizontalChange / zoom);
         vm.Height = Math.Max(220, vm.Height + e.VerticalChange / zoom);
@@ -182,37 +183,6 @@ public partial class CanvasCardControl : UserControl
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// B. Animates DragScale ScaleX/Y from <paramref name="from"/> to <paramref name="to"/>
-    /// over the given <paramref name="duration"/>.
-    /// Uses FillBehavior=Stop and sets the final value in Completed so that
-    /// subsequent animations are not blocked by a held animation clock.
-    /// </summary>
-    private void AnimateDragScale(double from, double to, TimeSpan duration)
-    {
-        var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
-        var anim = new DoubleAnimation(from, to, new Duration(duration))
-        {
-            EasingFunction = ease,
-            FillBehavior   = FillBehavior.Stop
-        };
-        double finalValue = to;
-        anim.Completed += (_, _) =>
-        {
-            DragScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
-            DragScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, null);
-            DragScale.ScaleX = finalValue;
-            DragScale.ScaleY = finalValue;
-        };
-        DragScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, anim);
-        DragScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty,
-            new DoubleAnimation(from, to, new Duration(duration))
-            {
-                EasingFunction = ease,
-                FillBehavior   = FillBehavior.Stop
-            });
-    }
-
-    /// <summary>
     /// Walks up the visual tree to find the TerminalCanvasView and reads the current zoom.
     /// Falls back to 1.0 if not found.
     /// </summary>
@@ -226,6 +196,63 @@ public partial class CanvasCardControl : UserControl
                 return canvasView.CurrentZoom;
         }
         return 1.0;
+    }
+
+    /// <summary>
+    /// Checks whether the canvas is currently in tiled layout mode.
+    /// Walks the visual tree to find the MainViewModel.
+    /// </summary>
+    private bool IsTiledMode()
+    {
+        var mainVm = (Window.GetWindow(this)?.DataContext as ViewModels.MainViewModel);
+        return mainVm?.CanvasViewModel?.IsTiledMode == true;
+    }
+
+    // ─── Agent selector ─────────────────────────────────────────────────
+
+    private AgentSelectorViewModel EnsureAgentSelectorVm()
+    {
+        if (_agentSelectorVm is null)
+        {
+            _agentSelectorVm = App.Services.GetService(typeof(AgentSelectorViewModel)) as AgentSelectorViewModel;
+            if (_agentSelectorVm is not null)
+            {
+                AgentGroupsList.ItemsSource = _agentSelectorVm.Groups;
+                SyncAgentDisplay();
+                _agentSelectorVm.PropertyChanged += (_, args) =>
+                {
+                    if (args.PropertyName is nameof(AgentSelectorViewModel.ActiveAgentName) or nameof(AgentSelectorViewModel.ActiveAgentIcon))
+                        SyncAgentDisplay();
+                    if (args.PropertyName == nameof(AgentSelectorViewModel.IsOpen))
+                        AgentPopup.IsOpen = _agentSelectorVm.IsOpen;
+                };
+            }
+        }
+        return _agentSelectorVm!;
+    }
+
+    private void SyncAgentDisplay()
+    {
+        if (_agentSelectorVm is null) return;
+        AgentIconText.Text = _agentSelectorVm.ActiveAgentIcon;
+        AgentNameText.Text = _agentSelectorVm.ActiveAgentName;
+    }
+
+    private void OnAgentSelectorClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        var vm = EnsureAgentSelectorVm();
+        AgentPopup.IsOpen = !AgentPopup.IsOpen;
+    }
+
+    private void OnAgentItemClick(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is FrameworkElement fe && fe.DataContext is AgentItemViewModel item)
+        {
+            var vm = EnsureAgentSelectorVm();
+            vm.SelectAgentCommand.Execute(item.Definition.Id);
+        }
     }
 
     // ─── AI context menu handlers ─────────────────────────────────────────

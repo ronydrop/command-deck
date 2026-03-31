@@ -51,6 +51,11 @@ public partial class App : Application
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IDialogService, DialogService>();
 
+        // ─── Notification & Pane State ──────────────────────────────────
+        services.AddSingleton<INotificationService, NotificationService>();
+        services.AddSingleton<IPaneStateService, PaneStateService>();
+        services.AddSingleton<IAiAgentStateService, AiAgentStateService>();
+
         // ─── Spatial canvas services ─────────────────────────────────────
         services.AddSingleton<ICanvasCameraService, CanvasCameraService>();
         services.AddSingleton<ILayoutPersistenceService, LayoutPersistenceService>();
@@ -61,7 +66,8 @@ public partial class App : Application
         services.AddSingleton<IWorkspaceService>(sp =>
         {
             var factory = sp.GetRequiredService<CanvasItemFactory>();
-            var ws = new WorkspaceService(factory);
+            var persistence = sp.GetRequiredService<IPersistenceService>();
+            var ws = new WorkspaceService(factory, persistence);
             factory.SetWorkspaceService(ws);
             return ws;
         });
@@ -73,8 +79,13 @@ public partial class App : Application
         // ─── AI Assistant services ───────────────────────────────────────
         services.AddSingleton<HttpClient>(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(30) });
         services.AddSingleton<AssistantSettings>();
-        services.AddSingleton<IAssistantProvider, OllamaProvider>();
-        services.AddSingleton<IAssistantProvider, OpenAIProviderStub>(); // multiregistro
+        services.AddSingleton<IAssistantProvider>(sp => new OllamaProvider(
+            sp.GetRequiredService<HttpClient>(),
+            sp.GetRequiredService<AssistantSettings>()));
+        services.AddSingleton<IAssistantProvider>(sp => new OpenAIProvider(
+            sp.GetService<ISecretStorageService>(),
+            sp.GetService<ISettingsService>(),
+            sp.GetRequiredService<AssistantSettings>()));
         services.AddSingleton<IAssistantService, AssistantService>();
 
         // ─── AI Terminal (cc/claude CLI) ──────────────────────────────────
@@ -83,6 +94,9 @@ public partial class App : Application
         services.AddSingleton<IAiModelConfigService, AiModelConfigService>();
         services.AddSingleton<IAiSessionHistoryService, AiSessionHistoryService>();
         services.AddSingleton<IAiContinuationService, AiContinuationService>();
+        services.AddSingleton<IAiTerminalLauncher, AiTerminalLauncher>();
+        services.AddSingleton<IAgentSelectorService, AgentSelectorService>();
+        services.AddSingleton<AgentSelectorViewModel>();
 
         // ─── SQLite persistence (additive — does not replace JSON) ────────
         services.AddSingleton<IDatabaseService, DatabaseService>();
@@ -101,6 +115,16 @@ public partial class App : Application
         // ─── Export/Import ─────────────────────────────────────────────────
         services.AddSingleton<IWorkspaceExportService, WorkspaceExportService>();
 
+        // ─── Update Checker ───────────────────────────────────────────────
+        services.AddSingleton<IUpdateService, UpdateService>();
+
+        // ─── Terminal Background ─────────────────────────────────────────
+        services.AddSingleton<ITerminalBackgroundService, TerminalBackgroundService>();
+
+        // ─── Layout Strategies ──────────────────────────────────────────
+        services.AddSingleton<FreeCanvasLayoutStrategy>();
+        services.AddSingleton<TiledLayoutStrategy>();
+
         // ─── ViewModels ─────────────────────────────────────────────────
         services.AddSingleton<MiniMapViewModel>();
         services.AddSingleton<WorkspaceTreeViewModel>();
@@ -116,6 +140,9 @@ public partial class App : Application
         services.AddTransient<TerminalViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<ProjectEditViewModel>();
+
+        // Lazy wrappers to break circular DI dependencies
+        services.AddSingleton(sp => new Lazy<MainViewModel>(() => sp.GetRequiredService<MainViewModel>()));
 
         // Factories: allow MainViewModel to resolve transient VMs without knowing IServiceProvider
         services.AddSingleton<Func<TerminalViewModel>>(sp => () => sp.GetRequiredService<TerminalViewModel>());
@@ -139,6 +166,21 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Initialize SQLite database and run pending migrations
+        try
+        {
+            var persistence = _serviceProvider!.GetRequiredService<IPersistenceService>();
+            Task.Run(() => persistence.InitAsync()).GetAwaiter().GetResult();
+
+            // One-time migration from JSON files to SQLite
+            var migration = _serviceProvider!.GetRequiredService<MigrationService>();
+            Task.Run(() => migration.MigrateAsync()).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[App] DB init/migration error: {ex}");
+        }
 
         // Apply saved theme before showing window.
         // Task.Run avoids deadlock: GetSettingsAsync uses await internally which would capture
@@ -167,10 +209,37 @@ public partial class App : Application
             Task.Run(() => db.InitializeAsync()).GetAwaiter().GetResult();
             var assistantService = _serviceProvider!.GetRequiredService<IAssistantService>();
             Task.Run(() => assistantService.RestorePreferencesAsync()).GetAwaiter().GetResult();
+
+            // Bridge: apply AppSettings AI config to AssistantService so the chat panel
+            // uses whatever the user configured in Settings (provider, model, url, key).
+            try
+            {
+                var settingsService = _serviceProvider!.GetRequiredService<ISettingsService>();
+                var appSettings = Task.Run(() => settingsService.GetSettingsAsync()).GetAwaiter().GetResult();
+                var secretStorage = _serviceProvider!.GetRequiredService<ISecretStorageService>();
+                var apiKey = string.Empty;
+                try { apiKey = Task.Run(() => secretStorage.RetrieveSecretAsync("ai_openai_api_key")).GetAwaiter().GetResult() ?? string.Empty; } catch { }
+                assistantService.ApplySettings(appSettings.AiProvider, appSettings.AiModel, appSettings.AiBaseUrl, apiKey);
+            }
+            catch (Exception ex2)
+            {
+                System.Diagnostics.Debug.WriteLine($"[App] AI settings bridge failed: {ex2}");
+            }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[DatabaseService] Init failed: {ex}");
+        }
+
+        // Initialize terminal background service (loads wallpaper from settings)
+        try
+        {
+            var bgService = _serviceProvider!.GetRequiredService<ITerminalBackgroundService>();
+            Task.Run(() => bgService.InitializeAsync()).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[TerminalBackground] Init failed: {ex}");
         }
     }
 
@@ -178,6 +247,15 @@ public partial class App : Application
     {
         if (_serviceProvider != null)
         {
+            try
+            {
+                // Save current project workspace layout before shutdown
+                var mainVm = _serviceProvider.GetService<MainViewModel>();
+                if (mainVm != null)
+                    Task.Run(() => mainVm.CanvasViewModel.SaveCurrentLayoutAsync()).GetAwaiter().GetResult();
+            }
+            catch { }
+
             try
             {
                 // Close all terminal sessions before shutdown

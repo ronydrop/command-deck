@@ -1,0 +1,59 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Catppuccin Mocha — dark purple theme -->
+
+    <Color x:Key="BaseBg">#1E1E2E</Color>
+    <Color x:Key="MantelBg">#181825</Color>
+    <Color x:Key="CrustBg">#11111B</Color>
+    <Color x:Key="Surface0">#313244</Color>
+    <Color x:Key="Surface1">#45475A</Color>
+    <Color x:Key="Surface2">#585B70</Color>
+    <Color x:Key="Overlay0">#6C7086</Color>
+
+    <!-- Search highlight colors -->
+    <Color x:Key="SearchHighlight">#66F9E2AF</Color>
+    <Color x:Key="SearchCurrentHighlight">#997C3AED</Color>
+    <Color x:Key="TextColor">#CDD6F4</Color>
+    <Color x:Key="SubtextColor">#A6ADC8</Color>
+    <Color x:Key="Subtext0Color">#BAC2DE</Color>
+    <Color x:Key="AccentPurple">#7C3AED</Color>
+    <Color x:Key="AccentBlue">#89B4FA</Color>
+    <Color x:Key="AccentGreen">#A6E3A1</Color>
+    <Color x:Key="AccentYellow">#F9E2AF</Color>
+    <Color x:Key="AccentRed">#F38BA8</Color>
+    <Color x:Key="AccentPink">#F5C2E7</Color>
+    <Color x:Key="AccentCyan">#94E2D5</Color>
+    <Color x:Key="AccentMauve">#CBA6F7</Color>
+
+    <SolidColorBrush x:Key="BaseBgBrush"     Color="{StaticResource BaseBg}" />
+    <SolidColorBrush x:Key="MantelBgBrush"   Color="{StaticResource MantelBg}" />
+    <SolidColorBrush x:Key="CrustBgBrush"    Color="{StaticResource CrustBg}" />
+    <SolidColorBrush x:Key="Surface0Brush"   Color="{StaticResource Surface0}" />
+    <SolidColorBrush x:Key="Surface1Brush"   Color="{StaticResource Surface1}" />
+    <SolidColorBrush x:Key="Surface2Brush"   Color="{StaticResource Surface2}" />
+    <SolidColorBrush x:Key="Overlay0Brush"   Color="{StaticResource Overlay0}" />
+    <SolidColorBrush x:Key="TextBrush"       Color="{StaticResource TextColor}" />
+    <SolidColorBrush x:Key="SubtextBrush"    Color="{StaticResource SubtextColor}" />
+    <SolidColorBrush x:Key="AccentBrush"     Color="{StaticResource AccentPurple}" />
+    <SolidColorBrush x:Key="AccentBlueBrush"   Color="{StaticResource AccentBlue}" />
+    <SolidColorBrush x:Key="AccentGreenBrush"  Color="{StaticResource AccentGreen}" />
+    <SolidColorBrush x:Key="AccentYellowBrush" Color="{StaticResource AccentYellow}" />
+    <SolidColorBrush x:Key="AccentRedBrush"    Color="{StaticResource AccentRed}" />
+    <SolidColorBrush x:Key="AccentMauveBrush"  Color="{StaticResource AccentMauve}" />
+
+    <!-- Search highlight brushes -->
+    <SolidColorBrush x:Key="SearchHighlightBrush"         Color="{StaticResource SearchHighlight}" />
+    <SolidColorBrush x:Key="SearchCurrentHighlightBrush"  Color="{StaticResource SearchCurrentHighlight}" />
+
+    <!-- Glass compatibility brushes (flat fallbacks for non-glass themes) -->
+    <SolidColorBrush x:Key="GlassBgBrush"         Color="{StaticResource Surface0}" />
+    <SolidColorBrush x:Key="GlassBorderBrush"     Color="{StaticResource Surface1}" />
+    <SolidColorBrush x:Key="GlassHighlightBrush"  Color="{StaticResource Surface1}" />
+    <SolidColorBrush x:Key="ElevatedShadowBrush"  Color="#40000000" />
+    <SolidColorBrush x:Key="GlassSidebarBrush"    Color="{StaticResource MantelBg}" />
+    <SolidColorBrush x:Key="GlassToolbarBrush"    Color="{StaticResource MantelBg}" />
+    <SolidColorBrush x:Key="CanvasDepthBrush"     Color="{StaticResource CrustBg}" />
+    <SolidColorBrush x:Key="GlassTitleBarBrush"   Color="{StaticResource MantelBg}" />
+
+</ResourceDictionary>

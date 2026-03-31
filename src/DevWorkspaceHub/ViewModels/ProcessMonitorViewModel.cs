@@ -13,6 +13,9 @@ namespace DevWorkspaceHub.ViewModels;
 public partial class ProcessMonitorViewModel : ObservableObject, IDisposable
 {
     private readonly IProcessMonitorService _processMonitorService;
+    private readonly IDialogService _dialogService;
+    private readonly INotificationService _notificationService;
+    private HashSet<int> _knownPids = new();
 
     [ObservableProperty]
     private ObservableCollection<ProcessInfo> _processes = new();
@@ -38,9 +41,14 @@ public partial class ProcessMonitorViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private ObservableCollection<ProcessInfo> _filteredProcesses = new();
 
-    public ProcessMonitorViewModel(IProcessMonitorService processMonitorService)
+    public ProcessMonitorViewModel(
+        IProcessMonitorService processMonitorService,
+        IDialogService dialogService,
+        INotificationService notificationService)
     {
         _processMonitorService = processMonitorService;
+        _dialogService = dialogService;
+        _notificationService = notificationService;
         _processMonitorService.ProcessesUpdated += OnProcessesUpdated;
     }
 
@@ -83,13 +91,11 @@ public partial class ProcessMonitorViewModel : ObservableObject, IDisposable
     {
         if (process == null) return;
 
-        var result = MessageBox.Show(
-            $"Kill process '{process.Name}' (PID: {process.Pid})?",
-            "Confirm Kill",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+        bool confirmed = await _dialogService.ConfirmAsync(
+            $"Encerrar processo '{process.Name}' (PID: {process.Pid})?",
+            "Confirmar Encerramento");
 
-        if (result == MessageBoxResult.Yes)
+        if (confirmed)
         {
             bool killed = await _processMonitorService.KillProcessAsync(process.Pid);
             if (killed)
@@ -107,12 +113,44 @@ public partial class ProcessMonitorViewModel : ObservableObject, IDisposable
 
     private void OnProcessesUpdated(List<ProcessInfo> processes)
     {
-        Application.Current?.Dispatcher.Invoke(() => UpdateProcessList(processes));
+        // BeginInvoke (async) avoids blocking the background monitor thread
+        Application.Current?.Dispatcher.BeginInvoke(() => UpdateProcessList(processes));
     }
 
     private void UpdateProcessList(List<ProcessInfo> processes)
     {
-        Processes = new ObservableCollection<ProcessInfo>(processes);
+        // Detect new and dead processes
+        var currentPids = new HashSet<int>(processes.Select(p => p.Pid));
+
+        if (_knownPids.Count > 0)
+        {
+            // New processes
+            var newProcesses = processes.Where(p => !_knownPids.Contains(p.Pid)).ToList();
+            foreach (var np in newProcesses)
+            {
+                _notificationService.Notify(
+                    $"{np.Name} detectado (PID {np.Pid})",
+                    NotificationType.Info,
+                    NotificationSource.Process,
+                    message: np.Port > 0 ? $"Porta: {np.Port}" : null);
+            }
+
+            // Dead processes
+            var deadPids = _knownPids.Except(currentPids).ToList();
+            if (deadPids.Count > 0)
+            {
+                _notificationService.Notify(
+                    $"{deadPids.Count} processo(s) encerrado(s)",
+                    NotificationType.Warning,
+                    NotificationSource.Process);
+            }
+        }
+        _knownPids = currentPids;
+
+        // Repopulate in-place to avoid full visual tree rebuild
+        Processes.Clear();
+        foreach (var p in processes) Processes.Add(p);
+
         TotalProcesses = processes.Count;
         TotalMemoryMb = processes.Sum(p => p.MemoryUsageMb);
         LastRefreshed = DateTime.Now.ToString("HH:mm:ss");
@@ -121,19 +159,16 @@ public partial class ProcessMonitorViewModel : ObservableObject, IDisposable
 
     private void ApplyFilter()
     {
-        if (string.IsNullOrWhiteSpace(FilterText))
-        {
-            FilteredProcesses = new ObservableCollection<ProcessInfo>(Processes);
-        }
-        else
-        {
-            var filtered = Processes.Where(p =>
+        var source = string.IsNullOrWhiteSpace(FilterText)
+            ? Processes
+            : (IEnumerable<ProcessInfo>)Processes.Where(p =>
                 p.Name.Contains(FilterText, StringComparison.OrdinalIgnoreCase) ||
                 p.CommandLine.Contains(FilterText, StringComparison.OrdinalIgnoreCase) ||
-                p.Pid.ToString().Contains(FilterText))
-                .ToList();
-            FilteredProcesses = new ObservableCollection<ProcessInfo>(filtered);
-        }
+                p.Pid.ToString().Contains(FilterText));
+
+        // Repopulate in-place
+        FilteredProcesses.Clear();
+        foreach (var p in source) FilteredProcesses.Add(p);
     }
 
     public void Dispose()

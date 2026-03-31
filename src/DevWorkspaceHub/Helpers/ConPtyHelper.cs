@@ -210,8 +210,6 @@ public static class ConPtyHelper
 
             GC.SuppressFinalize(this);
         }
-
-        ~ConPtySession() => Dispose();
     }
 
     // ─── Public API ──────────────────────────────────────────────────────────

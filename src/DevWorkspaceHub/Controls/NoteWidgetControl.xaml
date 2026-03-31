@@ -1,0 +1,106 @@
+<UserControl x:Class="DevWorkspaceHub.Controls.NoteWidgetControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="260" d:DesignHeight="260">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Color strip -->
+            <RowDefinition Height="6" />
+            <!-- Color picker row -->
+            <RowDefinition Height="Auto" />
+            <!-- Note text area -->
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Top color strip (post-it feel) -->
+        <Border Grid.Row="0"
+                x:Name="ColorStrip"
+                CornerRadius="0">
+            <Border.Background>
+                <SolidColorBrush x:Name="StripBrush" Color="#f9e2af" />
+            </Border.Background>
+        </Border>
+
+        <!-- Color palette row -->
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
+                    Margin="10,8,10,4"
+                    HorizontalAlignment="Left">
+            <TextBlock Text="Cor:"
+                       FontSize="10"
+                       Foreground="{DynamicResource SubtextBrush}"
+                       VerticalAlignment="Center"
+                       Margin="0,0,6,0" />
+            <!-- Yellow (default) -->
+            <Border Width="16" Height="16" CornerRadius="8" Margin="2,0"
+                    Background="#f9e2af" Cursor="Hand"
+                    MouseDown="OnColorPick" Tag="#f9e2af"
+                    BorderThickness="1" BorderBrush="{DynamicResource Surface2Brush}" />
+            <!-- Green -->
+            <Border Width="16" Height="16" CornerRadius="8" Margin="2,0"
+                    Background="#a6e3a1" Cursor="Hand"
+                    MouseDown="OnColorPick" Tag="#a6e3a1"
+                    BorderThickness="1" BorderBrush="{DynamicResource Surface2Brush}" />
+            <!-- Blue -->
+            <Border Width="16" Height="16" CornerRadius="8" Margin="2,0"
+                    Background="#89b4fa" Cursor="Hand"
+                    MouseDown="OnColorPick" Tag="#89b4fa"
+                    BorderThickness="1" BorderBrush="{DynamicResource Surface2Brush}" />
+            <!-- Pink -->
+            <Border Width="16" Height="16" CornerRadius="8" Margin="2,0"
+                    Background="#f5c2e7" Cursor="Hand"
+                    MouseDown="OnColorPick" Tag="#f5c2e7"
+                    BorderThickness="1" BorderBrush="{DynamicResource Surface2Brush}" />
+            <!-- Peach -->
+            <Border Width="16" Height="16" CornerRadius="8" Margin="2,0"
+                    Background="#fab387" Cursor="Hand"
+                    MouseDown="OnColorPick" Tag="#fab387"
+                    BorderThickness="1" BorderBrush="{DynamicResource Surface2Brush}" />
+            <!-- Lavender -->
+            <Border Width="16" Height="16" CornerRadius="8" Margin="2,0"
+                    Background="#b4befe" Cursor="Hand"
+                    MouseDown="OnColorPick" Tag="#b4befe"
+                    BorderThickness="1" BorderBrush="{DynamicResource Surface2Brush}" />
+        </StackPanel>
+
+        <!-- Note text area -->
+        <TextBox Grid.Row="2"
+                 x:Name="NoteTextBox"
+                 Text="{Binding NoteText, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True"
+                 AcceptsTab="True"
+                 TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto"
+                 Margin="8,4,8,8"
+                 Padding="6"
+                 FontSize="13"
+                 FontFamily="{StaticResource MonoFont}"
+                 Foreground="{DynamicResource TextBrush}"
+                 CaretBrush="{DynamicResource TextBrush}"
+                 BorderThickness="0">
+            <TextBox.Background>
+                <SolidColorBrush Color="{DynamicResource Surface0}" Opacity="0.3" />
+            </TextBox.Background>
+            <TextBox.Style>
+                <Style TargetType="TextBox">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TextBox">
+                                <Border Background="{TemplateBinding Background}"
+                                        CornerRadius="6"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ScrollViewer x:Name="PART_ContentHost"
+                                                  VerticalScrollBarVisibility="Auto" />
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TextBox.Style>
+        </TextBox>
+    </Grid>
+</UserControl>

@@ -110,25 +110,3 @@ public class HexColorToBrushConverter : IValueConverter
         return "#7C3AED";
     }
 }
-
-/// <summary>
-/// Converts ViewType enum to visibility for showing/hiding views.
-/// Usage: ConverterParameter="Dashboard" shows when ViewType == Dashboard.
-/// </summary>
-public class ViewTypeToVisibilityConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is ViewModels.ViewType viewType && parameter is string targetView)
-        {
-            if (Enum.TryParse<ViewModels.ViewType>(targetView, out var target))
-                return viewType == target ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
-        }
-        return System.Windows.Visibility.Collapsed;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
-}

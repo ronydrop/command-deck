@@ -12,6 +12,9 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+echo Limpando build anterior...
+dotnet clean src\DevWorkspaceHub\DevWorkspaceHub.csproj >nul 2>&1
+
 echo Restaurando dependencias...
 dotnet restore src\DevWorkspaceHub\DevWorkspaceHub.csproj
 

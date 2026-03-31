@@ -12,7 +12,7 @@ namespace DevWorkspaceHub.ViewModels;
 public partial class ProjectListViewModel : ObservableObject
 {
     private readonly IProjectService _projectService;
-    private readonly SettingsService _settingsService;
+    private readonly ISettingsService _settingsService;
 
     [ObservableProperty]
     private ObservableCollection<Project> _projects = new();
@@ -47,12 +47,16 @@ public partial class ProjectListViewModel : ObservableObject
     /// </summary>
     public event Action? AddProjectRequested;
 
-    public ProjectListViewModel(IProjectService projectService, SettingsService settingsService)
+    public ProjectListViewModel(IProjectService projectService, ISettingsService settingsService)
     {
         _projectService = projectService;
         _settingsService = settingsService;
 
-        _projectService.ProjectsChanged += async () => await LoadProjectsAsync();
+        _projectService.ProjectsChanged += async () =>
+        {
+            try { await LoadProjectsAsync(); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[ProjectsChanged] {ex}"); }
+        };
     }
 
     /// <summary>
@@ -65,7 +69,9 @@ public partial class ProjectListViewModel : ObservableObject
         try
         {
             var projects = await _projectService.GetAllProjectsAsync();
-            Projects = new ObservableCollection<Project>(projects);
+            // Repopulate in-place to preserve bindings and avoid full visual rebuild
+            Projects.Clear();
+            foreach (var p in projects) Projects.Add(p);
             ApplyFilter();
         }
         finally
@@ -159,17 +165,14 @@ public partial class ProjectListViewModel : ObservableObject
 
     private void ApplyFilter()
     {
-        if (string.IsNullOrWhiteSpace(SearchText))
-        {
-            FilteredProjects = new ObservableCollection<Project>(Projects);
-        }
-        else
-        {
-            var filtered = Projects.Where(p =>
+        var source = string.IsNullOrWhiteSpace(SearchText)
+            ? Projects
+            : (IEnumerable<Project>)Projects.Where(p =>
                 p.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                p.Path.Contains(SearchText, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            FilteredProjects = new ObservableCollection<Project>(filtered);
-        }
+                p.Path.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+
+        // Repopulate in-place to preserve existing bindings
+        FilteredProjects.Clear();
+        foreach (var p in source) FilteredProjects.Add(p);
     }
 }

@@ -29,25 +29,32 @@ public class ProcessMonitorService : IProcessMonitorService, IDisposable
 
     public async Task<List<ProcessInfo>> GetRunningProcessesAsync()
     {
-        var processes = new List<ProcessInfo>();
+        var results = new List<ProcessInfo>();
 
         await _scanLock.WaitAsync();
         try
         {
-            // Build port map first
-            _portMap = await BuildPortMapAsync();
+            // Both maps are built with a single query each (not one per process)
+            var portMapTask = BuildPortMapAsync();
+            var cmdLineMapTask = BuildCommandLineMapAsync();
+            await Task.WhenAll(portMapTask, cmdLineMapTask);
+            _portMap = portMapTask.Result;
+            var cmdLineMap = cmdLineMapTask.Result;
 
-            var systemProcesses = Process.GetProcesses();
+            var allProcesses = Process.GetProcesses();
 
-            foreach (var proc in systemProcesses)
+            // Pass 1: filter monitored processes and snapshot their initial CPU time
+            var monitored = new List<(Process proc, ProcessInfo info, TimeSpan startCpu, DateTime startWall)>();
+
+            foreach (var proc in allProcesses)
             {
                 try
                 {
-                    var procName = proc.ProcessName.ToLowerInvariant();
-
-                    // Check if this is a monitored process
-                    if (!IsMonitoredProcess(procName))
+                    if (!IsMonitoredProcess(proc.ProcessName.ToLowerInvariant()))
+                    {
+                        proc.Dispose();
                         continue;
+                    }
 
                     var info = new ProcessInfo
                     {
@@ -56,56 +63,45 @@ public class ProcessMonitorService : IProcessMonitorService, IDisposable
                         Status = proc.Responding ? ProcessRunStatus.Running : ProcessRunStatus.Suspended
                     };
 
-                    // Get memory usage
-                    try
-                    {
-                        info.MemoryUsageMb = proc.WorkingSet64 / (1024 * 1024);
-                    }
-                    catch { }
+                    try { info.MemoryUsageMb = proc.WorkingSet64 / (1024 * 1024); } catch { }
+                    try { info.StartTime = proc.StartTime; } catch { }
+                    info.CommandLine = cmdLineMap.TryGetValue(proc.Id, out var cmd) ? cmd : proc.ProcessName;
+                    if (_portMap.TryGetValue(proc.Id, out int port)) info.Port = port;
 
-                    // Get CPU usage (snapshot-based approximation)
-                    try
-                    {
-                        info.CpuUsage = await GetCpuUsageAsync(proc);
-                    }
-                    catch
-                    {
-                        info.CpuUsage = 0;
-                    }
+                    var startWall = DateTime.UtcNow;
+                    TimeSpan startCpu = TimeSpan.Zero;
+                    try { startCpu = proc.TotalProcessorTime; } catch { }
 
-                    // Get start time
-                    try
-                    {
-                        info.StartTime = proc.StartTime;
-                    }
-                    catch { }
-
-                    // Get command line (best effort)
-                    try
-                    {
-                        info.CommandLine = GetCommandLine(proc.Id);
-                    }
-                    catch
-                    {
-                        info.CommandLine = proc.ProcessName;
-                    }
-
-                    // Check for listening port
-                    if (_portMap.TryGetValue(proc.Id, out int port))
-                    {
-                        info.Port = port;
-                    }
-
-                    processes.Add(info);
+                    monitored.Add((proc, info, startCpu, startWall));
                 }
                 catch
                 {
-                    // Skip processes we can't access
+                    try { proc.Dispose(); } catch { }
                 }
+            }
+
+            // Single shared delay for all monitored processes (was N * 100ms before)
+            if (monitored.Count > 0)
+                await Task.Delay(100);
+
+            // Pass 2: compute CPU delta and collect results
+            foreach (var (proc, info, startCpu, startWall) in monitored)
+            {
+                try
+                {
+                    proc.Refresh();
+                    var cpuUsedMs = (proc.TotalProcessorTime - startCpu).TotalMilliseconds;
+                    var elapsedMs = (DateTime.UtcNow - startWall).TotalMilliseconds;
+                    if (elapsedMs > 0)
+                        info.CpuUsage = Math.Round(Math.Min(cpuUsedMs / (Environment.ProcessorCount * elapsedMs) * 100.0, 100.0), 1);
+                }
+                catch { }
                 finally
                 {
                     proc.Dispose();
                 }
+
+                results.Add(info);
             }
         }
         finally
@@ -113,7 +109,7 @@ public class ProcessMonitorService : IProcessMonitorService, IDisposable
             _scanLock.Release();
         }
 
-        return processes.OrderBy(p => p.Name).ThenBy(p => p.Pid).ToList();
+        return results.OrderBy(p => p.Name).ThenBy(p => p.Pid).ToList();
     }
 
     public async Task<bool> KillProcessAsync(int pid)
@@ -122,7 +118,8 @@ public class ProcessMonitorService : IProcessMonitorService, IDisposable
         {
             var process = Process.GetProcessById(pid);
             process.Kill(entireProcessTree: true);
-            await process.WaitForExitAsync(new CancellationTokenSource(5000).Token);
+            using var cts = new CancellationTokenSource(5000);
+            await process.WaitForExitAsync(cts.Token);
             return true;
         }
         catch
@@ -175,34 +172,6 @@ public class ProcessMonitorService : IProcessMonitorService, IDisposable
             return true;
 
         return false;
-    }
-
-    /// <summary>
-    /// Approximates CPU usage by measuring TotalProcessorTime delta over a short interval.
-    /// </summary>
-    private static async Task<double> GetCpuUsageAsync(Process proc)
-    {
-        try
-        {
-            var startTime = DateTime.UtcNow;
-            var startCpuUsage = proc.TotalProcessorTime;
-
-            await Task.Delay(100);
-
-            proc.Refresh();
-            var endTime = DateTime.UtcNow;
-            var endCpuUsage = proc.TotalProcessorTime;
-
-            var cpuUsedMs = (endCpuUsage - startCpuUsage).TotalMilliseconds;
-            var totalMsElapsed = (endTime - startTime).TotalMilliseconds;
-            var cpuPercent = (cpuUsedMs / (Environment.ProcessorCount * totalMsElapsed)) * 100.0;
-
-            return Math.Round(Math.Min(cpuPercent, 100.0), 1);
-        }
-        catch
-        {
-            return 0;
-        }
     }
 
     /// <summary>
@@ -264,28 +233,32 @@ public class ProcessMonitorService : IProcessMonitorService, IDisposable
     }
 
     /// <summary>
-    /// Gets the command line for a process using WMI.
+    /// Builds a PID → CommandLine map with a single WMI query (instead of one per process).
     /// </summary>
-    private static string GetCommandLine(int processId)
-    {
-        try
+    private static Task<Dictionary<int, string>> BuildCommandLineMapAsync() =>
+        Task.Run(() =>
         {
-            using var searcher = new ManagementObjectSearcher(
-                $"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {processId}");
-            using var results = searcher.Get();
-
-            foreach (var obj in results)
+            var map = new Dictionary<int, string>();
+            try
             {
-                var cmdLine = obj["CommandLine"]?.ToString();
-                if (!string.IsNullOrEmpty(cmdLine))
-                    return cmdLine;
-            }
-        }
-        catch
-        {
-            // WMI may not be available
-        }
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT ProcessId, CommandLine FROM Win32_Process");
+                using var results = searcher.Get();
 
-        return string.Empty;
-    }
+                foreach (var obj in results)
+                {
+                    if (obj["ProcessId"] is uint pid &&
+                        obj["CommandLine"] is string cmd &&
+                        !string.IsNullOrEmpty(cmd))
+                    {
+                        map[(int)pid] = cmd;
+                    }
+                }
+            }
+            catch
+            {
+                // WMI may not be available
+            }
+            return map;
+        });
 }

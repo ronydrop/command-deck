@@ -1,12 +1,15 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using DevWorkspaceHub.Controls;
+using DevWorkspaceHub.Models;
 using DevWorkspaceHub.ViewModels;
 
 namespace DevWorkspaceHub.Views;
@@ -43,6 +46,22 @@ public partial class TerminalCanvasView : UserControl
     private double          _momentumVelY;
     private DispatcherTimer? _momentumTimer;
 
+    // ─── Zoom target state (accumulated across rapid scroll ticks) ──────
+
+    private double _zoomTargetScale = 1.0;
+    private double _zoomTargetTransX;
+    private double _zoomTargetTransY;
+    private bool   _zoomTargetsInitialized;
+
+    // ─── Lerp-based zoom interpolation ────────────────────────────────
+    private double _zoomCurrentScale = 1.0;
+    private double _zoomCurrentTransX = 40.0;
+    private double _zoomCurrentTransY = 40.0;
+    private bool   _zoomLerpActive;
+    private const double ZoomLerpFactor  = 0.18;
+    private const double ZoomLerpEpsilon = 0.0005;
+    private bool _zoomRequiresCtrl = true;
+
     // ─── Pre-focus snapshot (for animated return) ─────────────────────────
 
     private double _preFocusScale;
@@ -76,7 +95,19 @@ public partial class TerminalCanvasView : UserControl
             _canvasVm.FocusItemRequested  += OnFocusItemRequested;
             _canvasVm.FitAllRequested     += OnFitAllRequested;
             _canvasVm.ExitFocusModeRequested += OnExitFocusModeRequested;
+            _canvasVm.LayoutModeChanged += OnLayoutModeChanged;
+
+            // Read zoom mode from settings and react to changes
+            _zoomRequiresCtrl = _canvasVm.ZoomRequiresCtrl;
+            _canvasVm.PropertyChanged += (s, args) =>
+            {
+                if (args.PropertyName == nameof(TerminalCanvasViewModel.ZoomRequiresCtrl))
+                    _zoomRequiresCtrl = _canvasVm.ZoomRequiresCtrl;
+            };
         }
+
+        // Feed viewport size to ViewModel for tiled layout calculation
+        ViewportArea.SizeChanged += OnViewportSizeChanged;
 
         var window = Window.GetWindow(this);
         if (window is not null)
@@ -91,15 +122,19 @@ public partial class TerminalCanvasView : UserControl
         if (window is not null)
             window.KeyDown -= OnWindowKeyDown;
 
+        ViewportArea.SizeChanged -= OnViewportSizeChanged;
+
         if (_canvasVm is not null)
         {
             _canvasVm.FocusItemRequested -= OnFocusItemRequested;
             _canvasVm.FitAllRequested -= OnFitAllRequested;
             _canvasVm.ExitFocusModeRequested -= OnExitFocusModeRequested;
+            _canvasVm.LayoutModeChanged -= OnLayoutModeChanged;
         }
 
         _momentumTimer?.Stop();
         _momentumTimer = null;
+        StopZoomLerp();
 
         Unloaded -= OnUnloaded;
     }
@@ -117,6 +152,41 @@ public partial class TerminalCanvasView : UserControl
         _canvasVm = _mainVm?.CanvasViewModel;
     }
 
+    // ─── Layout mode change (from ViewModel) ──────────────────────────────
+
+    private void OnLayoutModeChanged(LayoutMode newMode)
+    {
+        if (newMode == LayoutMode.Tiled)
+        {
+            // Reset camera to identity for tiled mode
+            CanvasScale.ScaleX = 1;
+            CanvasScale.ScaleY = 1;
+            CanvasTranslate.X = 0;
+            CanvasTranslate.Y = 0;
+            _zoomTargetsInitialized = false;
+            _canvasVm?.SyncCamera(0, 0, 1);
+        }
+        else
+        {
+            // Restore camera from snapshot when returning to canvas
+            var snapshot = _canvasVm?.PopCameraSnapshot();
+            if (snapshot is not null)
+            {
+                CanvasScale.ScaleX = snapshot.Zoom;
+                CanvasScale.ScaleY = snapshot.Zoom;
+                CanvasTranslate.X = snapshot.OffsetX;
+                CanvasTranslate.Y = snapshot.OffsetY;
+                _zoomTargetsInitialized = false;
+                _canvasVm?.SyncCamera(snapshot.OffsetX, snapshot.OffsetY, snapshot.Zoom);
+            }
+        }
+    }
+
+    private void OnViewportSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        _canvasVm?.OnViewportSizeChanged(e.NewSize.Width, e.NewSize.Height);
+    }
+
     // ─── Keyboard (global) ────────────────────────────────────────────────
 
     private void OnWindowKeyDown(object sender, KeyEventArgs e)
@@ -125,6 +195,14 @@ public partial class TerminalCanvasView : UserControl
         {
             ExitFocusMode(animated: true);
             e.Handled = true;
+            return;
+        }
+
+        // Ctrl+V: paste image from clipboard onto canvas
+        if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            if (TryPasteImageFromClipboard())
+                e.Handled = true;
         }
     }
 
@@ -137,6 +215,9 @@ public partial class TerminalCanvasView : UserControl
 
     private void OnViewportMouseDown(object sender, MouseButtonEventArgs e)
     {
+        // No panning in tiled mode
+        if (_canvasVm?.IsCanvasMode != true) return;
+
         // Pan with middle mouse OR left button on empty canvas background
         bool isMiddle = e.ChangedButton == MouseButton.Middle;
         bool isLeft   = e.ChangedButton == MouseButton.Left && IsCanvasBackground(e.Source);
@@ -153,6 +234,9 @@ public partial class TerminalCanvasView : UserControl
         _momentumVelY = 0;
         _lastPanPos   = _panStart;
         _lastPanTime  = DateTime.UtcNow;
+
+        // Stop any active zoom lerp and reset targets.
+        StopZoomLerp();
 
         Mouse.Capture(ViewportArea);
         ViewportArea.Cursor = Cursors.SizeAll;
@@ -218,62 +302,110 @@ public partial class TerminalCanvasView : UserControl
         return true;
     }
 
-    // ─── Zoom (Ctrl + Scroll) ─────────────────────────────────────────────
+    // ─── Zoom (Scroll / Ctrl+Scroll) ───────────────────────────────────────
 
     private void OnViewportMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (!Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl))
+        // No zoom in tiled mode
+        if (_canvasVm?.IsCanvasMode != true) return;
+
+        // Check zoom mode: if CtrlScroll, require Ctrl key
+        if (_zoomRequiresCtrl &&
+            !Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl))
             return;
 
         e.Handled = true;
 
-        double oldScale = CanvasScale.ScaleX;
+        // On first zoom tick (or after pan/focus resets targets), seed from current transforms.
+        if (!_zoomTargetsInitialized)
+        {
+            _zoomTargetScale  = CanvasScale.ScaleX;
+            _zoomTargetTransX = CanvasTranslate.X;
+            _zoomTargetTransY = CanvasTranslate.Y;
+            _zoomCurrentScale  = CanvasScale.ScaleX;
+            _zoomCurrentTransX = CanvasTranslate.X;
+            _zoomCurrentTransY = CanvasTranslate.Y;
+            _zoomTargetsInitialized = true;
+        }
+
+        // Accumulate zoom delta against the TARGET (not the mid-lerp value).
+        double oldScale = _zoomTargetScale;
         double delta    = e.Delta > 0 ? ZoomStep : -ZoomStep;
         double newScale = Math.Clamp(oldScale + delta, MinZoom, MaxZoom);
 
         if (Math.Abs(newScale - oldScale) < 0.001) return;
 
+        // Compute world-space point under cursor using target transforms.
         var mousePos = e.GetPosition(ViewportArea);
-        double worldX = (mousePos.X - CanvasTranslate.X) / oldScale;
-        double worldY = (mousePos.Y - CanvasTranslate.Y) / oldScale;
+        double worldX = (mousePos.X - _zoomTargetTransX) / oldScale;
+        double worldY = (mousePos.Y - _zoomTargetTransY) / oldScale;
 
         double targetTransX = mousePos.X - worldX * newScale;
         double targetTransY = mousePos.Y - worldY * newScale;
 
-        var duration = new Duration(TimeSpan.FromMilliseconds(100));
-        var ease     = new QuadraticEase { EasingMode = EasingMode.EaseOut };
-
-        double finalScale  = newScale;
-        double finalTransX = targetTransX;
-        double finalTransY = targetTransY;
-
-        var scaleAnim = new DoubleAnimation(newScale, duration)
-            { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
-        scaleAnim.Completed += (_, _) =>
-        {
-            CanvasScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
-            CanvasScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
-            CanvasScale.ScaleX = finalScale;
-            CanvasScale.ScaleY = finalScale;
-        };
-        CanvasScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnim);
-        CanvasScale.BeginAnimation(ScaleTransform.ScaleYProperty,
-            new DoubleAnimation(newScale, duration) { EasingFunction = ease, FillBehavior = FillBehavior.Stop });
-
-        var transXAnim = new DoubleAnimation(targetTransX, duration)
-            { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
-        transXAnim.Completed += (_, _) =>
-        {
-            CanvasTranslate.BeginAnimation(TranslateTransform.XProperty, null);
-            CanvasTranslate.BeginAnimation(TranslateTransform.YProperty, null);
-            CanvasTranslate.X = finalTransX;
-            CanvasTranslate.Y = finalTransY;
-        };
-        CanvasTranslate.BeginAnimation(TranslateTransform.XProperty, transXAnim);
-        CanvasTranslate.BeginAnimation(TranslateTransform.YProperty,
-            new DoubleAnimation(targetTransY, duration) { EasingFunction = ease, FillBehavior = FillBehavior.Stop });
+        // Update accumulated targets.
+        _zoomTargetScale  = newScale;
+        _zoomTargetTransX = targetTransX;
+        _zoomTargetTransY = targetTransY;
 
         UpdateZoomLabel(newScale);
+
+        // Start the per-frame lerp if not already running.
+        if (!_zoomLerpActive)
+        {
+            _zoomLerpActive = true;
+            CompositionTarget.Rendering += OnZoomLerpFrame;
+        }
+    }
+
+    private void OnZoomLerpFrame(object? sender, EventArgs e)
+    {
+        // Lerp current values toward targets
+        _zoomCurrentScale  += (_zoomTargetScale  - _zoomCurrentScale)  * ZoomLerpFactor;
+        _zoomCurrentTransX += (_zoomTargetTransX - _zoomCurrentTransX) * ZoomLerpFactor;
+        _zoomCurrentTransY += (_zoomTargetTransY - _zoomCurrentTransY) * ZoomLerpFactor;
+
+        // Apply to transforms directly (no animation objects)
+        CanvasScale.ScaleX = _zoomCurrentScale;
+        CanvasScale.ScaleY = _zoomCurrentScale;
+        CanvasTranslate.X  = _zoomCurrentTransX;
+        CanvasTranslate.Y  = _zoomCurrentTransY;
+
+        // Check convergence
+        bool converged =
+            Math.Abs(_zoomTargetScale  - _zoomCurrentScale)  < ZoomLerpEpsilon &&
+            Math.Abs(_zoomTargetTransX - _zoomCurrentTransX) < ZoomLerpEpsilon &&
+            Math.Abs(_zoomTargetTransY - _zoomCurrentTransY) < ZoomLerpEpsilon;
+
+        if (converged)
+        {
+            // Snap to exact target values
+            CanvasScale.ScaleX = _zoomTargetScale;
+            CanvasScale.ScaleY = _zoomTargetScale;
+            CanvasTranslate.X  = _zoomTargetTransX;
+            CanvasTranslate.Y  = _zoomTargetTransY;
+            _zoomCurrentScale  = _zoomTargetScale;
+            _zoomCurrentTransX = _zoomTargetTransX;
+            _zoomCurrentTransY = _zoomTargetTransY;
+
+            // Stop rendering callback
+            CompositionTarget.Rendering -= OnZoomLerpFrame;
+            _zoomLerpActive = false;
+            _zoomTargetsInitialized = false;
+
+            // Sync to ViewModel (replaces the debounced timer)
+            _canvasVm?.SyncCamera(CanvasTranslate.X, CanvasTranslate.Y, CanvasScale.ScaleX);
+        }
+    }
+
+    private void StopZoomLerp()
+    {
+        if (_zoomLerpActive)
+        {
+            CompositionTarget.Rendering -= OnZoomLerpFrame;
+            _zoomLerpActive = false;
+        }
+        _zoomTargetsInitialized = false;
     }
 
     private void ApplyMomentum(object? sender, EventArgs e)
@@ -487,14 +619,162 @@ public partial class TerminalCanvasView : UserControl
 
     // ─── Widget buttons ───────────────────────────────────────────────────
 
-    private void OnAddGitWidgetClick(object sender, RoutedEventArgs e)
+    private void OnToggleGitWidgetClick(object sender, RoutedEventArgs e)
     {
-        _canvasVm?.AddGitWidgetCommand.Execute(null);
+        if (_canvasVm is null) return;
+
+        // Git widget (320x280) — top-right corner of visible viewport
+        const double widgetW = 320;
+        const double margin = 20;
+        double vpX = ViewportArea.ActualWidth - widgetW - margin;
+        double vpY = margin;
+
+        double canvasX = (vpX - CanvasTranslate.X) / CanvasScale.ScaleX;
+        double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
+
+        _canvasVm.ToggleGitWidget(canvasX, canvasY);
     }
 
-    private void OnAddProcessWidgetClick(object sender, RoutedEventArgs e)
+    private void OnToggleProcessWidgetClick(object sender, RoutedEventArgs e)
     {
-        _canvasVm?.AddProcessWidgetCommand.Execute(null);
+        if (_canvasVm is null) return;
+
+        // Process widget (400x350) — to the left of the Git widget area
+        const double gitW = 320;
+        const double processW = 400;
+        const double margin = 20;
+        const double gap = 20;
+        double vpX = ViewportArea.ActualWidth - gitW - processW - gap - margin;
+        double vpY = margin;
+
+        double canvasX = (vpX - CanvasTranslate.X) / CanvasScale.ScaleX;
+        double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
+
+        _canvasVm.ToggleProcessWidget(canvasX, canvasY);
+    }
+
+    private void OnAddNoteWidgetClick(object sender, RoutedEventArgs e)
+    {
+        if (_canvasVm is null) return;
+
+        const double margin = 20;
+        double vpX = margin + 60;
+        double vpY = ViewportArea.ActualHeight - 260 - margin;
+
+        double canvasX = (vpX - CanvasTranslate.X) / CanvasScale.ScaleX;
+        double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
+
+        _canvasVm.AddNoteWidget(canvasX, canvasY);
+    }
+
+    // ─── Image paste / drop ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Attempts to paste an image from the clipboard onto the canvas.
+    /// Returns true if an image was pasted.
+    /// </summary>
+    private bool TryPasteImageFromClipboard()
+    {
+        if (_canvasVm is null) return false;
+
+        // Check if a terminal or text input is focused — don't intercept paste there
+        var focused = Keyboard.FocusedElement;
+        if (focused is System.Windows.Controls.Primitives.TextBoxBase) return false;
+
+        BitmapSource? bitmap = null;
+        string? filePath = null;
+
+        // Priority 1: bitmap image in clipboard
+        if (Clipboard.ContainsImage())
+        {
+            bitmap = Clipboard.GetImage();
+        }
+        // Priority 2: image file in clipboard (e.g. copied from Explorer)
+        else if (Clipboard.ContainsFileDropList())
+        {
+            var files = Clipboard.GetFileDropList();
+            foreach (string? f in files)
+            {
+                if (f is not null && IsImageFile(f))
+                {
+                    filePath = f;
+                    break;
+                }
+            }
+        }
+
+        if (bitmap is null && filePath is null) return false;
+
+        // Place at center of current viewport
+        double vpCenterX = ViewportArea.ActualWidth / 2.0;
+        double vpCenterY = ViewportArea.ActualHeight / 2.0;
+        double canvasX = (vpCenterX - CanvasTranslate.X) / CanvasScale.ScaleX - 200;
+        double canvasY = (vpCenterY - CanvasTranslate.Y) / CanvasScale.ScaleY - 150;
+
+        var item = _canvasVm.AddImageWidget(canvasX, canvasY);
+
+        if (filePath is not null)
+            item.ImagePath = filePath;
+        else if (bitmap is not null)
+            item.SetImageFromBitmap(bitmap);
+
+        return true;
+    }
+
+    private void OnViewportDragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop) || e.Data.GetDataPresent(DataFormats.Bitmap))
+            e.Effects = DragDropEffects.Copy;
+        else
+            e.Effects = DragDropEffects.None;
+
+        e.Handled = true;
+    }
+
+    private void OnViewportDrop(object sender, DragEventArgs e)
+    {
+        if (_canvasVm is null) return;
+
+        // Get drop position in canvas coordinates
+        var dropPos = e.GetPosition(ViewportArea);
+        double canvasX = (dropPos.X - CanvasTranslate.X) / CanvasScale.ScaleX;
+        double canvasY = (dropPos.Y - CanvasTranslate.Y) / CanvasScale.ScaleY;
+
+        // File drop from Explorer
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (files is null) return;
+
+            double offsetX = 0;
+            foreach (var file in files)
+            {
+                if (!IsImageFile(file)) continue;
+
+                var item = _canvasVm.AddImageWidget(canvasX + offsetX, canvasY);
+                item.ImagePath = file;
+                offsetX += 420; // cascade horizontally
+                e.Handled = true;
+            }
+            return;
+        }
+
+        // Bitmap data drop
+        if (e.Data.GetDataPresent(DataFormats.Bitmap))
+        {
+            if (e.Data.GetData(DataFormats.Bitmap) is BitmapSource bitmap)
+            {
+                var item = _canvasVm.AddImageWidget(canvasX, canvasY);
+                item.SetImageFromBitmap(bitmap);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private static bool IsImageFile(string path)
+    {
+        var ext = Path.GetExtension(path).ToLowerInvariant();
+        return ext is ".png" or ".jpg" or ".jpeg" or ".bmp" or ".gif" or ".webp" or ".ico" or ".tiff" or ".tif";
     }
 
     // ─── Toolbar buttons ──────────────────────────────────────────────────
@@ -502,6 +782,15 @@ public partial class TerminalCanvasView : UserControl
     private void OnVerTodosClick(object sender, RoutedEventArgs e)
     {
         ExitFocusMode(animated: true);
+    }
+
+    private void OnAiDropdownClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.ContextMenu != null)
+        {
+            button.ContextMenu.PlacementTarget = button;
+            button.ContextMenu.IsOpen = true;
+        }
     }
 
     // ─── Focus mode ───────────────────────────────────────────────────────
@@ -596,6 +885,15 @@ public partial class TerminalCanvasView : UserControl
 
     private void AnimateCanvasTo(double targetScale, double targetTransX, double targetTransY)
     {
+        // Stop any active zoom lerp before starting focus/fit-all animation.
+        StopZoomLerp();
+
+        // Cancel any running animations first.
+        CanvasScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        CanvasScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        CanvasTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+        CanvasTranslate.BeginAnimation(TranslateTransform.YProperty, null);
+
         var duration = new Duration(TimeSpan.FromMilliseconds(280));
         var ease     = new CubicEase { EasingMode = EasingMode.EaseInOut };
 
@@ -603,9 +901,9 @@ public partial class TerminalCanvasView : UserControl
         double finalTransX = targetTransX;
         double finalTransY = targetTransY;
 
-        // Scale animation
+        // Scale animation — HoldEnd keeps value stable until Completed clears it.
         var scaleAnim = new DoubleAnimation(targetScale, duration)
-            { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
+            { EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd };
         scaleAnim.Completed += (_, _) =>
         {
             CanvasScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
@@ -616,11 +914,11 @@ public partial class TerminalCanvasView : UserControl
         };
         CanvasScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnim);
         CanvasScale.BeginAnimation(ScaleTransform.ScaleYProperty,
-            new DoubleAnimation(targetScale, duration) { EasingFunction = ease, FillBehavior = FillBehavior.Stop });
+            new DoubleAnimation(targetScale, duration) { EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd });
 
-        // TranslateX animation
+        // Translate animation
         var transXAnim = new DoubleAnimation(targetTransX, duration)
-            { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
+            { EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd };
         transXAnim.Completed += (_, _) =>
         {
             CanvasTranslate.BeginAnimation(TranslateTransform.XProperty, null);
@@ -630,7 +928,7 @@ public partial class TerminalCanvasView : UserControl
         };
         CanvasTranslate.BeginAnimation(TranslateTransform.XProperty, transXAnim);
         CanvasTranslate.BeginAnimation(TranslateTransform.YProperty,
-            new DoubleAnimation(targetTransY, duration) { EasingFunction = ease, FillBehavior = FillBehavior.Stop });
+            new DoubleAnimation(targetTransY, duration) { EasingFunction = ease, FillBehavior = FillBehavior.HoldEnd });
 
         UpdateZoomLabel(targetScale);
     }

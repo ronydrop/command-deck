@@ -44,6 +44,7 @@
                            Margin="0,0,0,4" />
                 <TextBox Style="{StaticResource DarkTextBox}"
                          Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="Nome do projeto"
                          Margin="0,0,0,16" />
 
                 <!-- Project Path -->
@@ -57,6 +58,7 @@
                     <TextBox Grid.Column="0"
                              Style="{StaticResource DarkTextBox}"
                              Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"
+                             Tag="C:\caminho\do\projeto"
                              Margin="0,0,8,0" />
                     <Button Grid.Column="1"
                             Style="{StaticResource GhostButton}"
@@ -129,6 +131,7 @@
                     <TextBox Grid.Column="0"
                              Style="{StaticResource DarkTextBox}"
                              Text="{Binding NewStartupCommand, UpdateSourceTrigger=PropertyChanged}"
+                             Tag="npm start, dotnet run..."
                              FontFamily="{StaticResource MonoFont}"
                              FontSize="12"
                              Margin="0,0,8,0" />

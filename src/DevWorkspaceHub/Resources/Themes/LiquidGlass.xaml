@@ -1,0 +1,129 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Liquid Glass Light — Apple-inspired translucent light theme
+         Strong glass aesthetic: visible translucency, deep highlights, layered surfaces -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         A. BASE COLORS
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <Color x:Key="BaseBg">#F2F2F7</Color>
+    <Color x:Key="MantelBg">#E8E8ED</Color>
+    <Color x:Key="CrustBg">#DDDDE3</Color>
+    <Color x:Key="Surface0">#FFFFFF</Color>
+    <Color x:Key="Surface1">#C6C6CC</Color>
+    <Color x:Key="Surface2">#A0A0A8</Color>
+    <Color x:Key="Overlay0">#7C7C84</Color>
+    <Color x:Key="TextColor">#1D1D1F</Color>
+    <Color x:Key="SubtextColor">#48484A</Color>
+    <Color x:Key="Subtext0Color">#3A3A3C</Color>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         B. ACCENT COLORS — Apple system palette
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <Color x:Key="AccentPurple">#007AFF</Color>
+    <Color x:Key="AccentBlue">#5856D6</Color>
+    <Color x:Key="AccentGreen">#34C759</Color>
+    <Color x:Key="AccentYellow">#FF9500</Color>
+    <Color x:Key="AccentRed">#FF3B30</Color>
+    <Color x:Key="AccentPink">#FF2D55</Color>
+    <Color x:Key="AccentCyan">#5AC8FA</Color>
+    <Color x:Key="AccentMauve">#AF52DE</Color>
+
+    <!-- Search highlights -->
+    <Color x:Key="SearchHighlight">#66FF9500</Color>
+    <Color x:Key="SearchCurrentHighlight">#99007AFF</Color>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         C. GLASS COLORS — strong translucent layers
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Card glass: visible white-to-transparent gradient -->
+    <Color x:Key="GlassTop">#E8FFFFFF</Color>
+    <Color x:Key="GlassBottom">#A0F0F0F5</Color>
+    <!-- Highlight: bright white edge on top of cards -->
+    <Color x:Key="GlassHighlight">#99FFFFFF</Color>
+    <!-- Border: visible frosted border -->
+    <Color x:Key="GlassBorder">#66FFFFFF</Color>
+    <Color x:Key="GlassBorderSubtle">#33C0C0C8</Color>
+    <!-- Elevated shadow -->
+    <Color x:Key="ElevatedShadow">#26000000</Color>
+    <!-- Accent-tinted glass for sidebar -->
+    <Color x:Key="GlassTintBlue">#0C007AFF</Color>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         D. STANDARD BRUSHES
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <SolidColorBrush x:Key="BaseBgBrush"     Color="{StaticResource BaseBg}" />
+    <SolidColorBrush x:Key="MantelBgBrush"   Color="{StaticResource MantelBg}" />
+    <SolidColorBrush x:Key="CrustBgBrush"    Color="{StaticResource CrustBg}" />
+    <SolidColorBrush x:Key="Surface0Brush"   Color="{StaticResource Surface0}" />
+    <SolidColorBrush x:Key="Surface1Brush"   Color="{StaticResource Surface1}" />
+    <SolidColorBrush x:Key="Surface2Brush"   Color="{StaticResource Surface2}" />
+    <SolidColorBrush x:Key="Overlay0Brush"   Color="{StaticResource Overlay0}" />
+    <SolidColorBrush x:Key="TextBrush"       Color="{StaticResource TextColor}" />
+    <SolidColorBrush x:Key="SubtextBrush"    Color="{StaticResource SubtextColor}" />
+    <SolidColorBrush x:Key="AccentBrush"     Color="{StaticResource AccentPurple}" />
+    <SolidColorBrush x:Key="AccentBlueBrush"   Color="{StaticResource AccentBlue}" />
+    <SolidColorBrush x:Key="AccentGreenBrush"  Color="{StaticResource AccentGreen}" />
+    <SolidColorBrush x:Key="AccentYellowBrush" Color="{StaticResource AccentYellow}" />
+    <SolidColorBrush x:Key="AccentRedBrush"    Color="{StaticResource AccentRed}" />
+    <SolidColorBrush x:Key="AccentMauveBrush"  Color="{StaticResource AccentMauve}" />
+
+    <!-- Search highlight brushes -->
+    <SolidColorBrush x:Key="SearchHighlightBrush"        Color="{StaticResource SearchHighlight}" />
+    <SolidColorBrush x:Key="SearchCurrentHighlightBrush" Color="{StaticResource SearchCurrentHighlight}" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         E. GLASS BRUSHES — strong visible glass effect
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Card/panel glass: obvious white→translucent gradient -->
+    <LinearGradientBrush x:Key="GlassBgBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{StaticResource GlassTop}" Offset="0" />
+        <GradientStop Color="{StaticResource GlassBottom}" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Glass frosted border -->
+    <SolidColorBrush x:Key="GlassBorderBrush" Color="{StaticResource GlassBorder}" />
+
+    <!-- Glass highlight: bright white top-edge reflection -->
+    <SolidColorBrush x:Key="GlassHighlightBrush" Color="{StaticResource GlassHighlight}" />
+
+    <!-- Shadow color -->
+    <SolidColorBrush x:Key="ElevatedShadowBrush" Color="{StaticResource ElevatedShadow}" />
+
+    <!-- Sidebar glass: visible gradient with blue tint + frosted look -->
+    <LinearGradientBrush x:Key="GlassSidebarBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#D8E4E8F0" Offset="0" />
+        <GradientStop Color="#C0DDE0E8" Offset="0.5" />
+        <GradientStop Color="#B0D8DBE4" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Canvas depth: stronger radial gradient -->
+    <RadialGradientBrush x:Key="CanvasDepthBrush"
+                         GradientOrigin="0.5,0.35"
+                         Center="0.5,0.35"
+                         RadiusX="0.65"
+                         RadiusY="0.65">
+        <GradientStop Color="#EDEDF2" Offset="0" />
+        <GradientStop Color="#D8D8E0" Offset="0.7" />
+        <GradientStop Color="{StaticResource CrustBg}" Offset="1" />
+    </RadialGradientBrush>
+
+    <!-- Toolbar glass: frosted with slight gradient -->
+    <LinearGradientBrush x:Key="GlassToolbarBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#E0EAF0F5" Offset="0" />
+        <GradientStop Color="#CCE2E5EC" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Card title bar: visible frosted header -->
+    <LinearGradientBrush x:Key="GlassTitleBarBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#F0F4F8" Offset="0" />
+        <GradientStop Color="#E4E8EE" Offset="1" />
+    </LinearGradientBrush>
+
+</ResourceDictionary>

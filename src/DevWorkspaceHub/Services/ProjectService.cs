@@ -12,6 +12,7 @@ public class ProjectService : IProjectService
 {
     private readonly string _projectsFilePath;
     private List<Project> _projects = new();
+    private bool _isLoaded;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -22,6 +23,16 @@ public class ProjectService : IProjectService
     };
 
     public event Action? ProjectsChanged;
+
+    /// <summary>
+    /// Fired when a save operation fails (e.g., disk full). Provides the exception for logging/UI feedback.
+    /// </summary>
+    public event Action<Exception>? SaveFailed;
+
+    /// <summary>
+    /// Fired when a load operation fails (e.g., corrupted JSON). Projects will be empty.
+    /// </summary>
+    public event Action<Exception>? LoadFailed;
 
     public ProjectService()
     {
@@ -38,7 +49,7 @@ public class ProjectService : IProjectService
         await _lock.WaitAsync();
         try
         {
-            if (_projects.Count == 0)
+            if (!_isLoaded)
                 await LoadProjectsAsync();
             return _projects.OrderByDescending(p => p.IsFavorite)
                             .ThenByDescending(p => p.LastOpened)
@@ -61,7 +72,7 @@ public class ProjectService : IProjectService
         await _lock.WaitAsync();
         try
         {
-            if (_projects.Count == 0)
+            if (!_isLoaded)
                 await LoadProjectsAsync();
 
             // Prevent duplicates
@@ -274,9 +285,15 @@ public class ProjectService : IProjectService
                 _projects = JsonSerializer.Deserialize<List<Project>>(json, JsonOptions) ?? new();
             }
         }
-        catch
+        catch (Exception ex)
         {
             _projects = new();
+            System.Diagnostics.Debug.WriteLine($"[ProjectService.Load] {ex}");
+            LoadFailed?.Invoke(ex);
+        }
+        finally
+        {
+            _isLoaded = true;
         }
     }
 
@@ -287,9 +304,10 @@ public class ProjectService : IProjectService
             var json = JsonSerializer.Serialize(_projects, JsonOptions);
             await File.WriteAllTextAsync(_projectsFilePath, json);
         }
-        catch
+        catch (Exception ex)
         {
-            // Log error in production
+            System.Diagnostics.Debug.WriteLine($"[ProjectService.Save] {ex}");
+            SaveFailed?.Invoke(ex);
         }
     }
 }

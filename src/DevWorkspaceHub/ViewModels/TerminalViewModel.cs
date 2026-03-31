@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text;
 using System.Windows;
 using System.Windows.Documents;
+using System.Windows.Media;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,6 +18,8 @@ namespace DevWorkspaceHub.ViewModels;
 public partial class TerminalViewModel : ObservableObject, IDisposable
 {
     private readonly ITerminalService _terminalService;
+    private readonly IDatabaseService _db;
+    private readonly ITerminalBackgroundService? _backgroundService;
     private readonly AnsiParser _ansiParser = new();
     private readonly Dispatcher _dispatcher;
 
@@ -24,6 +27,14 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     private readonly StringBuilder _outputBuffer = new();
     private readonly object _bufferLock = new();
     private bool _flushScheduled;
+
+    private static readonly SolidColorBrush DefaultBgBrush =
+        new(Color.FromRgb(0x1E, 0x1E, 0x2E));
+
+    static TerminalViewModel()
+    {
+        DefaultBgBrush.Freeze();
+    }
 
     [ObservableProperty]
     private TerminalSession? _session;
@@ -49,23 +60,44 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _statusText = "Starting...";
 
+    // ─── Terminal Background ────────────────────────────────────────────────
+
+    [ObservableProperty]
+    private ImageSource? _backgroundImage;
+
+    [ObservableProperty]
+    private double _backgroundOpacity;
+
+    [ObservableProperty]
+    private Stretch _backgroundStretch = Stretch.UniformToFill;
+
+    [ObservableProperty]
+    private double _overlayOpacity;
+
+    [ObservableProperty]
+    private bool _isDarkOverlay = true;
+
+    [ObservableProperty]
+    private bool _hasBackground;
+
     private Paragraph _currentParagraph;
     private int _maxScrollbackLines = 2000;
 
-    public TerminalViewModel(ITerminalService terminalService)
+    public TerminalViewModel(ITerminalService terminalService, IDatabaseService db,
+                             ITerminalBackgroundService? backgroundService = null)
     {
         _terminalService = terminalService;
+        _db = db;
+        _backgroundService = backgroundService;
         _dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
 
         _outputDocument = new FlowDocument
         {
-            FontFamily = new System.Windows.Media.FontFamily("Cascadia Code, Consolas, Courier New"),
+            FontFamily = new FontFamily("Cascadia Code, Consolas, Courier New"),
             FontSize = 14,
             PagePadding = new Thickness(8),
-            Background = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(0x1E, 0x1E, 0x2E)),
-            Foreground = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(0xCD, 0xD6, 0xF4))
+            Background = Brushes.Transparent,
+            Foreground = new SolidColorBrush(Color.FromRgb(0xCD, 0xD6, 0xF4))
         };
 
         _currentParagraph = new Paragraph { Margin = new Thickness(0) };
@@ -78,6 +110,13 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
 
         _terminalService.OutputReceived += OnOutputReceived;
         _terminalService.SessionExited += OnSessionExited;
+
+        // Subscribe to terminal background changes
+        if (_backgroundService != null)
+        {
+            _backgroundService.BackgroundChanged += OnBackgroundChanged;
+            SyncBackgroundFromService();
+        }
     }
 
     /// <summary>
@@ -109,8 +148,11 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     private async Task SendInput()
     {
         if (Session == null || string.IsNullOrEmpty(InputText)) return;
+        var cmd = InputText.Trim();
         await _terminalService.WriteAsync(Session.Id, InputText + "\r");
         InputText = string.Empty;
+        if (!string.IsNullOrWhiteSpace(cmd))
+            _ = _db.AddCommandHistoryAsync(Session.Id, cmd);
     }
 
     /// <summary>
@@ -129,6 +171,8 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     {
         if (Session == null) return;
         await _terminalService.WriteAsync(Session.Id, command + "\r");
+        if (!string.IsNullOrWhiteSpace(command))
+            _ = _db.AddCommandHistoryAsync(Session.Id, command.Trim());
     }
 
     /// <summary>
@@ -200,13 +244,7 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
 
         try
         {
-            var inlines = _ansiParser.Parse(buffered);
-
-            foreach (var inline in inlines)
-            {
-                _currentParagraph.Inlines.Add(inline);
-            }
-
+            _ansiParser.ParseAndRender(buffered, _currentParagraph);
             TrimScrollback();
         }
         catch
@@ -238,16 +276,44 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
 
     private void TrimScrollback()
     {
-        while (OutputDocument.Blocks.Count > _maxScrollbackLines)
+        if (_currentParagraph.Inlines.Count > _maxScrollbackLines)
         {
-            OutputDocument.Blocks.Remove(OutputDocument.Blocks.FirstBlock);
+            var toRemove = _currentParagraph.Inlines.Count - _maxScrollbackLines;
+            for (int i = 0; i < toRemove; i++)
+            {
+                var first = _currentParagraph.Inlines.FirstInline;
+                if (first == null) break;
+                _currentParagraph.Inlines.Remove(first);
+            }
         }
+    }
+
+    // ─── Background Sync ────────────────────────────────────────────────────
+
+    private void OnBackgroundChanged()
+    {
+        _dispatcher.Invoke(SyncBackgroundFromService);
+    }
+
+    private void SyncBackgroundFromService()
+    {
+        if (_backgroundService == null) return;
+
+        BackgroundImage = _backgroundService.ProcessedImage;
+        BackgroundOpacity = _backgroundService.Opacity;
+        BackgroundStretch = _backgroundService.WallpaperStretch;
+        OverlayOpacity = _backgroundService.OverlayOpacity;
+        IsDarkOverlay = _backgroundService.IsDarkOverlay;
+        HasBackground = _backgroundService.HasWallpaper;
     }
 
     public void Dispose()
     {
         _terminalService.OutputReceived -= OnOutputReceived;
         _terminalService.SessionExited -= OnSessionExited;
+
+        if (_backgroundService != null)
+            _backgroundService.BackgroundChanged -= OnBackgroundChanged;
 
         if (Session != null)
         {

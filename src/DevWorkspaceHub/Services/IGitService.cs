@@ -31,4 +31,14 @@ public interface IGitService
     /// Gets a list of staged files.
     /// </summary>
     Task<List<string>> GetStagedFilesAsync(string repositoryPath);
+
+    /// <summary>
+    /// Gets the most recent commits.
+    /// </summary>
+    Task<List<GitCommitInfo>> GetRecentCommitsAsync(string repositoryPath, int count = 5);
+
+    /// <summary>
+    /// Gets the list of changed files in the working tree.
+    /// </summary>
+    Task<List<GitFileChange>> GetChangedFilesAsync(string repositoryPath);
 }

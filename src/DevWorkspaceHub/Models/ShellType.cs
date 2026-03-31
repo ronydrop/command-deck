@@ -8,7 +8,10 @@ public enum ShellType
     WSL,
     PowerShell,
     CMD,
-    GitBash
+    Cmd = CMD,
+    GitBash,
+    Bash = GitBash,
+    Wsl = WSL
 }
 
 public static class ShellTypeExtensions

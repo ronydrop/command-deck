@@ -12,6 +12,7 @@ namespace DevWorkspaceHub.ViewModels;
 public partial class ProjectEditViewModel : ObservableObject
 {
     private readonly IProjectService _projectService;
+    private readonly IDialogService _dialogService;
     private bool _isEditing;
     private string? _originalId;
 
@@ -49,7 +50,7 @@ public partial class ProjectEditViewModel : ObservableObject
     /// Available shell types for the dropdown.
     /// </summary>
     public IReadOnlyList<ShellType> AvailableShells { get; } =
-        Enum.GetValues<ShellType>().ToList();
+        Enum.GetValues<ShellType>().Distinct().ToList();
 
     /// <summary>
     /// Available accent colors for projects.
@@ -73,9 +74,10 @@ public partial class ProjectEditViewModel : ObservableObject
     /// </summary>
     public event Action<bool>? CloseRequested;
 
-    public ProjectEditViewModel(IProjectService projectService)
+    public ProjectEditViewModel(IProjectService projectService, IDialogService dialogService)
     {
         _projectService = projectService;
+        _dialogService = dialogService;
     }
 
     /// <summary>
@@ -118,33 +120,25 @@ public partial class ProjectEditViewModel : ObservableObject
     /// Opens a folder browser dialog to select the project path.
     /// </summary>
     [RelayCommand]
-    private void BrowsePath()
+    private async Task BrowsePath()
     {
-        var dialog = new Microsoft.Win32.OpenFolderDialog
+        var selected = await _dialogService.BrowseFolderAsync("Selecionar Pasta do Projeto");
+        if (selected == null) return;
+
+        Path = selected;
+        if (string.IsNullOrEmpty(Name))
+            Name = System.IO.Path.GetFileName(Path);
+
+        // Auto-detect project type and suggest shell
+        var projectType = _projectService.DetectProjectType(Path);
+        if (projectType is ProjectType.Laravel or ProjectType.NodeJs or
+            ProjectType.TypeScript or ProjectType.React or
+            ProjectType.Vue or ProjectType.NextJs or ProjectType.Python)
         {
-            Title = "Select Project Folder"
-        };
-
-        if (dialog.ShowDialog() == true)
-        {
-            Path = dialog.FolderName;
-            if (string.IsNullOrEmpty(Name))
-            {
-                Name = System.IO.Path.GetFileName(Path);
-            }
-
-            // Auto-detect project type and suggest shell
-            var projectType = _projectService.DetectProjectType(Path);
-            if (projectType == ProjectType.Laravel || projectType == ProjectType.NodeJs ||
-                projectType == ProjectType.TypeScript || projectType == ProjectType.React ||
-                projectType == ProjectType.Vue || projectType == ProjectType.NextJs ||
-                projectType == ProjectType.Python)
-            {
-                DefaultShell = ShellType.WSL;
-            }
-
-            ValidateFields();
+            DefaultShell = ShellType.WSL;
         }
+
+        ValidateFields();
     }
 
     /// <summary>
@@ -177,22 +171,36 @@ public partial class ProjectEditViewModel : ObservableObject
         ValidateFields();
         if (!IsValid) return;
 
-        var project = new Project
-        {
-            Id = _originalId ?? Guid.NewGuid().ToString("N"),
-            Name = Name.Trim(),
-            Path = Path.Trim(),
-            DefaultShell = DefaultShell,
-            Color = Color,
-            Icon = Icon,
-            StartupCommands = StartupCommands.ToList(),
-            ProjectType = _projectService.DetectProjectType(Path)
-        };
+        Project project;
 
-        if (_isEditing)
+        if (_isEditing && _originalId != null)
+        {
+            // Fetch existing project to preserve metadata (LastOpened, IsFavorite, CreatedAt, GitInfo)
+            var existing = await _projectService.GetProjectAsync(_originalId);
+            project = existing ?? new Project { Id = _originalId };
+            project.Name = Name.Trim();
+            project.Path = Path.Trim();
+            project.DefaultShell = DefaultShell;
+            project.Color = Color;
+            project.Icon = Icon;
+            project.StartupCommands = StartupCommands.ToList();
+            project.ProjectType = _projectService.DetectProjectType(Path.Trim());
             await _projectService.UpdateProjectAsync(project);
+        }
         else
+        {
+            project = new Project
+            {
+                Name = Name.Trim(),
+                Path = Path.Trim(),
+                DefaultShell = DefaultShell,
+                Color = Color,
+                Icon = Icon,
+                StartupCommands = StartupCommands.ToList(),
+                ProjectType = _projectService.DetectProjectType(Path.Trim())
+            };
             await _projectService.AddProjectAsync(project);
+        }
 
         CloseRequested?.Invoke(true);
     }

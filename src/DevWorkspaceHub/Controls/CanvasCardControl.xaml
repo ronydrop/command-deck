@@ -54,6 +54,12 @@
         <conv:AiSessionTypeToLabelConverter x:Key="AiTypeLabel" />
         <conv:AiModelToLabelConverter x:Key="AiModelLabel" />
         <conv:AiModelToBrushConverter x:Key="AiModelBrush" />
+        <conv:StringToVisibilityConverter x:Key="StringToVis" />
+        <conv:NotificationTypeToBrushConverter x:Key="PaneStateBrush" />
+        <conv:AiAgentStateToIconConverter x:Key="AiStateIcon" />
+        <conv:AiAgentStateToLabelConverter x:Key="AiStateLabel" />
+        <conv:AiAgentStateToBrushConverter x:Key="AiStateBrush" />
+        <conv:AiAgentStateToVisibilityConverter x:Key="AiStateToVis" />
 
         <!-- Template selector chooses content based on ViewModel type -->
         <ctrl:CanvasItemContentTemplateSelector x:Key="ContentSelector">
@@ -77,6 +83,16 @@
                     <ctrl:ShortcutWidgetControl DataContext="{Binding}" />
                 </DataTemplate>
             </ctrl:CanvasItemContentTemplateSelector.ShortcutWidgetTemplate>
+            <ctrl:CanvasItemContentTemplateSelector.NoteWidgetTemplate>
+                <DataTemplate DataType="{x:Type vm:WidgetCanvasItemViewModel}">
+                    <ctrl:NoteWidgetControl DataContext="{Binding}" />
+                </DataTemplate>
+            </ctrl:CanvasItemContentTemplateSelector.NoteWidgetTemplate>
+            <ctrl:CanvasItemContentTemplateSelector.ImageWidgetTemplate>
+                <DataTemplate DataType="{x:Type vm:WidgetCanvasItemViewModel}">
+                    <ctrl:ImageWidgetControl DataContext="{Binding}" />
+                </DataTemplate>
+            </ctrl:CanvasItemContentTemplateSelector.ImageWidgetTemplate>
         </ctrl:CanvasItemContentTemplateSelector>
 
     </UserControl.Resources>
@@ -88,38 +104,31 @@
          ─────────────────────────────────────────────────────────────────── -->
     <Grid>
 
-        <!-- Glow border (rendered below card) -->
+        <!-- Glow border (rendered below card) — stronger accent glow on hover -->
         <Border x:Name="GlowBorder"
-                CornerRadius="10"
-                BorderThickness="2"
+                CornerRadius="11"
+                BorderThickness="2.5"
                 Background="Transparent"
                 Opacity="0"
                 IsHitTestVisible="False">
             <Border.BorderBrush>
-                <!-- AccentPurple at ~30 % opacity: #4D7C3AED -->
-                <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.30" />
+                <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.45" />
             </Border.BorderBrush>
             <Border.Effect>
-                <BlurEffect Radius="6" />
+                <BlurEffect Radius="10" />
             </Border.Effect>
         </Border>
 
         <!-- ── Card wrapper ──────────────────────────────────────────────── -->
-        <!-- B. DragScale ScaleTransform: animated 1.0↔1.03 on drag start/end -->
         <Border x:Name="CardBorder"
                 CornerRadius="8"
                 BorderThickness="1.5"
-                Background="{DynamicResource Surface0Brush}"
-                UseLayoutRounding="True"
-                RenderTransformOrigin="0.5,0.5">
-            <!-- RenderTransform group: ScaleTransform named DragScale for code-behind animation -->
-            <Border.RenderTransform>
-                <ScaleTransform x:Name="DragScale" ScaleX="1" ScaleY="1" />
-            </Border.RenderTransform>
+                Background="{DynamicResource GlassBgBrush}"
+                UseLayoutRounding="True">
 
             <Border.Style>
                 <Style TargetType="Border">
-                    <Setter Property="BorderBrush" Value="{DynamicResource Surface1Brush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}" />
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
                             <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
@@ -136,12 +145,12 @@
                 </Style>
             </Border.Style>
 
-            <!-- Drop shadow — intensity controlled by x:Name for animation -->
+            <!-- Drop shadow — glass elevated shadow with visible depth -->
             <Border.Effect>
                 <DropShadowEffect x:Name="CardShadow"
-                                  BlurRadius="12"
+                                  BlurRadius="20"
                                   ShadowDepth="4"
-                                  Opacity="0.35"
+                                  Opacity="0.20"
                                   Color="#000000" />
             </Border.Effect>
 
@@ -150,17 +159,23 @@
                 <EventTrigger RoutedEvent="Mouse.MouseEnter">
                     <BeginStoryboard>
                         <Storyboard>
-                            <!-- Shadow BlurRadius 12 → 20 -->
+                            <!-- Shadow BlurRadius 20 → 32 (lift effect) -->
                             <DoubleAnimation
                                 Storyboard.TargetName="CardShadow"
                                 Storyboard.TargetProperty="BlurRadius"
-                                To="20"
+                                To="32"
                                 Duration="0:0:0.18" />
-                            <!-- Shadow Opacity 0.35 → 0.50 -->
+                            <!-- Shadow Opacity 0.20 → 0.30 -->
                             <DoubleAnimation
                                 Storyboard.TargetName="CardShadow"
                                 Storyboard.TargetProperty="Opacity"
-                                To="0.50"
+                                To="0.30"
+                                Duration="0:0:0.18" />
+                            <!-- Shadow ShadowDepth 4 → 8 (card lifts up) -->
+                            <DoubleAnimation
+                                Storyboard.TargetName="CardShadow"
+                                Storyboard.TargetProperty="ShadowDepth"
+                                To="8"
                                 Duration="0:0:0.18" />
                             <!-- GlowBorder Opacity 0 → 1 -->
                             <DoubleAnimation
@@ -174,17 +189,23 @@
                 <EventTrigger RoutedEvent="Mouse.MouseLeave">
                     <BeginStoryboard>
                         <Storyboard>
-                            <!-- Shadow BlurRadius 20 → 12 -->
+                            <!-- Shadow BlurRadius 32 → 20 -->
                             <DoubleAnimation
                                 Storyboard.TargetName="CardShadow"
                                 Storyboard.TargetProperty="BlurRadius"
-                                To="12"
+                                To="20"
                                 Duration="0:0:0.22" />
-                            <!-- Shadow Opacity 0.50 → 0.35 -->
+                            <!-- Shadow Opacity 0.30 → 0.20 -->
                             <DoubleAnimation
                                 Storyboard.TargetName="CardShadow"
                                 Storyboard.TargetProperty="Opacity"
-                                To="0.35"
+                                To="0.20"
+                                Duration="0:0:0.22" />
+                            <!-- Shadow ShadowDepth 8 → 4 (card settles down) -->
+                            <DoubleAnimation
+                                Storyboard.TargetName="CardShadow"
+                                Storyboard.TargetProperty="ShadowDepth"
+                                To="4"
                                 Duration="0:0:0.22" />
                             <!-- GlowBorder Opacity 1 → 0 -->
                             <DoubleAnimation
@@ -197,6 +218,11 @@
                 </EventTrigger>
             </Border.Triggers>
 
+            <!-- Inner glass highlight — 2px top + 1px sides for frosted glass edge -->
+            <Border BorderThickness="1,2,1,0"
+                    BorderBrush="{DynamicResource GlassHighlightBrush}"
+                    CornerRadius="7">
+
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="32" />
@@ -206,34 +232,19 @@
                 <!-- ─── Title bar ──────────────────────────────────────────────── -->
                 <Grid Grid.Row="0"
                       x:Name="TitleBar"
+                      Background="{DynamicResource GlassTitleBarBrush}"
                       Cursor="SizeAll"
                       MouseDown="OnTitleBarMouseDown"
                       MouseMove="OnTitleBarMouseMove"
                       MouseUp="OnTitleBarMouseUp">
-
-                    <!-- Gradient background: MantelBg → Surface0 top-to-bottom -->
-                    <Grid.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="{DynamicResource MantelBg}" Offset="0" />
-                            <GradientStop Color="{DynamicResource Surface0}" Offset="1" />
-                        </LinearGradientBrush>
-                    </Grid.Background>
 
                     <!-- Clip top two corners to card radius -->
                     <Grid.Clip>
                         <RectangleGeometry Rect="0,0,2000,32" RadiusX="8" RadiusY="8" />
                     </Grid.Clip>
 
-                    <!-- Very subtle separator line at bottom of title bar -->
-                    <Rectangle VerticalAlignment="Bottom"
-                               Height="1"
-                               HorizontalAlignment="Stretch"
-                               Fill="{DynamicResource Surface1Brush}"
-                               Opacity="0.5" />
-
                     <Grid.ContextMenu>
-                        <ContextMenu x:Name="CardContextMenu"
-                                     Style="{x:Null}">
+                        <ContextMenu x:Name="CardContextMenu">
                             <ContextMenu.Resources>
                                 <Style TargetType="MenuItem">
                                     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
@@ -247,7 +258,7 @@
                             </ContextMenu.Resources>
                             <ContextMenu.Style>
                                 <Style TargetType="ContextMenu">
-                                    <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                    <Setter Property="Background" Value="{DynamicResource GlassBgBrush}" />
                                     <Setter Property="BorderBrush" Value="{DynamicResource Surface1Brush}" />
                                     <Setter Property="BorderThickness" Value="1" />
                                     <Setter Property="Padding" Value="2" />
@@ -264,15 +275,6 @@
                             <MenuItem Header="📤 Send Context to AI"
                                       Click="OnAiSendContext" />
                             <Separator />
-                            <MenuItem Header="🟣 Open with Sonnet"
-                                      Click="OnAiOpenSonnet" />
-                            <MenuItem Header="🔵 Open with Opus"
-                                      Click="OnAiOpenOpus" />
-                            <MenuItem Header="🟢 Open with Haiku"
-                                      Click="OnAiOpenHaiku" />
-                            <MenuItem Header="🟡 Open with Agent"
-                                      Click="OnAiOpenAgent" />
-                            <Separator />
                             <MenuItem Header="🔄 Run Again"
                                       Click="OnAiRunAgain" />
                             <MenuItem Header="⚡ Fix Again"
@@ -284,6 +286,13 @@
                         </ContextMenu>
                     </Grid.ContextMenu>
 
+                    <!-- Very subtle separator line at bottom of title bar -->
+                    <Rectangle VerticalAlignment="Bottom"
+                               Height="1"
+                               HorizontalAlignment="Stretch"
+                               Fill="{DynamicResource Surface1Brush}"
+                               Opacity="0.5" />
+
                     <DockPanel Margin="10,0,6,0" VerticalAlignment="Center">
 
                         <!-- Item type icon -->
@@ -293,6 +302,42 @@
                                    Foreground="{DynamicResource AccentBrush}"
                                    VerticalAlignment="Center"
                                    Margin="0,0,6,0" />
+
+                        <!-- Pane state icon (⚡🔔✅) — mirrors Zellij claude-pane-notify -->
+                        <TextBlock DockPanel.Dock="Left"
+                                   Text="{Binding PaneStateIcon}"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,4,0"
+                                   Visibility="{Binding PaneStateIcon, Converter={StaticResource StringToVis}}"
+                                   ToolTip="{Binding PaneState}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <!-- Pulse animation when Running -->
+                                        <DataTrigger Binding="{Binding PaneState}" Value="Running">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard x:Name="PulseStoryboard">
+                                                    <Storyboard RepeatBehavior="Forever">
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                         From="1" To="0.4"
+                                                                         Duration="0:0:0.8"
+                                                                         AutoReverse="True">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <SineEase EasingMode="EaseInOut" />
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <StopStoryboard BeginStoryboardName="PulseStoryboard" />
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
 
                         <!-- AI badge: session type pill -->
                         <Border DockPanel.Dock="Left"
@@ -326,6 +371,243 @@
                                        Foreground="{Binding AiModelUsed, Converter={StaticResource AiModelBrush}}"
                                        VerticalAlignment="Center" />
                         </Border>
+
+                        <!-- AI agent state indicator (only for AI sessions) -->
+                        <Border DockPanel.Dock="Left"
+                                CornerRadius="4"
+                                Padding="4,1"
+                                Margin="0,0,4,0"
+                                VerticalAlignment="Center"
+                                Visibility="{Binding AiAgentState, Converter={StaticResource AiStateToVis}}">
+                            <Border.Background>
+                                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.4" />
+                            </Border.Background>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding AiAgentStateIcon}"
+                                           FontSize="10"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,3,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <!-- Pulse for Thinking -->
+                                                <DataTrigger Binding="{Binding AiAgentState}" Value="Thinking">
+                                                    <DataTrigger.EnterActions>
+                                                        <BeginStoryboard x:Name="AiThinkPulse">
+                                                            <Storyboard RepeatBehavior="Forever">
+                                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                 From="1" To="0.3"
+                                                                                 Duration="0:0:1"
+                                                                                 AutoReverse="True">
+                                                                    <DoubleAnimation.EasingFunction>
+                                                                        <SineEase EasingMode="EaseInOut" />
+                                                                    </DoubleAnimation.EasingFunction>
+                                                                </DoubleAnimation>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </DataTrigger.EnterActions>
+                                                    <DataTrigger.ExitActions>
+                                                        <StopStoryboard BeginStoryboardName="AiThinkPulse" />
+                                                    </DataTrigger.ExitActions>
+                                                </DataTrigger>
+                                                <!-- Pulse for Executing -->
+                                                <DataTrigger Binding="{Binding AiAgentState}" Value="Executing">
+                                                    <DataTrigger.EnterActions>
+                                                        <BeginStoryboard x:Name="AiExecPulse">
+                                                            <Storyboard RepeatBehavior="Forever">
+                                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                 From="1" To="0.3"
+                                                                                 Duration="0:0:0.6"
+                                                                                 AutoReverse="True" />
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </DataTrigger.EnterActions>
+                                                    <DataTrigger.ExitActions>
+                                                        <StopStoryboard BeginStoryboardName="AiExecPulse" />
+                                                    </DataTrigger.ExitActions>
+                                                </DataTrigger>
+                                                <!-- Fast pulse for WaitingUser -->
+                                                <DataTrigger Binding="{Binding AiAgentState}" Value="WaitingUser">
+                                                    <DataTrigger.EnterActions>
+                                                        <BeginStoryboard x:Name="AiWaitPulse">
+                                                            <Storyboard RepeatBehavior="Forever">
+                                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                 From="1" To="0.2"
+                                                                                 Duration="0:0:0.4"
+                                                                                 AutoReverse="True" />
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </DataTrigger.EnterActions>
+                                                    <DataTrigger.ExitActions>
+                                                        <StopStoryboard BeginStoryboardName="AiWaitPulse" />
+                                                    </DataTrigger.ExitActions>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding AiAgentStateLabel}"
+                                           FontSize="9" FontWeight="SemiBold"
+                                           Foreground="{Binding AiAgentState, Converter={StaticResource AiStateBrush}}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Agent selector button + flyout popup -->
+                        <Border DockPanel.Dock="Right"
+                                x:Name="AgentSelectorButton"
+                                CornerRadius="4"
+                                Padding="5,2"
+                                Margin="0,0,4,0"
+                                VerticalAlignment="Center"
+                                Cursor="Hand"
+                                MouseLeftButtonDown="OnAgentSelectorClick"
+                                ToolTip="Selecionar agente IA">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource Surface1Brush}" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="AgentIconText"
+                                           Text="🟣"
+                                           FontSize="10"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,3,0" />
+                                <TextBlock x:Name="AgentNameText"
+                                           Text="cc"
+                                           FontSize="10"
+                                           FontFamily="{StaticResource MonoFont}"
+                                           Foreground="{DynamicResource SubtextBrush}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="▾"
+                                           FontSize="8"
+                                           Foreground="{DynamicResource SubtextBrush}"
+                                           VerticalAlignment="Center"
+                                           Margin="3,0,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Agent selector popup flyout -->
+                        <Popup x:Name="AgentPopup"
+                               PlacementTarget="{Binding ElementName=AgentSelectorButton}"
+                               Placement="Bottom"
+                               StaysOpen="False"
+                               AllowsTransparency="True"
+                               PopupAnimation="Fade"
+                               HorizontalOffset="-4"
+                               VerticalOffset="4">
+                            <Border CornerRadius="8"
+                                    BorderThickness="1"
+                                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                                    Background="{DynamicResource GlassBgBrush}"
+                                    Width="260"
+                                    Padding="6">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.3" Color="#000000" />
+                                </Border.Effect>
+                                <StackPanel>
+                                    <!-- Header -->
+                                    <TextBlock Text="Selecionar Agente"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SubtextBrush}"
+                                               Margin="6,4,6,8" />
+
+                                    <!-- Agent groups (populated in code-behind) -->
+                                    <ItemsControl x:Name="AgentGroupsList">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,0,0,4">
+                                                    <!-- Group header -->
+                                                    <TextBlock Margin="6,6,6,4"
+                                                               FontSize="10"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource SubtextBrush}"
+                                                               Opacity="0.7">
+                                                        <Run Text="{Binding Icon, Mode=OneTime}" />
+                                                        <Run Text=" " />
+                                                        <Run Text="{Binding Label, Mode=OneTime}" />
+                                                    </TextBlock>
+                                                    <!-- Agent items in group -->
+                                                    <ItemsControl ItemsSource="{Binding Items}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border x:Name="ItemBorder"
+                                                                        CornerRadius="6"
+                                                                        Padding="8,6"
+                                                                        Margin="2,1"
+                                                                        Cursor="Hand"
+                                                                        MouseLeftButtonDown="OnAgentItemClick">
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="Background" Value="Transparent" />
+                                                                            <Setter Property="BorderThickness" Value="3,0,0,0" />
+                                                                            <Setter Property="BorderBrush" Value="Transparent" />
+                                                                            <Style.Triggers>
+                                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                                    <Setter Property="Background" Value="{DynamicResource Surface1Brush}" />
+                                                                                </Trigger>
+                                                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                                                    <Setter Property="Background">
+                                                                                        <Setter.Value>
+                                                                                            <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.08" />
+                                                                                        </Setter.Value>
+                                                                                    </Setter>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                    <Grid>
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="24" />
+                                                                            <ColumnDefinition Width="*" />
+                                                                            <ColumnDefinition Width="Auto" />
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <!-- Icon -->
+                                                                        <TextBlock Grid.Column="0"
+                                                                                   Text="{Binding Icon}"
+                                                                                   FontSize="14"
+                                                                                   VerticalAlignment="Center" />
+                                                                        <!-- Name + Description -->
+                                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                                            <TextBlock Text="{Binding Name}"
+                                                                                       FontSize="12"
+                                                                                       FontWeight="Medium"
+                                                                                       Foreground="{DynamicResource TextBrush}" />
+                                                                            <TextBlock Text="{Binding Description}"
+                                                                                       FontSize="10"
+                                                                                       Foreground="{DynamicResource SubtextBrush}"
+                                                                                       Opacity="0.7"
+                                                                                       TextTrimming="CharacterEllipsis" />
+                                                                        </StackPanel>
+                                                                        <!-- Check mark if selected -->
+                                                                        <TextBlock Grid.Column="2"
+                                                                                   Text="✓"
+                                                                                   FontSize="12"
+                                                                                   FontWeight="Bold"
+                                                                                   Foreground="{DynamicResource AccentBrush}"
+                                                                                   VerticalAlignment="Center"
+                                                                                   Margin="4,0,2,0"
+                                                                                   Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}" />
+                                                                    </Grid>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </Popup>
 
                         <!-- Close button -->
                         <Button DockPanel.Dock="Right"
@@ -442,6 +724,7 @@
                 </Thumb>
 
             </Grid>
+            </Border><!-- end glass highlight border -->
         </Border>
     </Grid>
 </UserControl>

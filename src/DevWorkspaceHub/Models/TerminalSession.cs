@@ -6,7 +6,7 @@ namespace DevWorkspaceHub.Models;
 /// <summary>
 /// Represents an active terminal session with its associated process.
 /// </summary>
-public partial class TerminalSession : ObservableObject
+public partial class TerminalSession : ObservableObject, IDisposable
 {
     [ObservableProperty]
     private string _id = Guid.NewGuid().ToString("N");
@@ -59,6 +59,17 @@ public partial class TerminalSession : ObservableObject
     /// Cancellation token source for the read loop.
     /// </summary>
     public CancellationTokenSource? CancellationSource { get; set; }
+
+    public void Dispose()
+    {
+        CancellationSource?.Cancel();
+        CancellationSource?.Dispose();
+        InputStream?.Dispose();
+        OutputStream?.Dispose();
+        try { Process?.Kill(entireProcessTree: true); } catch { }
+        Process?.Dispose();
+        GC.SuppressFinalize(this);
+    }
 }
 
 /// <summary>

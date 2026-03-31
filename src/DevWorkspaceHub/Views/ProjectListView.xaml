@@ -15,58 +15,41 @@
 
     <Grid Margin="8,0,8,0">
         <Grid.RowDefinitions>
-            <!-- Search -->
-            <RowDefinition Height="Auto" />
-            <!-- Action buttons -->
+            <!-- Section header -->
             <RowDefinition Height="Auto" />
             <!-- Project list -->
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════════
-             SEARCH BAR
+             SECTION HEADER
              ═══════════════════════════════════════════════════════════════ -->
-        <Grid Grid.Row="0" Margin="4,4,4,8">
-            <TextBox Style="{StaticResource DarkTextBox}"
-                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                     Padding="30,8,10,8"
-                     FontSize="12" />
-            <Path Data="{StaticResource SearchIcon}"
-                  Style="{StaticResource IconPathSmall}"
-                  HorizontalAlignment="Left"
-                  VerticalAlignment="Center"
-                  Margin="10,0,0,0"
-                  IsHitTestVisible="False" />
-        </Grid>
-
-        <!-- ═══════════════════════════════════════════════════════════════
-             ACTION BUTTONS
-             ═══════════════════════════════════════════════════════════════ -->
-        <StackPanel Grid.Row="1" Margin="4,0,4,8">
-            <Button Style="{StaticResource AccentButton}"
+        <Grid Grid.Row="0" Margin="4,4,4,4">
+            <TextBlock Text="Projetos"
+                       Style="{StaticResource SubheadingText}"
+                       FontSize="13"
+                       VerticalAlignment="Center" />
+            <Button Style="{StaticResource GhostButton}"
                     Command="{Binding AddProjectCommand}"
-                    Padding="10,6"
-                    HorizontalAlignment="Stretch">
-                <StackPanel Orientation="Horizontal">
-                    <Path Data="{StaticResource PlusIcon}"
-                          Stroke="White" StrokeThickness="2"
-                          Width="12" Height="12"
-                          Stretch="Uniform"
-                          Margin="0,0,6,0" />
-                    <TextBlock Text="Adicionar Projeto" FontSize="12" />
-                </StackPanel>
+                    HorizontalAlignment="Right"
+                    Padding="4"
+                    Width="24" Height="24"
+                    ToolTip="Adicionar Projeto">
+                <Path Data="{StaticResource PlusIcon}"
+                      Style="{StaticResource IconPathSmall}" />
             </Button>
-        </StackPanel>
+        </Grid>
 
         <!-- ═══════════════════════════════════════════════════════════════
              PROJECT LIST
              ═══════════════════════════════════════════════════════════════ -->
-        <ListBox Grid.Row="2"
+        <ListBox Grid.Row="1"
                  Style="{StaticResource DarkListBox}"
                  ItemsSource="{Binding FilteredProjects}"
                  SelectedItem="{Binding SelectedProject}"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 VirtualizingPanel.IsVirtualizing="True">
+                 VirtualizingPanel.IsVirtualizing="True"
+                 SelectionChanged="OnProjectSelectionChanged">
             <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem" BasedOn="{StaticResource DarkListBoxItem}">
                     <Setter Property="Padding" Value="8,8" />
@@ -76,11 +59,6 @@
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <Grid>
-                        <Grid.InputBindings>
-                            <MouseBinding MouseAction="LeftDoubleClick"
-                                          Command="{Binding DataContext.OpenProjectCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                          CommandParameter="{Binding}" />
-                        </Grid.InputBindings>
                         <Grid.ColumnDefinitions>
                             <!-- Color indicator + icon -->
                             <ColumnDefinition Width="Auto" />
@@ -108,22 +86,11 @@
 
                         <!-- Name and Path -->
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <DockPanel>
-                                <TextBlock Text="{Binding Name}"
-                                           Foreground="{StaticResource TextBrush}"
-                                           FontSize="13"
-                                           FontWeight="Medium"
-                                           TextTrimming="CharacterEllipsis" />
-                                <!-- Favorite star -->
-                                <Path Data="{StaticResource StarIcon}"
-                                      Width="10" Height="10"
-                                      Stroke="{StaticResource AccentYellowBrush}"
-                                      Fill="{StaticResource AccentYellowBrush}"
-                                      Stretch="Uniform"
-                                      Margin="4,0,0,0"
-                                      VerticalAlignment="Center"
-                                      Visibility="{Binding IsFavorite, Converter={StaticResource BoolToVis}}" />
-                            </DockPanel>
+                            <TextBlock Text="{Binding Name}"
+                                       Foreground="{DynamicResource TextBrush}"
+                                       FontSize="13"
+                                       FontWeight="Medium"
+                                       TextTrimming="CharacterEllipsis" />
                             <TextBlock Text="{Binding Path}"
                                        Style="{StaticResource CaptionText}"
                                        TextTrimming="CharacterEllipsis"
@@ -141,34 +108,53 @@
                                     Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                     CommandParameter="{Binding}"
                                     ToolTip="Favoritar">
-                                <Path Data="{StaticResource StarIcon}"
-                                      Style="{StaticResource IconPathSmall}"
-                                      Width="10" Height="10" />
+                                <Path x:Name="FavStar"
+                                      Data="{StaticResource StarIcon}"
+                                      Width="10" Height="10"
+                                      Stretch="Uniform"
+                                      StrokeThickness="1.5"
+                                      StrokeLineJoin="Round">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Stroke" Value="{DynamicResource SubtextBrush}" />
+                                            <Setter Property="Fill" Value="Transparent" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                                    <Setter Property="Stroke" Value="{DynamicResource AccentYellowBrush}" />
+                                                    <Setter Property="Fill" Value="{DynamicResource AccentYellowBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
                             </Button>
 
                             <!-- Context menu button -->
+                        <!-- Tag carries the list ViewModel so PlacementTarget.Tag resolves commands inside the ContextMenu -->
                             <Button Style="{StaticResource IconButton}"
                                     Width="24" Height="24"
-                                    ToolTip="Mais opções">
-                                <TextBlock Text="..." FontSize="14"
-                                           Foreground="{StaticResource SubtextBrush}"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Center"
-                                           Margin="0,-4,0,0" />
+                                    ToolTip="Mais opções"
+                                    Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                    Click="OnContextMenuButtonClick">
                                 <Button.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="Abrir"
-                                                  Command="{Binding DataContext.OpenProjectCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                  CommandParameter="{Binding}" />
+                                                  Command="{Binding PlacementTarget.Tag.OpenProjectCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                         <MenuItem Header="Editar"
-                                                  Command="{Binding DataContext.EditProjectCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                  CommandParameter="{Binding}" />
+                                                  Command="{Binding PlacementTarget.Tag.EditProjectCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                         <Separator />
                                         <MenuItem Header="Excluir"
-                                                  Command="{Binding DataContext.DeleteProjectCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                  CommandParameter="{Binding}" />
+                                                  Command="{Binding PlacementTarget.Tag.DeleteProjectCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                     </ContextMenu>
                                 </Button.ContextMenu>
+                                <TextBlock Text="..." FontSize="14"
+                                           Foreground="{DynamicResource SubtextBrush}"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           Margin="0,-4,0,0" />
                             </Button>
                         </StackPanel>
                     </Grid>
@@ -177,18 +163,18 @@
         </ListBox>
 
         <!-- Empty state -->
-        <StackPanel Grid.Row="2"
+        <StackPanel Grid.Row="1"
                     VerticalAlignment="Center"
                     HorizontalAlignment="Center"
                     Visibility="{Binding FilteredProjects.Count, Converter={StaticResource CountToVis}, ConverterParameter=Invert}">
             <Path Data="{StaticResource FolderIcon}"
                   Style="{StaticResource IconPathLarge}"
-                  Stroke="{StaticResource Surface2Brush}"
+                  Stroke="{DynamicResource Surface2Brush}"
                   Width="32" Height="32"
                   HorizontalAlignment="Center"
                   Margin="0,0,0,12" />
             <TextBlock Text="Nenhum projeto"
-                       Foreground="{StaticResource Surface2Brush}"
+                       Foreground="{DynamicResource Surface2Brush}"
                        FontSize="13"
                        HorizontalAlignment="Center" />
             <TextBlock Text="Adicione um projeto para começar"

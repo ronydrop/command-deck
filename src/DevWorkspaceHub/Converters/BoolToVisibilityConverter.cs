@@ -52,29 +52,3 @@ public class CountToVisibilityConverter : IValueConverter
         throw new NotImplementedException();
     }
 }
-
-/// <summary>
-/// Converts null/empty string to Visibility. Non-null/non-empty = Visible, else = Collapsed.
-/// </summary>
-public class NullToVisibilityConverter : IValueConverter
-{
-    public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
-    {
-        bool hasValue = value switch
-        {
-            null => false,
-            string s => !string.IsNullOrWhiteSpace(s),
-            _ => true
-        };
-
-        if (parameter is string param && param.Equals("Invert", StringComparison.OrdinalIgnoreCase))
-            hasValue = !hasValue;
-
-        return hasValue ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
-}

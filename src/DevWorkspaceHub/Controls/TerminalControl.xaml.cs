@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Media;
 using DevWorkspaceHub.ViewModels;
 
 namespace DevWorkspaceHub.Controls;
@@ -15,6 +17,8 @@ namespace DevWorkspaceHub.Controls;
 public partial class TerminalControl : UserControl
 {
     private TerminalViewModel? _viewModel;
+    private TextChangedEventHandler? _scrollHandler;
+    private bool _scrollPending;
 
     public TerminalControl()
     {
@@ -50,15 +54,31 @@ public partial class TerminalControl : UserControl
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         _viewModel = DataContext as TerminalViewModel;
+
+        // Remove previous handler to avoid accumulation of subscriptions
+        if (_scrollHandler != null)
+        {
+            OutputArea.TextChanged -= _scrollHandler;
+            _scrollHandler = null;
+        }
+
         if (_viewModel != null)
         {
             OutputArea.Document = _viewModel.OutputDocument;
 
-            // Auto-scroll when new content arrives
-            OutputArea.TextChanged += (_, _) =>
+            // Throttled auto-scroll + cursor update coalesced into one Background dispatch
+            _scrollHandler = (_, _) =>
             {
-                OutputArea.ScrollToEnd();
+                if (_scrollPending) return;
+                _scrollPending = true;
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
+                {
+                    _scrollPending = false;
+                    OutputArea.ScrollToEnd();
+                    UpdateCursorPosition();
+                });
             };
+            OutputArea.TextChanged += _scrollHandler;
         }
     }
 
@@ -66,15 +86,41 @@ public partial class TerminalControl : UserControl
     /// Handles ALL key presses including special keys (Backspace, Delete, arrows, etc.).
     /// The hidden TextBox receives focus, so WPF routes keyboard events here.
     /// We intercept everything and send VT100 sequences to ConPTY.
+    /// IMPORTANT: e.Handled must be set synchronously (before any await) so WPF
+    /// does not process the key further (arrow navigation, Backspace deletion, etc.).
     /// </summary>
     private async void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (_viewModel == null) return;
 
+        // Always clear the hidden TextBox to prevent character accumulation
+        // that could interfere with subsequent key processing.
+        HiddenInput.Clear();
+
         string? sequence = TranslateKey(e.Key, Keyboard.Modifiers);
         if (sequence != null)
         {
-            await _viewModel.SendKeyDataAsync(sequence);
+            // Mark handled BEFORE the await so WPF doesn't process the key
+            // further (e.g., arrow keys moving focus, Backspace deleting in TextBox).
+            // After an await, e.Handled = true would run asynchronously — too late.
+            e.Handled = true;
+            try
+            {
+                await _viewModel.SendKeyDataAsync(sequence);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[KeyDown] {ex}");
+            }
+            return;
+        }
+
+        // For keys not mapped by TranslateKey (printable chars handled by
+        // OnPreviewTextInput), still mark navigation-stealing keys as handled
+        // so WPF does not move focus away from the terminal.
+        if (e.Key is Key.Tab or Key.Up or Key.Down or Key.Left or Key.Right
+            or Key.Home or Key.End or Key.PageUp or Key.PageDown)
+        {
             e.Handled = true;
         }
     }
@@ -88,34 +134,104 @@ public partial class TerminalControl : UserControl
 
         if (!string.IsNullOrEmpty(e.Text))
         {
-            await _viewModel.SendKeyDataAsync(e.Text);
             e.Handled = true;
+            // Clear immediately (synchronously) so the TextBox never accumulates chars
+            HiddenInput.Clear();
+            try
+            {
+                await _viewModel.SendKeyDataAsync(e.Text);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[TextInput] {ex}");
+            }
         }
-
-        // Clear the hidden TextBox to prevent accumulation
-        HiddenInput.Clear();
     }
 
     /// <summary>
     /// Click anywhere on the terminal → focus the hidden input so keys are captured.
     /// </summary>
-    private void OnMouseDown(object sender, MouseButtonEventArgs e)
+    /// <summary>
+    /// Directs keyboard input to this terminal. Call from parent containers
+    /// whenever the card area is clicked so focus always reaches HiddenInput.
+    /// </summary>
+    public void FocusInput()
     {
         HiddenInput.Focus();
         Keyboard.Focus(HiddenInput);
+    }
+
+    private void OnMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        FocusInput();
         e.Handled = true;
     }
 
     private void OnGotFocus(object sender, RoutedEventArgs e)
     {
-        HiddenInput.Focus();
-        Keyboard.Focus(HiddenInput);
+        // GotFocus is a bubbling event — it fires when HiddenInput receives focus too.
+        // Only redirect focus if HiddenInput does not already have keyboard focus,
+        // to avoid re-entrant FocusInput() calls.
+        if (!HiddenInput.IsKeyboardFocused)
+            FocusInput();
+
         CursorBlock.Visibility = Visibility.Visible;
+        UpdateCursorPosition();
+    }
+
+    // Redirect any keyboard focus that lands on the UserControl itself
+    // (or a child other than HiddenInput) back to HiddenInput.
+    protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
+    {
+        base.OnGotKeyboardFocus(e);
+        if (e.NewFocus != HiddenInput)
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, (Action)FocusInput);
     }
 
     private void OnLostFocus(object sender, RoutedEventArgs e)
     {
+        // LostFocus bubbles — only hide cursor if focus truly left this control.
+        // Check whether the newly focused element is still within this UserControl.
+        if (Keyboard.FocusedElement is DependencyObject focused && IsVisualDescendant(focused))
+            return;
+
         CursorBlock.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// Returns true if <paramref name="element"/> is a visual descendant of this control.
+    /// </summary>
+    private bool IsVisualDescendant(DependencyObject element)
+    {
+        DependencyObject? current = element;
+        while (current != null)
+        {
+            if (current == this) return true;
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Positions the cursor overlay at the end of the last character in the document.
+    /// </summary>
+    private void UpdateCursorPosition()
+    {
+        try
+        {
+            var end = OutputArea.Document.ContentEnd;
+            var rect = end.GetCharacterRect(LogicalDirection.Backward);
+            if (rect == Rect.Empty) return;
+
+            // Transform from RichTextBox coordinates to CursorCanvas coordinates
+            var transform = OutputArea.TransformToVisual(CursorCanvas);
+            var origin = transform.Transform(new Point(rect.Right, rect.Top));
+
+            Canvas.SetLeft(CursorBlock, origin.X);
+            Canvas.SetTop(CursorBlock, origin.Y);
+            CursorBlock.Height = Math.Max(2, rect.Height);
+        }
+        catch { }
     }
 
     /// <summary>
@@ -125,14 +241,45 @@ public partial class TerminalControl : UserControl
     {
         if (_viewModel == null) return;
 
-        // Cascadia Code 14pt: ~8.4px per char width, ~18px per line height
-        double charWidth = 8.4;
-        double lineHeight = 18.0;
+        var (charWidth, lineHeight) = MeasureCharDimensions();
 
         short columns = (short)Math.Max(40, (int)(ActualWidth / charWidth));
         short rows = (short)Math.Max(10, (int)(ActualHeight / lineHeight));
 
         _viewModel.ResizeTerminal(columns, rows);
+    }
+
+    /// <summary>
+    /// Measures character width and line height from the OutputArea's current font.
+    /// Falls back to defaults if measurement fails (e.g., font not yet loaded).
+    /// </summary>
+    private (double charWidth, double lineHeight) MeasureCharDimensions()
+    {
+        try
+        {
+            var typeface = new Typeface(
+                OutputArea.FontFamily,
+                OutputArea.FontStyle,
+                OutputArea.FontWeight,
+                OutputArea.FontStretch);
+
+            double pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+
+            var ft = new FormattedText(
+                "W",
+                CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                typeface,
+                OutputArea.FontSize,
+                Brushes.Black,
+                pixelsPerDip);
+
+            return (ft.Width, ft.Height);
+        }
+        catch
+        {
+            return (8.4, 18.0);
+        }
     }
 
     // ─── Key Translation ────────────────────────────────────────────────────

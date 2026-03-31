@@ -17,11 +17,20 @@ public partial class AppSettings : ObservableObject
     [ObservableProperty]
     private double _terminalFontSize = 14.0;
 
+    /// <summary>
+    /// Controls how the terminal resizes when the card is dragged.
+    /// Auto: columns/rows from font metrics and control size.
+    /// Manual: user-defined fixed size.
+    /// FixedCols: columns fixed, rows adjust to height.
+    /// </summary>
+    [ObservableProperty]
+    private string _terminalResizeBehavior = "Auto";
+
     [ObservableProperty]
     private ShellType _defaultShell = ShellType.WSL;
 
     [ObservableProperty]
-    private string _projectScanDirectory = @"C:\Users";
+    private string _projectScanDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
     [ObservableProperty]
     private int _projectScanMaxDepth = 3;
@@ -65,12 +74,116 @@ public partial class AppSettings : ObservableObject
 
     [ObservableProperty]
     private string _focusTerminalShortcut = "Ctrl+`";
+
+    [ObservableProperty]
+    private string _themeName = "LiquidGlassDark";
+
+    // ─── AI Assistant Settings ────────────────────────────────────────────
+
+    /// <summary>
+    /// Active AI provider: "openai", "local", or "none".
+    /// </summary>
+    [ObservableProperty]
+    private string _aiProvider = "none";
+
+    /// <summary>
+    /// Model identifier for the active AI provider (e.g., "gpt-4o-mini", "llama3").
+    /// </summary>
+    [ObservableProperty]
+    private string _aiModel = "gpt-4o-mini";
+
+    /// <summary>
+    /// Override the default API base URL for the active provider.
+    /// Leave empty to use the provider's default endpoint.
+    /// </summary>
+    [ObservableProperty]
+    private string _aiBaseUrl = string.Empty;
+
+    /// <summary>
+    /// Whether the AI assistant panel is visible in the UI.
+    /// </summary>
+    [ObservableProperty]
+    private bool _aiAssistantVisible;
+
+    /// <summary>
+    /// Maximum number of conversation messages to keep in context.
+    /// </summary>
+    [ObservableProperty]
+    private int _aiMaxContextMessages = 20;
+
+    // ─── Notification Settings ───────────────────────────────────────────
+
+    [ObservableProperty]
+    private bool _notificationsEnabled = true;
+
+    [ObservableProperty]
+    private bool _notifyTerminalEvents = true;
+
+    [ObservableProperty]
+    private bool _notifyGitEvents = true;
+
+    [ObservableProperty]
+    private bool _notifyProcessEvents = true;
+
+    [ObservableProperty]
+    private bool _notifyAiEvents = true;
+
+    [ObservableProperty]
+    private bool _notifySystemEvents = true;
+
+    [ObservableProperty]
+    private bool _notificationSoundEnabled;
+
+    // ─── Canvas Wallpaper Settings ──────────────────────────────────────
+
+    [ObservableProperty]
+    private string _defaultAgentId = "cc";
+
+    [ObservableProperty]
+    private string _canvasWallpaperPath = string.Empty;
+
+    [ObservableProperty]
+    private double _canvasWallpaperOpacity = 0.15;
+
+    [ObservableProperty]
+    private string _canvasWallpaperStretch = "UniformToFill";
+
+    // ─── Canvas Zoom Settings ──────────────────────────────────────────
+
+    [ObservableProperty]
+    private string _canvasZoomMode = "CtrlScroll";
+
+    // ─── Terminal Background Settings ──────────────────────────────────
+
+    [ObservableProperty]
+    private string _terminalWallpaperPath = string.Empty;
+
+    [ObservableProperty]
+    private double _terminalWallpaperOpacity = 0.15;
+
+    [ObservableProperty]
+    private double _terminalWallpaperBlurRadius = 0.0;
+
+    [ObservableProperty]
+    private bool _terminalWallpaperDarkOverlay = true;
+
+    [ObservableProperty]
+    private double _terminalWallpaperOverlayOpacity = 0.4;
+
+    [ObservableProperty]
+    private double _terminalWallpaperBrightness = 1.0;
+
+    [ObservableProperty]
+    private double _terminalWallpaperContrast = 1.0;
+
+    [ObservableProperty]
+    private string _terminalWallpaperStretch = "UniformToFill";
 }
 
 /// <summary>
 /// Service for loading and saving application settings.
 /// </summary>
-public class SettingsService
+public class SettingsService : ISettingsService
 {
     private readonly string _settingsFilePath;
     private AppSettings? _settings;
