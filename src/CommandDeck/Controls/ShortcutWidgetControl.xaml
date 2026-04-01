@@ -3,12 +3,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:conv="clr-namespace:CommandDeck.Converters"
              mc:Ignorable="d"
              d:DesignWidth="300" d:DesignHeight="220"
              Background="{DynamicResource Surface0Brush}"
              Padding="12">
 
     <UserControl.Resources>
+        <conv:CountToVisibilityConverter x:Key="CountToVis" />
         <Style x:Key="RemoveShortcutButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
@@ -61,7 +63,7 @@
                            Foreground="{DynamicResource SubtextBrush}"
                            HorizontalAlignment="Center"
                            Margin="0,12"
-                           Visibility="Collapsed" />
+                           Visibility="{Binding Shortcuts.Count, Converter={StaticResource CountToVis}, ConverterParameter=Invert}" />
 
                 <ItemsControl ItemsSource="{Binding Shortcuts}">
                     <ItemsControl.ItemTemplate>

@@ -1,4 +1,3 @@
-using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -11,32 +10,6 @@ public partial class ShortcutWidgetControl : UserControl
     public ShortcutWidgetControl()
     {
         InitializeComponent();
-        DataContextChanged += OnDataContextChanged;
-    }
-
-    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
-    {
-        if (e.OldValue is WidgetCanvasItemViewModel oldVm)
-            oldVm.Shortcuts.CollectionChanged -= OnShortcutsChanged;
-
-        if (e.NewValue is WidgetCanvasItemViewModel newVm)
-        {
-            newVm.Shortcuts.CollectionChanged += OnShortcutsChanged;
-            UpdateEmptyState(newVm);
-        }
-    }
-
-    private void OnShortcutsChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        if (DataContext is WidgetCanvasItemViewModel vm)
-            UpdateEmptyState(vm);
-    }
-
-    private void UpdateEmptyState(WidgetCanvasItemViewModel vm)
-    {
-        EmptyLabel.Visibility = vm.Shortcuts.Count == 0
-            ? Visibility.Visible
-            : Visibility.Collapsed;
     }
 
     private async void OnShortcutClicked(object sender, RoutedEventArgs e)

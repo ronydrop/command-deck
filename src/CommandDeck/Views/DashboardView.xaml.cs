@@ -10,16 +10,7 @@ public partial class DashboardView : UserControl
         InitializeComponent();
     }
 
-    private void OnOpenDropdownClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button button && button.ContextMenu != null)
-        {
-            button.ContextMenu.PlacementTarget = button;
-            button.ContextMenu.IsOpen = true;
-        }
-    }
-
-    private void OnCommitDropdownClick(object sender, RoutedEventArgs e)
+    private void OnDropdownClick(object sender, RoutedEventArgs e)
     {
         if (sender is Button button && button.ContextMenu != null)
         {
