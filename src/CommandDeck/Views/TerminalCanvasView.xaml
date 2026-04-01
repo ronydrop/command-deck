@@ -14,7 +14,7 @@
 
     <UserControl.Resources>
         <conv:BoolToVisibilityConverter     x:Key="BoolToVis" />
-        <conv:InverseCountToVisibilityConverter x:Key="EmptyVisConverter" />
+        <conv:CountToVisibilityConverter x:Key="EmptyVisConverter" />
         <conv:ShellTypeToIconConverter      x:Key="ShellIconConverter" />
         <conv:CanvasItemTypeIconConverter   x:Key="ItemTypeIconConverter" />
         <conv:FirstLetterConverter          x:Key="FirstLetterConverter" />
@@ -794,7 +794,8 @@
                         Background="#B21E1E2E"
                         IsHitTestVisible="True"
                         Visibility="{Binding CanvasViewModel.Items.Count,
-                                     Converter={StaticResource EmptyVisConverter}}">
+                                     Converter={StaticResource EmptyVisConverter},
+                                     ConverterParameter=Invert}">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Path Data="{StaticResource TerminalIcon}"
                               Style="{StaticResource IconPathLarge}"
