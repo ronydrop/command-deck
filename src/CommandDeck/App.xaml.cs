@@ -101,6 +101,7 @@ public partial class App : Application
             sp.GetRequiredService<AssistantSettings>()));
         services.AddSingleton<IClaudeUsageService, ClaudeUsageService>();
         services.AddSingleton<IAssistantService, AssistantService>();
+        services.AddSingleton<IGitAiService, GitAiService>();
 
         // ─── Dynamic Island ──────────────────────────────────────────────
         services.AddSingleton<DynamicIslandViewModel>();
