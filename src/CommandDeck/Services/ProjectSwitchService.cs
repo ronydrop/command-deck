@@ -1,0 +1,213 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+using CommandDeck.Models;
+using CommandDeck.ViewModels;
+using Debug = System.Diagnostics.Trace;
+
+namespace CommandDeck.Services;
+
+/// <summary>
+/// Implements the full project-switch use case, extracted from MainViewModel.
+/// ViewModels are injected as <see cref="Lazy{T}"/> to prevent circular
+/// DI dependencies (services should not directly reference ViewModels;
+/// Lazy defers resolution until first use).
+/// </summary>
+public class ProjectSwitchService : IProjectSwitchService
+{
+    private readonly ISettingsService _settingsService;
+    private readonly IWorkspaceService _workspaceService;
+    private readonly INotificationService _notificationService;
+    private readonly CanvasItemFactory _canvasItemFactory;
+
+    // ViewModels injected lazily to break circular DI chains.
+    private readonly Lazy<TerminalCanvasViewModel> _canvasVm;
+    private readonly Lazy<DashboardViewModel> _dashboardVm;
+    private readonly Lazy<BrowserViewModel> _browserVm;
+    private readonly Lazy<WorkspaceTreeViewModel> _workspaceTreeVm;
+    private readonly Lazy<ProjectListViewModel> _projectListVm;
+
+    /// <inheritdoc/>
+    public event EventHandler<ProjectSwitchResult>? SwitchCompleted;
+
+    public ProjectSwitchService(
+        ISettingsService settingsService,
+        IWorkspaceService workspaceService,
+        INotificationService notificationService,
+        CanvasItemFactory canvasItemFactory,
+        Lazy<TerminalCanvasViewModel> canvasVm,
+        Lazy<DashboardViewModel> dashboardVm,
+        Lazy<BrowserViewModel> browserVm,
+        Lazy<WorkspaceTreeViewModel> workspaceTreeVm,
+        Lazy<ProjectListViewModel> projectListVm)
+    {
+        _settingsService = settingsService;
+        _workspaceService = workspaceService;
+        _notificationService = notificationService;
+        _canvasItemFactory = canvasItemFactory;
+        _canvasVm = canvasVm;
+        _dashboardVm = dashboardVm;
+        _browserVm = browserVm;
+        _workspaceTreeVm = workspaceTreeVm;
+        _projectListVm = projectListVm;
+    }
+
+    /// <inheritdoc/>
+    public async Task SwitchToAsync(
+        Project project,
+        ProjectSwitchContext context,
+        IProgress<string>? progress = null)
+    {
+        var totalSw = Stopwatch.StartNew();
+        var stepSw = Stopwatch.StartNew();
+
+        var restoredTerminals = new List<TerminalViewModel>();
+        TerminalViewModel? activeTerminal = null;
+        string? gitBranchDisplay = null;
+
+        try
+        {
+            progress?.Report($"Carregando {project.Name}…");
+
+            // 1. Save current layout
+            if (context.ActiveTerminals.Count > 0 || context.CurrentProjectId is not null)
+                await _canvasVm.Value.SaveCurrentLayoutAsync();
+
+            Debug.WriteLine($"[Perf] SaveLayout: {stepSw.ElapsedMilliseconds}ms");
+            stepSw.Restart();
+
+            // 2. Dispose active terminals
+            progress?.Report($"Fechando terminais…");
+
+            var disposeTasks = new List<Task>();
+            foreach (var t in context.ActiveTerminals)
+                disposeTasks.Add(t.DisposeAsync().AsTask());
+
+            await Task.WhenAll(disposeTasks);
+            Debug.WriteLine($"[Perf] DisposeTerminals: {stepSw.ElapsedMilliseconds}ms");
+            stepSw.Restart();
+
+            // 3. Clear canvas
+            _workspaceService.ClearAll();
+
+            // 4. Update canvas view-model with new project id
+            _canvasVm.Value.CurrentProjectId = project.Id;
+
+            // 5. Sync project-list sidebar selection
+            var filteredMatch = _projectListVm.Value.FilteredProjects
+                .FirstOrDefault(p => p.Id == project.Id) ?? project;
+            _projectListVm.Value.SelectedProject = filteredMatch;
+
+            // 6. Persist settings, fetch git info & switch browser session in parallel
+            progress?.Report($"Carregando informações do projeto…");
+
+            var settingsTask = Task.Run(async () =>
+            {
+                var settings = await _settingsService.GetSettingsAsync();
+                settings.LastOpenedProjectId = project.Id;
+                await _settingsService.SaveSettingsAsync(settings);
+            });
+
+            var dashboardTask = _dashboardVm.Value.SetProjectAsync(project);
+            var browserTask = _browserVm.Value.SwitchToProjectAsync(project);
+
+            await Task.WhenAll(settingsTask, dashboardTask, browserTask);
+            Debug.WriteLine($"[Perf] ParallelTasks (settings+dashboard+browser): {stepSw.ElapsedMilliseconds}ms");
+            stepSw.Restart();
+
+            _dashboardVm.Value.StopRefresh();
+
+            gitBranchDisplay = _dashboardVm.Value.GitInfo?.BranchDisplay ?? string.Empty;
+
+            var gitInfo = _dashboardVm.Value.GitInfo;
+            _notificationService.Notify(
+                $"Projeto '{project.Name}' carregado",
+                NotificationType.Success,
+                NotificationSource.System,
+                message: gitInfo != null ? $"Branch: {gitInfo.Branch}" : null);
+
+            // 7. Load target project layout and restore terminals
+            progress?.Report($"Restaurando layout…");
+
+            var saved = await _canvasVm.Value.LoadLayoutAsync(project.Id);
+            if (saved?.Items is { Count: > 0 })
+            {
+                // Restore camera position
+                if (saved.Camera is not null)
+                    _canvasVm.Value.SyncCamera(
+                        saved.Camera.OffsetX,
+                        saved.Camera.OffsetY,
+                        saved.Camera.Zoom);
+
+                var terminalItems = saved.Items
+                    .Where(i => i.Type == CanvasItemType.Terminal)
+                    .ToList();
+
+                progress?.Report($"Restaurando {terminalItems.Count} terminais…");
+
+                foreach (var itemModel in terminalItems)
+                {
+                    var shellType = itemModel.Metadata.TryGetValue("shellType", out var st)
+                        && Enum.TryParse<ShellType>(st, true, out var parsed)
+                            ? parsed
+                            : project.DefaultShell;
+
+                    var workDir = itemModel.Metadata.TryGetValue("workingDirectory", out var wd)
+                        ? wd
+                        : project.Path;
+
+                    var terminalVm = context.TerminalVmFactory();
+                    restoredTerminals.Add(terminalVm);
+
+                    // PrepareAsync MUST complete before AddRestoredItem so that when WPF
+                    // creates the TerminalControl and OnLoaded fires, StartSessionAsync finds
+                    // the correct shell type and working directory already set on the ViewModel.
+                    await terminalVm.PrepareAsync(shellType, workDir, project.Id);
+
+                    var canvasItem = _canvasItemFactory.CreateTerminalItemFromModel(terminalVm, itemModel);
+                    _workspaceService.AddRestoredItem(canvasItem);
+
+                    if (!_workspaceTreeVm.Value.HasNodeForCanvasItem(canvasItem.Model.Id))
+                        _ = _workspaceTreeVm.Value.RegisterTerminalAsync(
+                            canvasItem.Title,
+                            canvasItem.Model.Id,
+                            project.Id);
+                }
+
+                Debug.WriteLine(
+                    $"[Perf] RestoreTerminals ({terminalItems.Count}): {stepSw.ElapsedMilliseconds}ms");
+
+                activeTerminal = restoredTerminals.FirstOrDefault();
+            }
+
+            Debug.WriteLine($"[Perf] SwitchProject TOTAL: {totalSw.ElapsedMilliseconds}ms");
+            progress?.Report($"Project: {project.Name} — ready");
+
+            SwitchCompleted?.Invoke(this, new ProjectSwitchResult
+            {
+                SwitchedTo = project,
+                RestoredTerminals = restoredTerminals,
+                ActiveTerminal = activeTerminal,
+                GitBranchDisplay = gitBranchDisplay,
+                Success = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ProjectSwitchService] ERROR: {ex}");
+
+            SwitchCompleted?.Invoke(this, new ProjectSwitchResult
+            {
+                SwitchedTo = project,
+                RestoredTerminals = restoredTerminals,
+                ActiveTerminal = null,
+                Success = false,
+                ErrorMessage = ex.Message
+            });
+
+            throw;
+        }
+    }
+}

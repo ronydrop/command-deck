@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -595,13 +596,13 @@ public partial class SettingsViewModel : ObservableObject
 
         // Per-provider API keys (from secure storage)
         try { OpenAiApiKey = await _secretStorageService.RetrieveSecretAsync("ai_openai_api_key") ?? string.Empty; }
-        catch { OpenAiApiKey = string.Empty; }
+        catch (Exception ex) { Debug.WriteLine($"[SettingsViewModel] Secret retrieval failed (ai_openai_api_key): {ex.Message}"); OpenAiApiKey = string.Empty; }
 
         try { AnthropicApiKey = await _secretStorageService.RetrieveSecretAsync("ai_anthropic_api_key") ?? string.Empty; }
-        catch { AnthropicApiKey = string.Empty; }
+        catch (Exception ex) { Debug.WriteLine($"[SettingsViewModel] Secret retrieval failed (ai_anthropic_api_key): {ex.Message}"); AnthropicApiKey = string.Empty; }
 
         try { OpenRouterApiKey = await _secretStorageService.RetrieveSecretAsync("ai_openrouter_api_key") ?? string.Empty; }
-        catch { OpenRouterApiKey = string.Empty; }
+        catch (Exception ex) { Debug.WriteLine($"[SettingsViewModel] Secret retrieval failed (ai_openrouter_api_key): {ex.Message}"); OpenRouterApiKey = string.Empty; }
 
         // Backward compat: sync AiApiKey with active provider
         AiApiKey = AiProvider switch
@@ -727,7 +728,7 @@ public partial class SettingsViewModel : ObservableObject
             if (!string.IsNullOrWhiteSpace(OpenRouterApiKey))
                 await _secretStorageService.StoreSecretAsync("ai_openrouter_api_key", OpenRouterApiKey);
         }
-        catch { }
+        catch (Exception ex) { Debug.WriteLine($"[SettingsViewModel] Secret store failed: {ex.Message}"); }
 
         App.ApplyTheme(SelectedTheme);
 
@@ -780,8 +781,9 @@ public partial class SettingsViewModel : ObservableObject
                 UpdateStatusText = "Você está usando a versão mais recente.";
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Debug.WriteLine($"[SettingsViewModel.CheckForUpdate] Update check failed: {ex.Message}");
             UpdateStatusText = "Erro ao verificar atualizações.";
         }
         finally

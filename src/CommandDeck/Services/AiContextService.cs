@@ -36,8 +36,9 @@ public sealed class AiContextService : IAiContextService
         if (sessionModel is null)
             return null;
 
-        var lastCmd = sessionModel.CommandHistory.Count > 0
-            ? sessionModel.CommandHistory[^1]
+        var historySnapshot = sessionModel.CommandHistory.GetAll();
+        var lastCmd = historySnapshot.Count > 0
+            ? historySnapshot[^1]
             : null;
 
         string? projectName = null;
@@ -64,7 +65,10 @@ public sealed class AiContextService : IAiContextService
                 var gitInfo = await _gitService.GetGitInfoAsync(sessionModel.WorkingDirectory);
                 gitBranch = gitInfo?.Branch;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AiContextService] Failed to fetch git info for context: {ex.Message}");
+            }
         }
 
         return new AiTerminalContext

@@ -17,8 +17,8 @@ internal struct TerminalCell
     public static readonly TerminalCell Empty = new()
     {
         Char = ' ',
-        Foreground = Color.FromRgb(0xCD, 0xD6, 0xF4),
-        Background = Color.FromRgb(0x1E, 0x1E, 0x2E),
+        Foreground = ThemeColors.CatppuccinText,
+        Background = ThemeColors.CatppuccinBase,
     };
 
     /// <summary>Returns true if this cell has identical formatting to another.</summary>
@@ -84,7 +84,7 @@ internal sealed class TerminalLineBuffer
     // ─── Constructor ─────────────────────────────────────────────────────────
 
     public TerminalLineBuffer(int columns = 120)
-        : this(columns, Color.FromRgb(0xCD, 0xD6, 0xF4), Color.FromRgb(0x1E, 0x1E, 0x2E)) { }
+        : this(columns, ThemeColors.CatppuccinText, ThemeColors.CatppuccinBase) { }
 
     public TerminalLineBuffer(int columns, Color defaultFg, Color defaultBg)
     {

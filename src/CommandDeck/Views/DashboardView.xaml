@@ -65,7 +65,7 @@
                                         Style="{StaticResource AccentButtonRight}"
                                         Tag="{Binding}"
                                         ToolTip="Mais opções"
-                                        Click="OnOpenDropdownClick">
+                                        Click="OnDropdownClick">
                                     <Path Data="{StaticResource ChevronDownIcon}"
                                           Stroke="White" StrokeThickness="1.5"
                                           StrokeLineJoin="Round" StrokeStartLineCap="Round"
@@ -140,7 +140,7 @@
                                         Style="{StaticResource AccentButtonRight}"
                                         Tag="{Binding}"
                                         ToolTip="Mais opções Git"
-                                        Click="OnCommitDropdownClick">
+                                        Click="OnDropdownClick">
                                     <Path Data="{StaticResource ChevronDownIcon}"
                                           Stroke="White" StrokeThickness="1.5"
                                           StrokeLineJoin="Round" StrokeStartLineCap="Round"

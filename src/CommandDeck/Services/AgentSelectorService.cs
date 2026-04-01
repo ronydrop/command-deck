@@ -57,7 +57,10 @@ public sealed class AgentSelectorService : IAgentSelectorService
                 _activeAgentId = settings.DefaultAgentId;
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AgentSelectorService] Failed to load default agent from settings: {ex.Message}");
+        }
     }
 
     private async Task PersistAsync(string agentId)
@@ -68,6 +71,9 @@ public sealed class AgentSelectorService : IAgentSelectorService
             settings.DefaultAgentId = agentId;
             await _settingsService.SaveSettingsAsync(settings);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AgentSelectorService] Failed to persist default agent '{agentId}': {ex.Message}");
+        }
     }
 }

@@ -720,7 +720,7 @@ public class WorkspaceExportService : IWorkspaceExportService
                 ["commandCount"] = session.CommandCount,
                 ["createdAt"] = session.CreatedAt.ToString("O"),
                 ["lastActivityTimestamp"] = session.LastActivityTimestamp.ToString("O"),
-                ["commandHistory"] = session.CommandHistory.ToArray()
+                ["commandHistory"] = session.CommandHistory.GetAll().ToArray()
             };
 
             list.Add(dict);

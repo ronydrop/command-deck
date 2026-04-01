@@ -265,7 +265,10 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
             if (doc.RootElement.TryGetProperty("error", out var err) && err.TryGetProperty("message", out var msg))
                 return msg.GetString() ?? body;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[OpenRouterProvider] Failed to parse error body as JSON: {ex.Message}");
+        }
         return body.Length > 200 ? body[..200] + "..." : body;
     }
 

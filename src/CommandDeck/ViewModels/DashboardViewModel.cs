@@ -17,6 +17,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private readonly INotificationService _notificationService;
     private readonly IExternalEditorService _externalEditorService;
     private readonly IAssistantService _assistantService;
+    private readonly IGitAiService _gitAiService;
     private readonly IClaudeUsageService _claudeUsage;
     private readonly DispatcherTimer _refreshTimer;
     private string? _lastKnownBranch;
@@ -107,11 +108,13 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         INotificationService notificationService,
         IExternalEditorService externalEditorService,
         IAssistantService assistantService,
+        IGitAiService gitAiService,
         WorktreeSelectorViewModel worktreeSelector,
         IClaudeUsageService claudeUsage)
     {
         _gitService = gitService;
         _assistantService = assistantService;
+        _gitAiService = gitAiService;
         _processMonitorService = processMonitorService;
         _terminalService = terminalService;
         _notificationService = notificationService;
@@ -307,25 +310,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
         _notificationService.Notify("Gerando mensagem de commit com IA...", NotificationType.Progress, NotificationSource.Git);
 
-        // 1. Get diff for context
-        var diff = await _gitService.GetFullDiffAsync(CurrentProject.Path);
-        if (string.IsNullOrWhiteSpace(diff))
-        {
-            _notificationService.Notify("Nenhuma alteração detectada para commitar.", NotificationType.Warning, NotificationSource.Git);
-            return;
-        }
-
-        // 2. Ask AI to generate the commit message
+        // 1. Delegate diff retrieval + prompt building to the dedicated service
         string aiMessage;
         try
         {
-            var prompt =
-                "You are an expert developer. Based on the following git diff, write a concise, " +
-                "imperative commit message (max 72 chars). Reply with ONLY the commit message, no explanations.\n\n" +
-                diff;
-
-            aiMessage = await _assistantService.ExplainTerminalOutputAsync(prompt);
-            aiMessage = aiMessage.Trim().Trim('"').Trim();
+            aiMessage = await _gitAiService.GenerateCommitMessageAsync(CurrentProject.Path);
         }
         catch (Exception ex)
         {
@@ -333,13 +322,15 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             return;
         }
 
+        // GenerateCommitMessageAsync returns string.Empty for empty diffs;
+        // surface the "no changes" warning to the user.
         if (string.IsNullOrWhiteSpace(aiMessage))
         {
-            _notificationService.Notify("A IA não retornou uma mensagem.", NotificationType.Error, NotificationSource.Git);
+            _notificationService.Notify("Nenhuma alteração detectada para commitar.", NotificationType.Warning, NotificationSource.Git);
             return;
         }
 
-        // 3. Stage all
+        // 2. Stage all
         var stageResult = await _gitService.StageAllAsync(CurrentProject.Path);
         if (!stageResult.Success)
         {
@@ -347,7 +338,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             return;
         }
 
-        // 4. Commit
+        // 3. Commit
         var commitResult = await _gitService.CommitAsync(CurrentProject.Path, aiMessage);
         if (!commitResult.Success)
         {
@@ -357,7 +348,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
         _notificationService.Notify($"Commit: \"{aiMessage}\" — fazendo push...", NotificationType.Progress, NotificationSource.Git);
 
-        // 5. Push via terminal so output is visible
+        // 4. Push via terminal so output is visible
         RunCommandRequested?.Invoke("git push");
 
         await RefreshAsync();

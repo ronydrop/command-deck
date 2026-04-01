@@ -182,7 +182,10 @@ public class TerminalService : ITerminalService, IDisposable
         {
             Task.Run(CloseAllSessionsAsync).Wait(TimeSpan.FromSeconds(3));
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[TerminalService] Error closing sessions on dispose: {ex.Message}");
+        }
 
         GC.SuppressFinalize(this);
     }

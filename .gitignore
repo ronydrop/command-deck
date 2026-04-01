@@ -43,6 +43,9 @@ artifacts/
 # VS Code
 .vscode/
 
+# Git worktrees
+.worktrees/
+
 # OS
 .DS_Store
 Thumbs.db

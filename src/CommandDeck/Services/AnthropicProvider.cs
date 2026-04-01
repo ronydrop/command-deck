@@ -411,7 +411,10 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
                 errorEl.TryGetProperty("message", out var msgEl))
                 return msgEl.GetString() ?? responseBody;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AnthropicProvider] Failed to parse error body as JSON: {ex.Message}");
+        }
 
         return responseBody.Length > 200 ? responseBody[..200] + "..." : responseBody;
     }

@@ -14,7 +14,7 @@ namespace CommandDeck.ViewModels;
 /// <summary>
 /// ViewModel for a single terminal tab. Handles output parsing and input routing.
 /// </summary>
-public partial class TerminalViewModel : ObservableObject, IDisposable
+public partial class TerminalViewModel : ObservableObject, IDisposable, IAsyncDisposable
 {
     private readonly ITerminalService _terminalService;
     private readonly IDatabaseService _db;
@@ -99,9 +99,9 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
 
         // Resolve terminal colors from the active theme
         _terminalFg = Application.Current?.TryFindResource("TextColor") is Color fg
-            ? fg : Color.FromRgb(0xCD, 0xD6, 0xF4);
+            ? fg : ThemeColors.CatppuccinText;
         _terminalBg = Application.Current?.TryFindResource("BaseBg") is Color bg
-            ? bg : Color.FromRgb(0x1E, 0x1E, 0x2E);
+            ? bg : ThemeColors.CatppuccinBase;
 
         _ansiParser = new AnsiParser(_terminalFg, _terminalBg);
 
@@ -327,9 +327,26 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
         if (_backgroundService != null)
             _backgroundService.BackgroundChanged -= OnBackgroundChanged;
 
-        if (Session != null)
-            _ = _terminalService.CloseSessionAsync(Session.Id);
-
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Asynchronously disposes the ViewModel, closing the ConPTY session before releasing resources.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+
+        if (Session != null)
+        {
+            try
+            {
+                await _terminalService.CloseSessionAsync(Session.Id);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[TerminalViewModel] DisposeAsync failed: {ex.Message}");
+            }
+        }
     }
 }
