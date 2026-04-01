@@ -110,6 +110,8 @@ public static class ServiceCollectionExtensions
         // Lazy<T> automatically; .Value is only evaluated when first accessed at runtime.
         services.AddSingleton(sp => new Lazy<IWorkspaceService>(() => sp.GetRequiredService<IWorkspaceService>()));
         services.AddSingleton<IWorkspaceService, WorkspaceService>();
+        services.AddSingleton<ICanvasItemsService>(sp => sp.GetRequiredService<IWorkspaceService>());
+        services.AddSingleton<IWorkspaceLifecycleService>(sp => sp.GetRequiredService<IWorkspaceService>());
 
         services.AddSingleton<IWorkspaceTreeService, WorkspaceTreeService>();
         services.AddSingleton<IWorkspaceHierarchyService, WorkspaceHierarchyService>();
