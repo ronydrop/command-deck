@@ -1,9 +1,7 @@
-using System.Net.Http;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
-using CommandDeck.Models;
+using CommandDeck.Extensions;
 using CommandDeck.Services;
-using CommandDeck.Services.Browser;
 using CommandDeck.ViewModels;
 using CommandDeck.Views;
 
@@ -48,152 +46,43 @@ public partial class App : Application
 
     /// <summary>
     /// Registers all services, view models, and views in the DI container.
+    /// Grouped by domain via extension methods in <see cref="ServiceCollectionExtensions"/>.
     /// </summary>
     private static void ConfigureServices(IServiceCollection services)
     {
-        // ─── Services (Singletons for shared state) ─────────────────────
-        services.AddSingleton<ITerminalService, TerminalService>();
-        services.AddSingleton<IProjectService, ProjectService>();
-        services.AddSingleton<IGitService, GitService>();
-        services.AddSingleton<IProcessMonitorService, ProcessMonitorService>();
+        // ─── Infrastructure (shared by all domains) ─────────────────────
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IExternalEditorService, ExternalEditorService>();
-
-        // ─── Notification & Pane State ──────────────────────────────────
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<IPaneStateService, PaneStateService>();
         services.AddSingleton<IAiAgentStateService, AiAgentStateService>();
-
-        // ─── Spatial canvas services ─────────────────────────────────────
-        services.AddSingleton<ICanvasCameraService, CanvasCameraService>();
-        services.AddSingleton<ILayoutPersistenceService, LayoutPersistenceService>();
-        services.AddSingleton<CanvasItemFactory>();
-
-        // Break the circular dependency (WorkspaceService → CanvasItemFactory → IWorkspaceService)
-        // by injecting Lazy<IWorkspaceService> into CanvasItemFactory. The container resolves
-        // Lazy<T> automatically; .Value is only evaluated when first accessed at runtime.
-        services.AddSingleton(sp => new Lazy<IWorkspaceService>(() => sp.GetRequiredService<IWorkspaceService>()));
-        services.AddSingleton<IWorkspaceService, WorkspaceService>();
-
-        // ─── Advanced services ───────────────────────────────────────────
-        services.AddSingleton<IWorkspaceTreeService, WorkspaceTreeService>();
         services.AddSingleton<ICommandPaletteService, CommandPaletteService>();
+        services.AddSingleton<IUpdateService, UpdateService>();
 
-        // ─── AI Assistant services ───────────────────────────────────────
-        services.AddSingleton<HttpClient>(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(30) });
-        services.AddSingleton<AssistantSettings>();
-        services.AddSingleton<IClaudeOAuthService, ClaudeOAuthService>();
-        services.AddSingleton<IAssistantProvider>(sp => new OllamaProvider(
-            sp.GetRequiredService<HttpClient>(),
-            sp.GetRequiredService<AssistantSettings>()));
-        services.AddSingleton<IAssistantProvider>(sp => new OpenAIProvider(
-            sp.GetService<ISecretStorageService>(),
-            sp.GetService<ISettingsService>(),
-            sp.GetRequiredService<AssistantSettings>()));
-        services.AddSingleton<IAssistantProvider>(sp => new AnthropicProvider(
-            sp.GetService<ISecretStorageService>(),
-            sp.GetService<ISettingsService>(),
-            sp.GetRequiredService<AssistantSettings>(),
-            sp.GetService<IClaudeOAuthService>()));
-        services.AddSingleton<IAssistantProvider>(sp => new OpenRouterProvider(
-            sp.GetService<ISecretStorageService>(),
-            sp.GetRequiredService<AssistantSettings>()));
-        services.AddSingleton<IClaudeUsageService, ClaudeUsageService>();
-        services.AddSingleton<IAssistantService, AssistantService>();
-        services.AddSingleton<IGitAiService, GitAiService>();
-
-        // ─── Dynamic Island ──────────────────────────────────────────────
-        services.AddSingleton<DynamicIslandViewModel>();
-        services.AddSingleton<DynamicIslandWindow>();
-
-        // ─── AI Orb ──────────────────────────────────────────────────────
-        services.AddSingleton<IAiOrbService, AiOrbService>();
-        services.AddSingleton<IVoiceInputService, VoiceInputService>();
-        services.AddSingleton<AiOrbViewModel>();
-
-        // ─── AI Terminal (cc/claude CLI) ──────────────────────────────────
-        services.AddSingleton<IAiTerminalService, AiTerminalService>();
-        services.AddSingleton<IAiContextService, AiContextService>();
-        services.AddSingleton<IAiSessionHistoryService, AiSessionHistoryService>();
-        services.AddSingleton<IAiContinuationService, AiContinuationService>();
-        services.AddSingleton<IAiTerminalLauncher, AiTerminalLauncher>();
-        services.AddSingleton<IAgentSelectorService, AgentSelectorService>();
-        services.AddSingleton<AgentSelectorViewModel>();
-
-        // ─── SQLite persistence (additive — does not replace JSON) ────────
+        // ─── Persistence ─────────────────────────────────────────────────
         services.AddSingleton<IDatabaseService, DatabaseService>();
-
-        // ─── New Persistence (SQLite) ─────────────────────────────────────
         services.AddSingleton<IPersistenceService, PersistenceService>();
         services.AddSingleton<ISecretStorageService, SecretStorageService>();
         services.AddSingleton<MigrationService>();
 
-        // ─── Terminal Sessions ─────────────────────────────────────────────
-        services.AddSingleton<ITerminalSessionService, TerminalSessionService>();
-
-        // ─── Workspace Hierarchy ───────────────────────────────────────────
-        services.AddSingleton<IWorkspaceHierarchyService, WorkspaceHierarchyService>();
-
-        // ─── Update Checker ───────────────────────────────────────────────
-        services.AddSingleton<IUpdateService, UpdateService>();
-
-        // ─── Terminal Background ─────────────────────────────────────────
-        services.AddSingleton<ITerminalBackgroundService, TerminalBackgroundService>();
-
-        // ─── Browser Services ────────────────────────────────────────────
-        services.AddSingleton<IBrowserRuntimeService, BrowserRuntimeService>();
-        services.AddSingleton<ILocalAppSessionService, LocalAppSessionService>();
-        services.AddSingleton<IDomSelectionService, DomSelectionService>();
-        services.AddSingleton<IAiContextRouter, AiContextRouter>();
-        services.AddSingleton<ICdpService, CdpService>();
-        services.AddSingleton<ICodeMappingService, CodeMappingService>();
-        services.AddSingleton<ISelectionHistoryService, SelectionHistoryService>();
-        services.AddSingleton<PortHealthCheckService>();
-
-        // ─── Layout Strategies ──────────────────────────────────────────
-        services.AddSingleton<FreeCanvasLayoutStrategy>();
-        services.AddSingleton<TiledLayoutStrategy>();
-
-        // ─── ViewModels ─────────────────────────────────────────────────
-        services.AddSingleton<MiniMapViewModel>();
-        services.AddSingleton<WorkspaceTreeViewModel>();
-        services.AddSingleton<CommandPaletteViewModel>();
-        services.AddSingleton<BranchSelectorViewModel>();
-        services.AddSingleton<WorktreeSelectorViewModel>();
-        services.AddSingleton<TerminalCanvasViewModel>();
-        services.AddSingleton<AssistantPanelViewModel>();
-        services.AddSingleton<TerminalManagerViewModel>();
-        services.AddSingleton<MainViewModel>();
-        services.AddSingleton<ProjectListViewModel>();
-        services.AddSingleton<DashboardViewModel>();
-        services.AddSingleton<ProcessMonitorViewModel>();
-        services.AddSingleton<BrowserViewModel>();
-
-        // Transient: each request gets a fresh instance
-        services.AddTransient<TerminalViewModel>();
-        services.AddTransient<SettingsViewModel>();
-        services.AddTransient<ProjectEditViewModel>();
+        // ─── Domain groups ───────────────────────────────────────────────
+        services.AddTerminalServices();
+        services.AddProjectServices();
+        services.AddCanvasServices();
+        services.AddAiServices();
+        services.AddBrowserServices();
 
         // ─── Project Switch Service ──────────────────────────────────────
         // ViewModels are injected as Lazy<T> so the service never holds a
         // hard reference to them at construction time (avoids circular deps).
-        services.AddSingleton(sp => new Lazy<TerminalCanvasViewModel>(() => sp.GetRequiredService<TerminalCanvasViewModel>()));
-        services.AddSingleton(sp => new Lazy<DashboardViewModel>(() => sp.GetRequiredService<DashboardViewModel>()));
-        services.AddSingleton(sp => new Lazy<BrowserViewModel>(() => sp.GetRequiredService<BrowserViewModel>()));
-        services.AddSingleton(sp => new Lazy<WorkspaceTreeViewModel>(() => sp.GetRequiredService<WorkspaceTreeViewModel>()));
-        services.AddSingleton(sp => new Lazy<ProjectListViewModel>(() => sp.GetRequiredService<ProjectListViewModel>()));
         services.AddSingleton<IProjectSwitchService, ProjectSwitchService>();
 
-        // Lazy wrappers to break circular DI dependencies
-        services.AddSingleton(sp => new Lazy<MainViewModel>(() => sp.GetRequiredService<MainViewModel>()));
+        // ─── ViewModels & Factories ──────────────────────────────────────
+        services.AddViewModels();
 
-        // Factories: allow MainViewModel to resolve transient VMs without knowing IServiceProvider
-        services.AddSingleton<Func<TerminalViewModel>>(sp => () => sp.GetRequiredService<TerminalViewModel>());
-        services.AddSingleton<Func<SettingsViewModel>>(sp => () => sp.GetRequiredService<SettingsViewModel>());
-        services.AddSingleton<Func<ProjectEditViewModel>>(sp => () => sp.GetRequiredService<ProjectEditViewModel>());
-
-        // ─── Views ──────────────────────────────────────────────────────
+        // ─── Windows & Views ─────────────────────────────────────────────
+        services.AddSingleton<DynamicIslandWindow>();
         services.AddSingleton<MainWindow>();
     }
 
