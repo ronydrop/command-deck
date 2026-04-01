@@ -333,7 +333,7 @@ public sealed partial class PersistenceService : IPersistenceService
         // Delete old entries for this session and re-insert current ones
         await DeleteCommandHistoryAsync(session.Id);
 
-        foreach (var cmdText in session.CommandHistory)
+        foreach (var cmdText in session.CommandHistory.GetAll())
         {
             await SaveCommandHistoryEntryAsync(session.Id, cmdText, DateTime.UtcNow);
         }

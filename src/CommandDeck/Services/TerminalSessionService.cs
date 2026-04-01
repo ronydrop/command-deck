@@ -262,7 +262,7 @@ public sealed partial class TerminalSessionService : ITerminalSessionService
             if (sessionId != null && model.Id != sessionId)
                 continue;
 
-            foreach (var cmd in model.CommandHistory)
+            foreach (var cmd in model.CommandHistory.GetAll())
             {
                 if (cmd.ToLowerInvariant().Contains(queryLower))
                 {

@@ -36,8 +36,9 @@ public sealed class AiContextService : IAiContextService
         if (sessionModel is null)
             return null;
 
-        var lastCmd = sessionModel.CommandHistory.Count > 0
-            ? sessionModel.CommandHistory[^1]
+        var historySnapshot = sessionModel.CommandHistory.GetAll();
+        var lastCmd = historySnapshot.Count > 0
+            ? historySnapshot[^1]
             : null;
 
         string? projectName = null;

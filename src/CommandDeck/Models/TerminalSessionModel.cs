@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommandDeck.Helpers;
 
@@ -37,11 +35,6 @@ public enum SessionState
 /// </summary>
 public partial class TerminalSessionModel : ObservableObject
 {
-    /// <summary>
-    /// Maximum number of commands kept in the per-session ring buffer.
-    /// </summary>
-    private const int MaxCommandHistory = 500;
-
     // ─── Core Identity ─────────────────────────────────────────────────────
 
     [ObservableProperty]
@@ -91,48 +84,24 @@ public partial class TerminalSessionModel : ObservableObject
 
     // ─── Command History (ring buffer, thread-safe) ─────────────────────────
 
-    private readonly ConcurrentQueue<string> _commandQueue = new();
-    private int _commandCount;
+    /// <summary>Ring buffer that stores per-session command history with deduplication.</summary>
+    public CommandRingBuffer CommandHistory { get; } = new(capacity: 500);
 
     /// <summary>
     /// Total number of commands executed in this session (includes trimmed ones).
     /// </summary>
-    public int CommandCount => _commandCount;
-
-    /// <summary>
-    /// Current commands in the ring buffer (up to 500 most recent).
-    /// </summary>
-    public IReadOnlyList<string> CommandHistory
-    {
-        get
-        {
-            // Snapshot: the queue may be modified concurrently, but ConcurrentQueue
-            // enumeration is safe and represents a point-in-time view.
-            return _commandQueue.ToArray();
-        }
-    }
+    public int CommandCount => CommandHistory.TotalCount;
 
     // ─── Output Snapshot (plain text for search) ────────────────────────────
 
-    private const int MaxOutputSnapshotLength = 64 * 1024; // 64 KB max
-
-    private readonly StringBuilder _outputBuilder = new(16 * 1024);
-    private readonly object _outputLock = new();
+    /// <summary>Plain-text output snapshot buffer for search/indexing.</summary>
+    public TerminalOutputBuffer OutputBuffer { get; } = new();
 
     /// <summary>
     /// Plain-text snapshot of terminal output for search/indexing.
     /// ANSI sequences are stripped. Automatically trimmed to 64 KB.
     /// </summary>
-    public string OutputSnapshot
-    {
-        get
-        {
-            lock (_outputLock)
-            {
-                return _outputBuilder.ToString();
-            }
-        }
-    }
+    public string OutputSnapshot => OutputBuffer.GetContent();
 
     // ─── Methods ────────────────────────────────────────────────────────────
 
@@ -142,24 +111,7 @@ public partial class TerminalSessionModel : ObservableObject
     /// <param name="command">The raw command text (trimmed).</param>
     public void RecordCommand(string command)
     {
-        if (string.IsNullOrWhiteSpace(command))
-            return;
-
-        var trimmed = command.Trim();
-
-        // Deduplicate: if the last recorded command is identical, skip it.
-        if (_commandQueue.TryPeek(out var last) && last == trimmed)
-            return;
-
-        _commandQueue.Enqueue(trimmed);
-
-        // Trim oldest if over capacity
-        while (_commandQueue.Count > MaxCommandHistory)
-        {
-            _commandQueue.TryDequeue(out _);
-        }
-
-        Interlocked.Increment(ref _commandCount);
+        CommandHistory.Add(command);
         UpdateLastActivity();
     }
 
@@ -171,24 +123,7 @@ public partial class TerminalSessionModel : ObservableObject
     /// <param name="output">Raw output text (may contain ANSI sequences).</param>
     public void AppendOutput(string output)
     {
-        if (string.IsNullOrEmpty(output))
-            return;
-
-        // Strip ANSI escape sequences for plain-text search
-        var plain = AnsiTextHelper.StripAnsi(output);
-
-        lock (_outputLock)
-        {
-            _outputBuilder.Append(plain);
-
-            // Trim from the beginning if we exceed the limit
-            if (_outputBuilder.Length > MaxOutputSnapshotLength)
-            {
-                var excess = _outputBuilder.Length - MaxOutputSnapshotLength;
-                _outputBuilder.Remove(0, excess);
-            }
-        }
-
+        OutputBuffer.Append(output);
         UpdateLastActivity();
     }
 
@@ -218,16 +153,7 @@ public partial class TerminalSessionModel : ObservableObject
     /// </summary>
     /// <param name="currentIndex">0-based from the most recent command. 0 = latest.</param>
     /// <returns>The command text, or null if index is out of range.</returns>
-    public string? GetCommandAt(int index)
-    {
-        var commands = _commandQueue.ToArray();
-        // commands[0] is oldest, commands[^1] is newest
-        // index 0 should return newest
-        var reverseIndex = commands.Length - 1 - index;
-        if (reverseIndex < 0 || reverseIndex >= commands.Length)
-            return null;
-        return commands[reverseIndex];
-    }
+    public string? GetCommandAt(int index) => CommandHistory.GetAt(index);
 
     /// <summary>
     /// Clears all runtime data (history, output snapshot) while preserving identity fields.
@@ -235,13 +161,8 @@ public partial class TerminalSessionModel : ObservableObject
     /// </summary>
     public void ClearRuntimeData()
     {
-        while (_commandQueue.TryDequeue(out _)) { }
-        _commandCount = 0;
-
-        lock (_outputLock)
-        {
-            _outputBuilder.Clear();
-        }
+        CommandHistory.Clear();
+        OutputBuffer.Clear();
     }
 
 }
