@@ -820,8 +820,7 @@
                            IsHitTestVisible="False" />
 
                 <!-- Zoom indicator — bottom-left corner, canvas mode only -->
-                <Border x:Name="ZoomBadge"
-                        HorizontalAlignment="Left"
+                <Border HorizontalAlignment="Left"
                         VerticalAlignment="Bottom"
                         Margin="12,0,0,12"
                         Panel.ZIndex="100"
@@ -830,8 +829,7 @@
                         Background="{DynamicResource Surface0Brush}"
                         IsHitTestVisible="False"
                         Visibility="{Binding CanvasViewModel.IsCanvasMode, Converter={StaticResource BoolToVis}}">
-                    <TextBlock x:Name="ZoomLabel"
-                               Text="100%"
+                    <TextBlock Text="100%"
                                FontFamily="{StaticResource MonoFont}"
                                FontSize="11"
                                Foreground="{DynamicResource SubtextBrush}"
