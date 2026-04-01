@@ -70,16 +70,11 @@ public partial class App : Application
         services.AddSingleton<ILayoutPersistenceService, LayoutPersistenceService>();
         services.AddSingleton<CanvasItemFactory>();
 
-        // WorkspaceService needs CanvasItemFactory which needs IWorkspaceService — break cycle:
-        // CanvasItemFactory has a SetWorkspaceService() method called after both are constructed.
-        services.AddSingleton<IWorkspaceService>(sp =>
-        {
-            var factory = sp.GetRequiredService<CanvasItemFactory>();
-            var persistence = sp.GetRequiredService<IPersistenceService>();
-            var ws = new WorkspaceService(factory, persistence);
-            factory.SetWorkspaceService(ws);
-            return ws;
-        });
+        // Break the circular dependency (WorkspaceService → CanvasItemFactory → IWorkspaceService)
+        // by injecting Lazy<IWorkspaceService> into CanvasItemFactory. The container resolves
+        // Lazy<T> automatically; .Value is only evaluated when first accessed at runtime.
+        services.AddSingleton(sp => new Lazy<IWorkspaceService>(() => sp.GetRequiredService<IWorkspaceService>()));
+        services.AddSingleton<IWorkspaceService, WorkspaceService>();
 
         // ─── Advanced services ───────────────────────────────────────────
         services.AddSingleton<IWorkspaceTreeService, WorkspaceTreeService>();
