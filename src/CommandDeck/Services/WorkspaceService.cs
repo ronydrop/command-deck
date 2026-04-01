@@ -10,7 +10,7 @@ using CommandDeck.ViewModels;
 namespace CommandDeck.Services;
 
 /// <inheritdoc />
-public class WorkspaceService : IWorkspaceService
+public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspaceLifecycleService
 {
     private readonly CanvasItemFactory _factory;
     private readonly IPersistenceService _persistence;
