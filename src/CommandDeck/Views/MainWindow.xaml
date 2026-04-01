@@ -41,6 +41,7 @@
         <KeyBinding Key="Tab" Modifiers="Shift" Command="{Binding NextProjectCommand}" />
         <KeyBinding Key="L" Modifiers="Ctrl+Shift" Command="{Binding CanvasViewModel.ToggleLayoutModeCommand}" />
         <KeyBinding Key="G" Modifiers="Ctrl+Shift" Command="{Binding OpenBranchSelectorCommand}" />
+        <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{Binding ToggleDynamicIslandCommand}" />
         <!-- AI Orb shortcuts -->
         <KeyBinding Key="A" Modifiers="Ctrl+Alt" Command="{Binding AiOrb.ToggleRadialMenuCommand}" />
         <KeyBinding Key="I" Modifiers="Ctrl+Shift" Command="{Binding AiOrb.ImprovePromptCommand}" />

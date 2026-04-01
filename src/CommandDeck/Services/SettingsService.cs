@@ -179,6 +179,12 @@ public partial class AppSettings : ObservableObject
     [ObservableProperty]
     private string _canvasWallpaperStretch = "UniformToFill";
 
+    // ─── Dynamic Island Settings ────────────────────────────────────────────
+
+    /// <summary>Whether the Dynamic Island overlay widget is visible.</summary>
+    [ObservableProperty]
+    private bool _isDynamicIslandEnabled = true;
+
     // ─── AI Orb Settings ────────────────────────────────────────────────────
 
     [ObservableProperty]

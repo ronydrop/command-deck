@@ -34,6 +34,9 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>AI Floating Orb ViewModel.</summary>
     public AiOrbViewModel AiOrb { get; }
+
+    /// <summary>Dynamic Island overlay ViewModel.</summary>
+    public DynamicIslandViewModel DynamicIsland { get; }
     private readonly Dictionary<TerminalViewModel, System.ComponentModel.PropertyChangedEventHandler> _terminalPropertyHandlers = new();
 
     // ─── Sub ViewModels ──────────────────────────────────────────────────────
@@ -166,7 +169,8 @@ public partial class MainViewModel : ObservableObject
         CanvasItemFactory canvasItemFactory,
         IAiTerminalLauncher aiLauncher,
         BranchSelectorViewModel branchSelector,
-        AiOrbViewModel aiOrb)
+        AiOrbViewModel aiOrb,
+        DynamicIslandViewModel dynamicIsland)
     {
         _terminalService = terminalService;
         _projectService = projectService;
@@ -194,6 +198,7 @@ public partial class MainViewModel : ObservableObject
         Browser = browserViewModel;
         BranchSelector = branchSelector;
         AiOrb = aiOrb;
+        DynamicIsland = dynamicIsland;
 
         CommandPalette.CloseRequested += () => IsCommandPaletteOpen = false;
 
@@ -229,6 +234,27 @@ public partial class MainViewModel : ObservableObject
     {
         IsCommandPaletteOpen = true;
         CommandPalette.OpenCommand.Execute(null);
+    }
+
+    /// <summary>
+    /// Toggles the Dynamic Island overlay visibility (Ctrl+Shift+D).
+    /// </summary>
+    [RelayCommand]
+    private void ToggleDynamicIsland()
+        => DynamicIsland.ToggleVisibilityCommand.Execute(null);
+
+    /// <summary>
+    /// Navigates to the terminal session with the given session ID.
+    /// Called by DynamicIslandViewModel when the user clicks a session row.
+    /// </summary>
+    public void FocusSessionById(string sessionId)
+    {
+        var terminal = Terminals.FirstOrDefault(t => t.Session?.Id == sessionId);
+        if (terminal != null)
+        {
+            ActiveTerminal = terminal;
+            CurrentView = ViewType.Terminal;
+        }
     }
 
     /// <summary>

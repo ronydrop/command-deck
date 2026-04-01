@@ -107,6 +107,10 @@ public partial class App : Application
         services.AddSingleton<IClaudeUsageService, ClaudeUsageService>();
         services.AddSingleton<IAssistantService, AssistantService>();
 
+        // ─── Dynamic Island ──────────────────────────────────────────────
+        services.AddSingleton<DynamicIslandViewModel>();
+        services.AddSingleton<DynamicIslandWindow>();
+
         // ─── AI Orb ──────────────────────────────────────────────────────
         services.AddSingleton<IAiOrbService, AiOrbService>();
         services.AddSingleton<IVoiceInputService, VoiceInputService>();
@@ -256,6 +260,17 @@ public partial class App : Application
             return;
         }
 
+        // Show Dynamic Island overlay (non-activating, always-on-top)
+        try
+        {
+            var island = _serviceProvider!.GetRequiredService<DynamicIslandWindow>();
+            island.Show();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DynamicIsland] Window show failed: {ex}");
+        }
+
         // Post-window initialization runs asynchronously to avoid blocking UI thread (deadlock).
         _ = InitializeServicesAsync();
     }
@@ -327,6 +342,17 @@ public partial class App : Application
         {
             System.Diagnostics.Debug.WriteLine($"[AiOrb] Init failed: {ex}");
         }
+
+        // Initialize Dynamic Island (loads existing sessions + persisted visibility)
+        try
+        {
+            var island = _serviceProvider!.GetRequiredService<DynamicIslandViewModel>();
+            await island.InitializeAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DynamicIsland] Init failed: {ex}");
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -369,6 +395,13 @@ public partial class App : Application
                         await settingsService.SaveSettingsAsync(settings);
                     }).Wait(TimeSpan.FromSeconds(3));
                 }
+            }
+            catch { }
+
+            try
+            {
+                var island = _serviceProvider.GetService<DynamicIslandViewModel>();
+                island?.Dispose();
             }
             catch { }
 

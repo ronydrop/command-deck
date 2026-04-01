@@ -4,30 +4,132 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             d:DesignWidth="300" d:DesignHeight="200"
+             d:DesignWidth="300" d:DesignHeight="220"
              Background="{DynamicResource Surface0Brush}"
              Padding="12">
 
-    <StackPanel>
-        <TextBlock Text="Atalhos" FontSize="11"
+    <UserControl.Resources>
+        <Style x:Key="RemoveShortcutButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Visibility" Value="Hidden" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource AccentRedBrush}" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0"
+                   Text="Atalhos"
+                   FontSize="11"
                    Foreground="{DynamicResource SubtextBrush}"
                    Margin="0,0,0,8" />
 
-        <ItemsControl ItemsSource="{Binding Shortcuts}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Button Content="{Binding}"
-                            HorizontalContentAlignment="Left"
-                            Margin="0,2"
-                            Padding="10,6"
-                            Cursor="Hand"
-                            Click="OnShortcutClicked"
-                            Tag="{Binding}"
-                            Style="{StaticResource GhostButton}"
-                            FontFamily="{StaticResource MonoFont}"
-                            FontSize="12" />
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-    </StackPanel>
+        <!-- Shortcut list (scrollable) -->
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Empty state -->
+                <TextBlock x:Name="EmptyLabel"
+                           Text="Nenhum atalho. Adicione um abaixo."
+                           FontSize="11"
+                           Foreground="{DynamicResource SubtextBrush}"
+                           HorizontalAlignment="Center"
+                           Margin="0,12"
+                           Visibility="Collapsed" />
+
+                <ItemsControl ItemsSource="{Binding Shortcuts}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid x:Name="ShortcutRow" Margin="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Execute button -->
+                                <Button Grid.Column="0"
+                                        Content="{Binding}"
+                                        HorizontalContentAlignment="Left"
+                                        Padding="10,6"
+                                        Cursor="Hand"
+                                        Click="OnShortcutClicked"
+                                        Tag="{Binding}"
+                                        Style="{StaticResource GhostButton}"
+                                        FontFamily="{StaticResource MonoFont}"
+                                        FontSize="12" />
+
+                                <!-- Remove button (visible on hover) -->
+                                <Button Grid.Column="1"
+                                        x:Name="RemoveBtn"
+                                        Style="{StaticResource RemoveShortcutButton}"
+                                        Content="✕"
+                                        Tag="{Binding}"
+                                        ToolTip="Remover atalho"
+                                        Click="OnRemoveShortcut" />
+                            </Grid>
+                            <DataTemplate.Triggers>
+                                <Trigger SourceName="ShortcutRow" Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="RemoveBtn" Property="Visibility" Value="Visible" />
+                                </Trigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Add shortcut row -->
+        <Grid Grid.Row="2" Margin="0,8,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBox x:Name="NewCommandInput"
+                     Grid.Column="0"
+                     Style="{StaticResource DarkTextBox}"
+                     Tag="ex: git pull, npm install"
+                     Padding="8,5"
+                     MinHeight="30"
+                     FontFamily="{StaticResource MonoFont}"
+                     FontSize="12"
+                     Margin="0,0,4,0"
+                     KeyDown="OnNewCommandKeyDown" />
+
+            <Button Grid.Column="1"
+                    Content="+"
+                    Width="30"
+                    Height="30"
+                    FontSize="16"
+                    Style="{StaticResource AccentButton}"
+                    Click="OnAddShortcut"
+                    ToolTip="Adicionar atalho (Enter)" />
+        </Grid>
+    </Grid>
 </UserControl>

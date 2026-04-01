@@ -1,6 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -19,6 +21,7 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
     private readonly IGitService? _gitService;
     private readonly IProcessMonitorService? _processMonitorService;
     private readonly IWorkspaceService? _workspaceService;
+    private readonly INotificationService? _notificationService;
 
     [ObservableProperty] private WidgetType _widgetType;
 
@@ -70,13 +73,15 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
         CanvasItemModel model,
         IGitService? gitService = null,
         IProcessMonitorService? processMonitorService = null,
-        IWorkspaceService? workspaceService = null)
+        IWorkspaceService? workspaceService = null,
+        INotificationService? notificationService = null)
         : base(model)
     {
         _widgetType = type;
         _gitService = gitService;
         _processMonitorService = processMonitorService;
         _workspaceService = workspaceService;
+        _notificationService = notificationService;
 
         if (type == WidgetType.Process && processMonitorService is not null)
         {
@@ -105,6 +110,26 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
             {
                 _imageOpacity = op;
             }
+        }
+
+        // Restore shortcuts from metadata and wire persistence
+        if (type == WidgetType.Shortcut)
+        {
+            if (model.Metadata.TryGetValue("shortcuts", out var json))
+            {
+                try
+                {
+                    var list = JsonSerializer.Deserialize<List<string>>(json);
+                    if (list != null)
+                        foreach (var s in list) Shortcuts.Add(s);
+                }
+                catch
+                {
+                    // Malformed JSON — start fresh
+                }
+            }
+
+            Shortcuts.CollectionChanged += OnShortcutsCollectionChanged;
         }
     }
 
@@ -212,11 +237,42 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
         ImagePath = filePath;
     }
 
+    // ─── Shortcut data ────────────────────────────────────────────────────────
+
+    private void OnShortcutsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        Model.Metadata["shortcuts"] = JsonSerializer.Serialize(Shortcuts.ToList());
+    }
+
+    /// <summary>Adds a command to the shortcut list. No-op if empty or already present.</summary>
+    public void AddShortcut(string command)
+    {
+        var trimmed = command.Trim();
+        if (string.IsNullOrEmpty(trimmed) || Shortcuts.Contains(trimmed)) return;
+        Shortcuts.Add(trimmed);
+    }
+
+    /// <summary>Removes a command from the shortcut list.</summary>
+    public void RemoveShortcut(string command) => Shortcuts.Remove(command);
+
     // ─── Shortcut execution ──────────────────────────────────────────────────
 
+    /// <summary>
+    /// Sends the command to the currently active terminal session.
+    /// Shows a warning notification if no terminal is active.
+    /// </summary>
     public async Task ExecuteShortcutAsync(string command)
     {
         if (_workspaceService?.ActiveTerminal is { } active)
+        {
             await active.Terminal.ExecuteCommandAsync(command);
+            return;
+        }
+
+        _notificationService?.Notify(
+            "Nenhum terminal ativo",
+            NotificationType.Warning,
+            NotificationSource.Terminal,
+            "Abra um terminal antes de executar um atalho.");
     }
 }

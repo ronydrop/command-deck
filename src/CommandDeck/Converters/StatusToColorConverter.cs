@@ -81,6 +81,33 @@ public class GitStatusToColorConverter : IValueConverter
 }
 
 /// <summary>
+/// Converts SessionState to a color brush (for Dynamic Island status dots).
+/// </summary>
+public class SessionStateToColorConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        var color = value switch
+        {
+            SessionState.Starting     => Color.FromRgb(0xF9, 0xE2, 0xAF), // Yellow
+            SessionState.Idle         => Color.FromRgb(0xA6, 0xE3, 0xA1), // Green
+            SessionState.Busy         => Color.FromRgb(0x89, 0xB4, 0xFA), // Blue
+            SessionState.WaitingInput => Color.FromRgb(0xCB, 0xA6, 0xF7), // Mauve
+            SessionState.Stopped      => Color.FromRgb(0x58, 0x5B, 0x70), // Gray
+            SessionState.Error        => Color.FromRgb(0xF3, 0x8B, 0xA8), // Red
+            _                         => Color.FromRgb(0x58, 0x5B, 0x70)
+        };
+
+        return new SolidColorBrush(color);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
 /// Converts a hex color string to a SolidColorBrush.
 /// </summary>
 public class HexColorToBrushConverter : IValueConverter

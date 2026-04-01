@@ -157,10 +157,6 @@
                                   Color="#000000" />
             </Border.Effect>
 
-            <Border.CacheMode>
-                <BitmapCache />
-            </Border.CacheMode>
-
             <!-- Hover triggers: intensify shadow + show glow border -->
             <Border.Triggers>
                 <EventTrigger RoutedEvent="Mouse.MouseEnter">

@@ -67,6 +67,9 @@ public partial class CanvasCardControl : UserControl
     private double _itemXAtDragStart;
     private double _itemYAtDragStart;
 
+    // Cached canvas view reference — avoids walking visual tree on every MouseMove
+    private Views.TerminalCanvasView? _cachedCanvasView;
+
     public CanvasCardControl()
     {
         InitializeComponent();
@@ -76,6 +79,22 @@ public partial class CanvasCardControl : UserControl
         AddHandler(UIElement.MouseDownEvent,
             (MouseButtonEventHandler)((_, _) => RaiseEvent(new RoutedEventArgs(CardActivatedEvent, this))),
             handledEventsToo: true);
+
+        Loaded += (_, _) => CacheCanvasView();
+    }
+
+    private void CacheCanvasView()
+    {
+        DependencyObject? current = this;
+        while (current is not null)
+        {
+            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+            if (current is Views.TerminalCanvasView canvasView)
+            {
+                _cachedCanvasView = canvasView;
+                return;
+            }
+        }
     }
 
     // ─── Titlebar drag ───────────────────────────────────────────────────────
@@ -172,8 +191,8 @@ public partial class CanvasCardControl : UserControl
         if (IsTiledMode()) return;
 
         double zoom = GetCanvasZoom();
-        vm.Width = Math.Max(320, vm.Width + e.HorizontalChange / zoom);
-        vm.Height = Math.Max(220, vm.Height + e.VerticalChange / zoom);
+        vm.Width = Math.Clamp(vm.Width + e.HorizontalChange / zoom, 320, SystemParameters.PrimaryScreenWidth);
+        vm.Height = Math.Clamp(vm.Height + e.VerticalChange / zoom, 220, SystemParameters.PrimaryScreenHeight);
         e.Handled = true;
     }
 
@@ -199,19 +218,17 @@ public partial class CanvasCardControl : UserControl
     }
 
     /// <summary>
-    /// Walks up the visual tree to find the TerminalCanvasView and reads the current zoom.
-    /// Falls back to 1.0 if not found.
+    /// Returns the current canvas zoom level using the cached TerminalCanvasView reference.
+    /// Falls back to walking the visual tree if the cache is stale.
     /// </summary>
     private double GetCanvasZoom()
     {
-        DependencyObject? current = this;
-        while (current is not null)
-        {
-            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
-            if (current is Views.TerminalCanvasView canvasView)
-                return canvasView.CurrentZoom;
-        }
-        return 1.0;
+        if (_cachedCanvasView is not null)
+            return _cachedCanvasView.CurrentZoom;
+
+        // Cache miss — walk tree once and cache for future calls
+        CacheCanvasView();
+        return _cachedCanvasView?.CurrentZoom ?? 1.0;
     }
 
     /// <summary>

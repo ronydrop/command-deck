@@ -11,16 +11,21 @@ public class CanvasItemFactory
 {
     private readonly IGitService _gitService;
     private readonly IProcessMonitorService _processMonitorService;
+    private readonly INotificationService _notificationService;
 
     // WorkspaceService is set after construction to break the circular dependency:
     // WorkspaceService → CanvasItemFactory → IWorkspaceService
     private IWorkspaceService? _workspaceServiceRef;
     public void SetWorkspaceService(IWorkspaceService ws) => _workspaceServiceRef = ws;
 
-    public CanvasItemFactory(IGitService gitService, IProcessMonitorService processMonitorService)
+    public CanvasItemFactory(
+        IGitService gitService,
+        IProcessMonitorService processMonitorService,
+        INotificationService notificationService)
     {
         _gitService = gitService;
         _processMonitorService = processMonitorService;
+        _notificationService = notificationService;
     }
 
     // ─── Terminal ───────────────────────────────────────────────────────────────
@@ -95,6 +100,7 @@ public class CanvasItemFactory
             type, model,
             gitService: _gitService,
             processMonitorService: _processMonitorService,
-            workspaceService: _workspaceServiceRef);
+            workspaceService: _workspaceServiceRef,
+            notificationService: _notificationService);
     }
 }
