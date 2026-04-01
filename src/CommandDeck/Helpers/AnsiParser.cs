@@ -17,14 +17,14 @@ public class AnsiParser
     // ─── ANSI Standard Colors (indices 0–7) ─────────────────────────────────
     private static readonly Color[] StandardColors =
     {
-        Color.FromRgb(0x1E, 0x1E, 0x2E), // 0 Black
+        ThemeColors.CatppuccinBase,        // 0 Black
         Color.FromRgb(0xF3, 0x8B, 0xA8), // 1 Red
         Color.FromRgb(0xA6, 0xE3, 0xA1), // 2 Green
         Color.FromRgb(0xF9, 0xE2, 0xAF), // 3 Yellow
         Color.FromRgb(0x89, 0xB4, 0xFA), // 4 Blue
         Color.FromRgb(0xCB, 0xA6, 0xF7), // 5 Magenta
         Color.FromRgb(0x94, 0xE2, 0xD5), // 6 Cyan
-        Color.FromRgb(0xCD, 0xD6, 0xF4), // 7 White
+        ThemeColors.CatppuccinText,        // 7 White
     };
 
     // ─── ANSI Bright Colors (indices 8–15) ──────────────────────────────────
