@@ -163,6 +163,7 @@ public partial class App : Application
         services.AddSingleton<WorktreeSelectorViewModel>();
         services.AddSingleton<TerminalCanvasViewModel>();
         services.AddSingleton<AssistantPanelViewModel>();
+        services.AddSingleton<TerminalManagerViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<ProjectListViewModel>();
         services.AddSingleton<DashboardViewModel>();

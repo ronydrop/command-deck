@@ -26,7 +26,6 @@ public partial class MainViewModel : ObservableObject
     private readonly INotificationService _notificationService;
     private readonly IPaneStateService _paneStateService;
     private readonly IUpdateService _updateService;
-    private readonly Func<TerminalViewModel> _terminalVmFactory;
     private readonly Func<SettingsViewModel> _settingsVmFactory;
     private readonly Func<ProjectEditViewModel> _projectEditVmFactory;
     private readonly CanvasItemFactory _canvasItemFactory;
@@ -39,9 +38,11 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>Dynamic Island overlay ViewModel.</summary>
     public DynamicIslandViewModel DynamicIsland { get; }
-    private readonly Dictionary<TerminalViewModel, System.ComponentModel.PropertyChangedEventHandler> _terminalPropertyHandlers = new();
 
     // ─── Sub ViewModels ──────────────────────────────────────────────────────
+
+    /// <summary>Manages terminal tab lifecycle (create, close, active tracking).</summary>
+    public TerminalManagerViewModel TerminalManager { get; }
 
     public ProjectListViewModel ProjectList { get; }
     public DashboardViewModel Dashboard { get; }
@@ -65,11 +66,15 @@ public partial class MainViewModel : ObservableObject
 
     // ─── Observable Properties ───────────────────────────────────────────────
 
-    [ObservableProperty]
-    private ObservableCollection<TerminalViewModel> _terminals = new();
-
-    [ObservableProperty]
-    private TerminalViewModel? _activeTerminal;
+    // Delegating wrappers — keep XAML bindings working without changes
+    public ObservableCollection<TerminalViewModel> Terminals => TerminalManager.Terminals;
+    public TerminalViewModel? ActiveTerminal
+    {
+        get => TerminalManager.ActiveTerminal;
+        set => TerminalManager.ActiveTerminal = value;
+    }
+    public int ActiveTerminalCount => TerminalManager.ActiveTerminalCount;
+    public string ShellTypeDisplay => TerminalManager.ShellTypeDisplay;
 
     [ObservableProperty]
     private Project? _currentProject;
@@ -95,13 +100,7 @@ public partial class MainViewModel : ObservableObject
     private string _gitBranchDisplay = string.Empty;
 
     [ObservableProperty]
-    private string _shellTypeDisplay = string.Empty;
-
-    [ObservableProperty]
     private int _activeProcessCount;
-
-    [ObservableProperty]
-    private int _activeTerminalCount;
 
     // ─── Notification Properties ────────────────────────────────────────────
 
@@ -160,7 +159,7 @@ public partial class MainViewModel : ObservableObject
         TerminalCanvasViewModel canvasViewModel,
         CommandPaletteViewModel commandPalette,
         WorkspaceTreeViewModel workspaceTree,
-        Func<TerminalViewModel> terminalVmFactory,
+        TerminalManagerViewModel terminalManager,
         Func<SettingsViewModel> settingsVmFactory,
         Func<ProjectEditViewModel> projectEditVmFactory,
         ProjectListViewModel projectList,
@@ -185,7 +184,6 @@ public partial class MainViewModel : ObservableObject
         _notificationService = notificationService;
         _paneStateService = paneStateService;
         _updateService = updateService;
-        _terminalVmFactory = terminalVmFactory;
         _settingsVmFactory = settingsVmFactory;
         _projectEditVmFactory = projectEditVmFactory;
         _canvasItemFactory = canvasItemFactory;
@@ -195,6 +193,7 @@ public partial class MainViewModel : ObservableObject
         // Update ViewModel observable properties from the service result
         _projectSwitchService.SwitchCompleted += OnProjectSwitchCompleted;
 
+        TerminalManager = terminalManager;
         ProjectList = projectList;
         Dashboard = dashboard;
         ProcessMonitor = processMonitor;
@@ -206,6 +205,11 @@ public partial class MainViewModel : ObservableObject
         BranchSelector = branchSelector;
         AiOrb = aiOrb;
         DynamicIsland = dynamicIsland;
+
+        // Wire TerminalManager context and events
+        TerminalManager.CurrentProject = null; // will be set on project switch
+        TerminalManager.CanvasViewModel = CanvasViewModel;
+        TerminalManager.AllTerminalsClosed += (_, _) => CurrentView = ViewType.Dashboard;
 
         CommandPalette.CloseRequested += () => IsCommandPaletteOpen = false;
 
@@ -398,46 +402,13 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Creates a new terminal tab.
+    /// Creates a new terminal tab (delegates to <see cref="TerminalManagerViewModel"/>).
     /// </summary>
     [RelayCommand]
     private async Task NewTerminal()
     {
-        var settings = await _settingsService.GetSettingsAsync();
-        var shellType = CurrentProject?.DefaultShell ?? settings.DefaultShell;
-        var workDir = CurrentProject?.Path;
-
-        var terminalVm = _terminalVmFactory();
-        Terminals.Add(terminalVm);
-        ActiveTerminal = terminalVm;
-        ActiveTerminalCount = Terminals.Count;
-
-        await terminalVm.PrepareAsync(shellType, workDir, CurrentProject?.Id);
-
-        // Register with workspace so it appears as a spatial canvas item
-        _workspaceService.AddTerminalItem(terminalVm);
-
-        // Auto-register the new canvas item in the workspace tree sidebar
-        var canvasItems = _workspaceService.TerminalItems;
-        var addedItem = canvasItems.LastOrDefault();
-        if (addedItem is not null && !WorkspaceTree.HasNodeForCanvasItem(addedItem.Model.Id))
-        {
-            _ = WorkspaceTree.RegisterTerminalAsync(addedItem.Title, addedItem.Model.Id, CurrentProject?.Id)
-                .ContinueWith(t => System.Diagnostics.Debug.WriteLine($"[WorkspaceTree] RegisterTerminalAsync error: {t.Exception}"), TaskContinuationOptions.OnlyOnFaulted);
-
-            // Sync title changes to workspace tree when shell updates via OSC sequences
-            var capturedItem = addedItem;
-            System.ComponentModel.PropertyChangedEventHandler handler = async (_, args) =>
-            {
-                if (args.PropertyName == nameof(TerminalCanvasItemViewModel.Title))
-                    try { await WorkspaceTree.SyncTerminalTitleAsync(capturedItem.Model.Id, capturedItem.Title); }
-                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[WorkspaceTree] SyncTerminalTitleAsync error: {ex}"); }
-            };
-            terminalVm.PropertyChanged += handler;
-            _terminalPropertyHandlers[terminalVm] = handler;
-        }
-
-        ShellTypeDisplay = shellType.GetDisplayName();
+        TerminalManager.CurrentProject = CurrentProject;
+        await TerminalManager.NewTerminal();
         CurrentView = ViewType.Terminal;
     }
 
@@ -468,47 +439,11 @@ public partial class MainViewModel : ObservableObject
     private Task LaunchCcOpenRouter() => _aiLauncher.LaunchAsync(AiSessionType.CcOpenRouter);
 
     /// <summary>
-    /// Closes a terminal tab.
+    /// Closes a terminal tab (delegates to <see cref="TerminalManagerViewModel"/>).
     /// </summary>
     [RelayCommand]
-    private async Task CloseTerminal(TerminalViewModel? terminal)
-    {
-        if (terminal == null) return;
-
-        // Remove from workspace canvas first
-        var canvasItem = _workspaceService.TerminalItems
-            .FirstOrDefault(i => i.Terminal == terminal);
-        if (canvasItem is not null)
-        {
-            _workspaceService.RemoveItem(canvasItem.Model.Id);
-            _ = WorkspaceTree.UnregisterCanvasItemAsync(canvasItem.Model.Id)
-                .ContinueWith(t => System.Diagnostics.Debug.WriteLine($"[WorkspaceTree] UnregisterCanvasItemAsync error: {t.Exception}"), TaskContinuationOptions.OnlyOnFaulted);
-        }
-
-        // Unsubscribe PropertyChanged handler to prevent memory leak
-        if (_terminalPropertyHandlers.TryGetValue(terminal, out var handler))
-        {
-            terminal.PropertyChanged -= handler;
-            _terminalPropertyHandlers.Remove(terminal);
-        }
-
-        int index = Terminals.IndexOf(terminal);
-        await terminal.DisposeAsync();
-        Terminals.Remove(terminal);
-        ActiveTerminalCount = Terminals.Count;
-
-        // Select adjacent tab
-        if (Terminals.Count > 0)
-        {
-            int newIndex = index >= 0 ? Math.Min(index, Terminals.Count - 1) : 0;
-            ActiveTerminal = Terminals[newIndex];
-        }
-        else
-        {
-            ActiveTerminal = null;
-            CurrentView = ViewType.Dashboard;
-        }
-    }
+    private Task CloseTerminal(TerminalViewModel? terminal)
+        => TerminalManager.CloseTerminal(terminal);
 
     /// <summary>
     /// Navigates to the next terminal tab.
@@ -609,25 +544,19 @@ public partial class MainViewModel : ObservableObject
         if (!await _projectSwitchLock.WaitAsync(0)) return; // skip if already switching
 
         // Snapshot of ViewModel-owned state consumed by the service
-        var activeTerminals = Terminals.ToList();
+        var activeTerminals = TerminalManager.Terminals.ToList();
 
         // Clean up property handlers on the UI thread before disposal
-        foreach (var t in activeTerminals)
-        {
-            if (_terminalPropertyHandlers.TryGetValue(t, out var h))
-            {
-                t.PropertyChanged -= h;
-                _terminalPropertyHandlers.Remove(t);
-            }
-        }
+        TerminalManager.DetachAllPropertyHandlers(activeTerminals);
 
         // Update CurrentProject and view before handing off to the service so that
         // bindings that read CurrentProject are consistent during the switch.
         CurrentProject = project;
+        TerminalManager.CurrentProject = project;
         CurrentView = ViewType.Terminal;
-        Terminals.Clear();
-        ActiveTerminal = null;
-        ActiveTerminalCount = 0;
+        TerminalManager.Terminals.Clear();
+        TerminalManager.ActiveTerminal = null;
+        TerminalManager.ActiveTerminalCount = 0;
 
         IsProjectSwitching = true;
         ProjectSwitchMessage = $"Carregando {project.Name}…";
@@ -637,7 +566,7 @@ public partial class MainViewModel : ObservableObject
         {
             CurrentProjectId = CanvasViewModel.CurrentProjectId,
             ActiveTerminals = activeTerminals,
-            TerminalVmFactory = _terminalVmFactory,
+            TerminalVmFactory = TerminalManager.TerminalVmFactory,
         };
 
         var progress = new Progress<string>(msg =>
@@ -685,11 +614,7 @@ public partial class MainViewModel : ObservableObject
         // ObservableCollection — must be on UI thread
         Application.Current?.Dispatcher.Invoke(() =>
         {
-            Terminals.Clear();
-            foreach (var vm in result.RestoredTerminals)
-                Terminals.Add(vm);
-            ActiveTerminal = result.ActiveTerminal ?? Terminals.FirstOrDefault();
-            ActiveTerminalCount = Terminals.Count;
+            TerminalManager.ApplySwitchResult(result);
         });
 
         StatusBarText = $"Project: {result.SwitchedTo.Name} — ready";
@@ -732,7 +657,7 @@ public partial class MainViewModel : ObservableObject
             Category = Models.CommandCategory.Terminal,
             IconKey = "TerminalIcon",
             Priority = 100,
-            Execute = () => NewTerminalCommand.Execute(null)
+            Execute = () => NewTerminalCommand.Execute(null)  // delegates to TerminalManager internally
         });
 
         _commandPaletteService.Register(new Models.CommandDefinitionModel
@@ -837,13 +762,9 @@ public partial class MainViewModel : ObservableObject
 
     private async Task RunCommandInNewTerminalAsync(string command)
     {
-        await NewTerminal();
-        if (ActiveTerminal != null)
-        {
-            // Small delay to let the shell start
-            await Task.Delay(500);
-            await ActiveTerminal.ExecuteCommandAsync(command);
-        }
+        TerminalManager.CurrentProject = CurrentProject;
+        await TerminalManager.RunCommandInNewTerminalAsync(command);
+        CurrentView = ViewType.Terminal;
     }
 
     partial void OnIsAIPanelOpenChanged(bool value)
@@ -870,18 +791,6 @@ public partial class MainViewModel : ObservableObject
             ProcessMonitor.StopMonitoring();
     }
 
-    partial void OnActiveTerminalChanged(TerminalViewModel? value)
-    {
-        // Deactivate all, activate selected
-        foreach (var t in Terminals)
-            t.IsActive = false;
-
-        if (value != null)
-        {
-            value.IsActive = true;
-            ShellTypeDisplay = value.ShellType.GetDisplayName();
-        }
-    }
 }
 
 /// <summary>
