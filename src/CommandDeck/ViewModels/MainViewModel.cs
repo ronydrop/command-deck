@@ -486,7 +486,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         int index = Terminals.IndexOf(terminal);
-        terminal.Dispose();
+        await terminal.DisposeAsync();
         Terminals.Remove(terminal);
         ActiveTerminalCount = Terminals.Count;
 
@@ -648,7 +648,7 @@ public partial class MainViewModel : ObservableObject
                     _terminalPropertyHandlers.Remove(t);
                 }
                 var terminal = t;
-                disposeTasks.Add(Task.Run(() => terminal.Dispose()));
+                disposeTasks.Add(Task.Run(() => terminal.DisposeAsync().AsTask()));
             }
             Terminals.Clear();
             ActiveTerminal = null;
