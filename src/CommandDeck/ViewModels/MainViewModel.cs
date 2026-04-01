@@ -194,6 +194,16 @@ public partial class MainViewModel : ObservableObject
         _projectSwitchService.SwitchCompleted += OnProjectSwitchCompleted;
 
         TerminalManager = terminalManager;
+
+        // Propagate TerminalManager property changes to XAML bindings on MainViewModel
+        TerminalManager.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(TerminalManager.ActiveTerminal)
+                               or nameof(TerminalManager.ActiveTerminalCount)
+                               or nameof(TerminalManager.ShellTypeDisplay))
+                OnPropertyChanged(e.PropertyName);
+        };
+
         ProjectList = projectList;
         Dashboard = dashboard;
         ProcessMonitor = processMonitor;
