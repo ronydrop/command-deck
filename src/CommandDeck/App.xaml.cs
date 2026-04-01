@@ -239,7 +239,7 @@ public partial class App : Application
                 }
             }
         }
-        catch { }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[App.OnStartup] Theme load failed: {ex.Message}"); }
 
         // Resolve and show the main window
         try
@@ -298,7 +298,7 @@ public partial class App : Application
                     "openrouter" => "ai_openrouter_api_key",
                     _ => "ai_openai_api_key"
                 };
-                try { apiKey = await secretStorage.RetrieveSecretAsync(secretName) ?? string.Empty; } catch { }
+                try { apiKey = await secretStorage.RetrieveSecretAsync(secretName) ?? string.Empty; } catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[App.InitializeServicesAsync] Secret retrieval failed ({secretName}): {ex.Message}"); }
 
                 // For Ollama, use its dedicated base URL field; other providers ignore baseUrl.
                 var baseUrl = providerLower == "local" ? appSettings.OllamaBaseUrl : string.Empty;
@@ -361,7 +361,7 @@ public partial class App : Application
                 if (mainVm != null)
                     Task.Run(() => mainVm.CanvasViewModel.SaveCurrentLayoutAsync()).Wait(TimeSpan.FromSeconds(3));
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[App.OnExit] Layout save failed: {ex.Message}"); }
 
             // Close all terminal sessions before shutdown (with timeout)
             try
@@ -370,7 +370,7 @@ public partial class App : Application
                 if (terminalService != null)
                     Task.Run(() => terminalService.CloseAllSessionsAsync()).Wait(TimeSpan.FromSeconds(3));
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[App.OnExit] Terminal sessions close failed: {ex.Message}"); }
 
             // Persist window state (with timeout)
             try
@@ -391,14 +391,14 @@ public partial class App : Application
                     }).Wait(TimeSpan.FromSeconds(3));
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[App.OnExit] Settings save failed: {ex.Message}"); }
 
             try
             {
                 var island = _serviceProvider.GetService<DynamicIslandViewModel>();
                 island?.Dispose();
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[App.OnExit] DynamicIsland dispose failed: {ex.Message}"); }
 
             if (_serviceProvider is IDisposable disposable)
                 disposable.Dispose();
