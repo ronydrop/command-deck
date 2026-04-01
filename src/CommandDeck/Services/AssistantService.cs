@@ -20,6 +20,16 @@ public sealed class AssistantService : IAssistantService
     private readonly IDatabaseService _db;
     private readonly IClaudeUsageService _usageService;
 
+    // ─── Centralized provider name ↔ enum mapping ─────────────────────────
+    private static readonly Dictionary<string, AssistantProviderType> ProvidersByName =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["OpenAI"]      = AssistantProviderType.OpenAI,
+            ["Anthropic"]   = AssistantProviderType.Anthropic,
+            ["Ollama"]      = AssistantProviderType.Ollama,
+            ["OpenRouter"]  = AssistantProviderType.OpenRouter,
+        };
+
     // ─── Expanded WSL state ───────────────────────────────────────────────
     private readonly Dictionary<string, IAssistantProvider> _providersByName = new(StringComparer.OrdinalIgnoreCase);
     private bool _isDisposed;
@@ -103,14 +113,8 @@ public sealed class AssistantService : IAssistantService
         {
             _active = found;
             _settings.ActiveProvider = type;
-            var model = type switch
-            {
-                AssistantProviderType.OpenAI => _settings.OpenAIModel,
-                AssistantProviderType.Anthropic => _settings.AnthropicModel,
-                AssistantProviderType.OpenRouter => _settings.OpenRouterModel,
-                _ => _settings.OllamaModel
-            };
-            _ = _db.SaveAssistantPreferencesAsync(found.ProviderName, model);
+            // GetCurrentModel() already reads from the just-updated ActiveProvider
+            _ = _db.SaveAssistantPreferencesAsync(found.ProviderName, GetCurrentModel());
         }
     }
 
@@ -119,35 +123,17 @@ public sealed class AssistantService : IAssistantService
         var prefs = await _db.GetAssistantPreferencesAsync();
         if (prefs is null) return;
 
-        var providerType = prefs.Value.providerName switch
-        {
-            "OpenAI" => AssistantProviderType.OpenAI,
-            "Anthropic" => AssistantProviderType.Anthropic,
-            "OpenRouter" => AssistantProviderType.OpenRouter,
-            _ => AssistantProviderType.Ollama
-        };
+        // Use centralized mapping; unknown names fall back to Ollama
+        var providerType = ProvidersByName.GetValueOrDefault(
+            prefs.Value.providerName,
+            AssistantProviderType.Ollama);
 
         var found = ResolveProvider(providerType);
         if (found is not null)
         {
             _active = found;
             _settings.ActiveProvider = providerType;
-
-            switch (providerType)
-            {
-                case AssistantProviderType.Anthropic:
-                    _settings.AnthropicModel = prefs.Value.model;
-                    break;
-                case AssistantProviderType.OpenAI:
-                    _settings.OpenAIModel = prefs.Value.model;
-                    break;
-                case AssistantProviderType.OpenRouter:
-                    _settings.OpenRouterModel = prefs.Value.model;
-                    break;
-                default:
-                    _settings.OllamaModel = prefs.Value.model;
-                    break;
-            }
+            ApplyModelToSettings(providerType, prefs.Value.model);
         }
     }
 
@@ -238,16 +224,15 @@ public sealed class AssistantService : IAssistantService
     /// <inheritdoc/>
     public void ApplySettings(string provider, string model, string baseUrl, string apiKey, string? anthropicAuthMode = null)
     {
-        // Map the Settings-screen provider string to the enum
-        var providerType = provider?.ToLowerInvariant() switch
+        // Normalize Settings-screen aliases ("local" → "Ollama") then use centralized mapping
+        var normalizedProvider = provider?.ToLowerInvariant() switch
         {
-            "openai"     => AssistantProviderType.OpenAI,
-            "anthropic"  => AssistantProviderType.Anthropic,
-            "openrouter" => AssistantProviderType.OpenRouter,
-            "local"      => AssistantProviderType.Ollama,
-            "ollama"     => AssistantProviderType.Ollama,
-            _            => AssistantProviderType.None
+            "local" => "Ollama",
+            _       => provider
         };
+        var providerType = ProvidersByName.GetValueOrDefault(
+            normalizedProvider ?? string.Empty,
+            AssistantProviderType.None);
 
         // Update the shared AssistantSettings object (singleton, used by providers)
         switch (providerType)
@@ -283,13 +268,7 @@ public sealed class AssistantService : IAssistantService
             if (found is not null)
             {
                 _active = found;
-                var modelName = providerType switch
-                {
-                    AssistantProviderType.OpenAI => _settings.OpenAIModel,
-                    AssistantProviderType.Anthropic => _settings.AnthropicModel,
-                    AssistantProviderType.OpenRouter => _settings.OpenRouterModel,
-                    _ => _settings.OllamaModel
-                };
+                var modelName = GetCurrentModel();
                 _ = _db.SaveAssistantPreferencesAsync(found.ProviderName, modelName);
             }
         }
@@ -297,22 +276,39 @@ public sealed class AssistantService : IAssistantService
 
     // ─── Private helpers ──────────────────────────────────────────────────
 
+    /// <summary>
+    /// Writes <paramref name="model"/> into the correct <see cref="AssistantSettings"/> property
+    /// for the given provider type. Centralizes the per-provider model field assignment.
+    /// </summary>
+    private void ApplyModelToSettings(AssistantProviderType providerType, string model)
+    {
+        switch (providerType)
+        {
+            case AssistantProviderType.Anthropic:
+                _settings.AnthropicModel = model;
+                break;
+            case AssistantProviderType.OpenAI:
+                _settings.OpenAIModel = model;
+                break;
+            case AssistantProviderType.OpenRouter:
+                _settings.OpenRouterModel = model;
+                break;
+            default:
+                _settings.OllamaModel = model;
+                break;
+        }
+    }
+
     private IAssistantProvider? ResolveProvider(AssistantProviderType type)
     {
-        // Map enum values to well-known provider names
-        var targetName = type switch
-        {
-            AssistantProviderType.Ollama => "Ollama",
-            AssistantProviderType.OpenAI => "OpenAI",
-            AssistantProviderType.Anthropic => "Anthropic",
-            AssistantProviderType.OpenRouter => "OpenRouter",
-            _ => null
-        };
+        // Derive provider name from the centralized dictionary (reverse lookup)
+        var targetName = ProvidersByName
+            .FirstOrDefault(kv => kv.Value == type).Key;
 
         if (targetName is null)
             return null;
 
-        // Try WSL-style name lookup first, then fall back to WIN ProviderName
+        // Try instance-level name lookup first, then fall back to ProviderName scan
         if (_providersByName.TryGetValue(targetName, out var found))
             return found;
 
