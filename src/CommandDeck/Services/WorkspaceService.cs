@@ -356,8 +356,8 @@ public class WorkspaceService : IWorkspaceService
         // Use the size of the item about to be placed (terminal default is 620×420).
         // Widgets vary, so fall back to their model size — but cascade is called before
         // the item is created, so we use the terminal default here; widgets land nearby.
-        const double itemW = 620;
-        const double itemH = 420;
+        const double itemW = 780;
+        const double itemH = 520;
 
         var result = (_nextX, _nextY);
 

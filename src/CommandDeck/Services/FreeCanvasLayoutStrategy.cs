@@ -11,8 +11,8 @@ namespace CommandDeck.Services;
 /// </summary>
 public class FreeCanvasLayoutStrategy : ILayoutStrategy
 {
-    private const double ItemWidth = 620;
-    private const double ItemHeight = 420;
+    private const double ItemWidth = 780;
+    private const double ItemHeight = 520;
     private const double Padding = 24;
     private const double MaxWidth = 1800;
 
