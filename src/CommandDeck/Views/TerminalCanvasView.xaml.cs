@@ -62,6 +62,15 @@ public partial class TerminalCanvasView : UserControl
     private const double ZoomLerpEpsilon = 0.0005;
     private bool _zoomRequiresCtrl = true;
 
+    // ─── Rubber-band selection state ─────────────────────────────────────────
+
+    private bool  _isRubberBanding;
+    private bool  _rubberBandPending;   // true after mouse-down, before drag threshold
+    private Point _rubberBandOrigin;    // viewport-space origin
+    private bool  _rubberBandAdditive;  // true when Ctrl is held at drag start
+    private System.Collections.Generic.HashSet<CanvasItemViewModel>? _lastRubberBandSet;
+    private const double RubberBandThreshold = 5.0;
+
     // ─── Pre-focus snapshot (for animated return) ─────────────────────────
 
     private double _preFocusScale;
@@ -204,6 +213,60 @@ public partial class TerminalCanvasView : UserControl
         {
             if (TryPasteImageFromClipboard())
                 e.Handled = true;
+            return;
+        }
+
+        // Delete: bulk-delete selected items (only when focus is NOT inside a terminal input)
+        if (e.Key == Key.Delete && _canvasVm?.SelectedCount > 0 && _canvasVm.IsCanvasMode)
+        {
+            if (!IsTerminalInputFocused())
+            {
+                _ = BulkDeleteSelectedAsync();
+                e.Handled = true;
+            }
+            return;
+        }
+
+        // Ctrl+A: select all items on canvas
+        if (e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control && _canvasVm?.IsCanvasMode == true)
+        {
+            if (!IsTerminalInputFocused())
+            {
+                _canvasVm.SelectRange(_canvasVm.Items, additive: false);
+                e.Handled = true;
+            }
+        }
+    }
+
+    /// <summary>Returns true when the currently focused element is inside a terminal input control.</summary>
+    private static bool IsTerminalInputFocused()
+    {
+        var focused = Keyboard.FocusedElement as DependencyObject;
+        while (focused is not null)
+        {
+            if (focused is TerminalControl) return true;
+            focused = VisualTreeHelper.GetParent(focused);
+        }
+        return false;
+    }
+
+    /// <summary>Deletes all currently selected terminals and widgets.</summary>
+    private async System.Threading.Tasks.Task BulkDeleteSelectedAsync()
+    {
+        if (_canvasVm is null || _mainVm is null) return;
+
+        var terminals = _canvasVm.SelectedItems.OfType<TerminalCanvasItemViewModel>().ToList();
+        var widgets   = _canvasVm.SelectedItems.Except(terminals.Cast<CanvasItemViewModel>()).ToList();
+
+        _canvasVm.ClearSelection();
+
+        foreach (var w in widgets)
+            _canvasVm.Items.Remove(w);
+
+        foreach (var t in terminals)
+        {
+            if (_mainVm.CloseTerminalCommand is not null)
+                await _mainVm.CloseTerminalCommand.ExecuteAsync(t.Terminal);
         }
     }
 
@@ -216,60 +279,121 @@ public partial class TerminalCanvasView : UserControl
 
     private void OnViewportMouseDown(object sender, MouseButtonEventArgs e)
     {
-        // Allow panning in both canvas and tiled modes
         if (_canvasVm is null) return;
 
-        // Pan with middle mouse OR left button on empty canvas background
-        bool isMiddle = e.ChangedButton == MouseButton.Middle;
-        bool isLeft   = e.ChangedButton == MouseButton.Left && IsCanvasBackground(e.Source);
+        // Middle mouse → pan canvas (works in all modes)
+        if (e.ChangedButton == MouseButton.Middle)
+        {
+            _isPanning  = true;
+            _panStart   = e.GetPosition(ViewportArea);
+            _panOriginX = CanvasTranslate.X;
+            _panOriginY = CanvasTranslate.Y;
 
-        if (!isMiddle && !isLeft) return;
+            _momentumTimer?.Stop();
+            _momentumVelX = 0;
+            _momentumVelY = 0;
+            _lastPanPos  = _panStart;
+            _lastPanTime = DateTime.UtcNow;
 
-        _isPanning   = true;
-        _panStart    = e.GetPosition(ViewportArea);
-        _panOriginX  = CanvasTranslate.X;
-        _panOriginY  = CanvasTranslate.Y;
+            StopZoomLerp();
+            Mouse.Capture(ViewportArea);
+            ViewportArea.Cursor = Cursors.SizeAll;
+            e.Handled = false;
+            return;
+        }
 
-        _momentumTimer?.Stop();
-        _momentumVelX = 0;
-        _momentumVelY = 0;
-        _lastPanPos   = _panStart;
-        _lastPanTime  = DateTime.UtcNow;
+        // Left click on empty background → rubber-band selection (FreeCanvas only)
+        if (e.ChangedButton == MouseButton.Left && IsCanvasBackground(e.Source)
+            && _canvasVm.IsCanvasMode && !_canvasVm.IsFocusMode)
+        {
+            _rubberBandPending  = true;
+            _rubberBandOrigin   = e.GetPosition(ViewportArea);
+            _rubberBandAdditive = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+            _lastRubberBandSet  = null;
 
-        // Stop any active zoom lerp and reset targets.
-        StopZoomLerp();
+            // Move keyboard focus away from any terminal input so the
+            // Delete key can be used for bulk-delete after rubber-band selection.
+            Keyboard.ClearFocus();
 
-        Mouse.Capture(ViewportArea);
-        ViewportArea.Cursor = Cursors.SizeAll;
-        e.Handled = false;
+            Mouse.Capture(ViewportArea);
+            e.Handled = false;
+        }
     }
 
     private void OnViewportMouseMove(object sender, MouseEventArgs e)
     {
+        // ── Rubber-band ────────────────────────────────────────────────
+        if (_rubberBandPending || _isRubberBanding)
+        {
+            var pos = e.GetPosition(ViewportArea);
+
+            if (_rubberBandPending)
+            {
+                double dx = pos.X - _rubberBandOrigin.X;
+                double dy = pos.Y - _rubberBandOrigin.Y;
+                if (Math.Sqrt(dx * dx + dy * dy) >= RubberBandThreshold)
+                {
+                    _rubberBandPending = false;
+                    _isRubberBanding   = true;
+                    SelectionRect.Visibility = Visibility.Visible;
+                    ViewportArea.Cursor = Cursors.Cross;
+                }
+            }
+
+            if (_isRubberBanding)
+            {
+                UpdateSelectionRectVisual(pos);
+                UpdateRubberBandSelection(pos);
+            }
+            return;
+        }
+
+        // ── Pan ────────────────────────────────────────────────────────
         if (!_isPanning) return;
 
-        var pos = e.GetPosition(ViewportArea);
-        CanvasTranslate.X = _panOriginX + pos.X - _panStart.X;
+        var panPos = e.GetPosition(ViewportArea);
+        CanvasTranslate.X = _panOriginX + panPos.X - _panStart.X;
 
         // In tiled mode, lock vertical axis (horizontal strip only)
         if (_canvasVm?.IsTiledMode != true)
-            CanvasTranslate.Y = _panOriginY + pos.Y - _panStart.Y;
-
+            CanvasTranslate.Y = _panOriginY + panPos.Y - _panStart.Y;
 
         var now = DateTime.UtcNow;
         double dt = (now - _lastPanTime).TotalSeconds;
         if (dt > 0 && dt < 0.1)
         {
-            _momentumVelX = (pos.X - _lastPanPos.X) / dt;
-            _momentumVelY = _canvasVm?.IsTiledMode == true ? 0 : (pos.Y - _lastPanPos.Y) / dt;
+            _momentumVelX = (panPos.X - _lastPanPos.X) / dt;
+            _momentumVelY = _canvasVm?.IsTiledMode == true ? 0 : (panPos.Y - _lastPanPos.Y) / dt;
         }
-        _lastPanPos  = pos;
+        _lastPanPos  = panPos;
         _lastPanTime = now;
         _canvasVm?.SyncCamera(CanvasTranslate.X, CanvasTranslate.Y, CanvasScale.ScaleX);
     }
 
     private void OnViewportMouseUp(object sender, MouseButtonEventArgs e)
     {
+        // ── Rubber-band pending → was a simple click → deselect all ───
+        if (_rubberBandPending)
+        {
+            _rubberBandPending = false;
+            Mouse.Capture(null);
+            if (!_rubberBandAdditive)
+                _canvasVm?.ClearSelection();
+            return;
+        }
+
+        // ── Rubber-band drag → finalize selection ──────────────────────
+        if (_isRubberBanding)
+        {
+            _isRubberBanding = false;
+            SelectionRect.Visibility = Visibility.Collapsed;
+            _lastRubberBandSet = null;
+            Mouse.Capture(null);
+            ViewportArea.Cursor = Cursors.Arrow;
+            return;
+        }
+
+        // ── Pan end ────────────────────────────────────────────────────
         if (!_isPanning) return;
         _isPanning = false;
         Mouse.Capture(null);
@@ -277,6 +401,60 @@ public partial class TerminalCanvasView : UserControl
         _canvasVm?.SyncCamera(CanvasTranslate.X, CanvasTranslate.Y, CanvasScale.ScaleX);
         _momentumVelX = 0;
         _momentumVelY = 0;
+    }
+
+    /// <summary>Updates the visual position and size of the rubber-band rectangle.</summary>
+    private void UpdateSelectionRectVisual(Point current)
+    {
+        double x = Math.Min(_rubberBandOrigin.X, current.X);
+        double y = Math.Min(_rubberBandOrigin.Y, current.Y);
+        double w = Math.Abs(current.X - _rubberBandOrigin.X);
+        double h = Math.Abs(current.Y - _rubberBandOrigin.Y);
+
+        Canvas.SetLeft(SelectionRect, x);
+        Canvas.SetTop(SelectionRect, y);
+        SelectionRect.Width  = w;
+        SelectionRect.Height = h;
+    }
+
+    /// <summary>
+    /// Updates ViewModel selection to match items whose bounds intersect the rubber-band rect.
+    /// Only triggers a SelectRange call when the set of intersecting items actually changes,
+    /// avoiding per-frame allocation churn.
+    /// </summary>
+    private void UpdateRubberBandSelection(Point current)
+    {
+        if (_canvasVm is null) return;
+
+        double x = Math.Min(_rubberBandOrigin.X, current.X);
+        double y = Math.Min(_rubberBandOrigin.Y, current.Y);
+        double w = Math.Abs(current.X - _rubberBandOrigin.X);
+        double h = Math.Abs(current.Y - _rubberBandOrigin.Y);
+
+        var viewportRect = new Rect(x, y, w, h);
+        var worldRect    = ViewportToWorld(viewportRect);
+
+        var newSet = new System.Collections.Generic.HashSet<CanvasItemViewModel>(
+            _canvasVm.Items.Where(i => worldRect.IntersectsWith(new Rect(i.X, i.Y, i.Width, i.Height))));
+
+        // Skip if same set as last frame
+        if (_lastRubberBandSet is not null && newSet.SetEquals(_lastRubberBandSet)) return;
+        _lastRubberBandSet = newSet;
+
+        _canvasVm.SelectRange(newSet, _rubberBandAdditive);
+    }
+
+    /// <summary>Converts a rectangle from viewport space to world (canvas) space.</summary>
+    private Rect ViewportToWorld(Rect viewportRect)
+    {
+        double s  = CanvasScale.ScaleX;
+        double tx = CanvasTranslate.X;
+        double ty = CanvasTranslate.Y;
+        return new Rect(
+            (viewportRect.X - tx) / s,
+            (viewportRect.Y - ty) / s,
+            viewportRect.Width  / s,
+            viewportRect.Height / s);
     }
 
     /// <summary>
@@ -442,11 +620,19 @@ public partial class TerminalCanvasView : UserControl
 
     private void OnCardActivated(object sender, RoutedEventArgs e)
     {
-        if (GetItemViewModel(e.OriginalSource) is TerminalCanvasItemViewModel tvm)
-        {
-            _canvasVm?.SetActiveTerminal(tvm);
+        if (_canvasVm is null) return;
+        if (GetItemViewModel(e.OriginalSource) is not TerminalCanvasItemViewModel tvm) return;
 
-            // Focus the terminal's HiddenInput so keyboard events (including arrows) are captured.
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            // Ctrl+Click: toggle this card in/out of multi-selection
+            _canvasVm.ToggleSelection(tvm);
+        }
+        else
+        {
+            // Plain click: select only this card and focus its input
+            _canvasVm.SetActiveTerminal(tvm);
+
             var card = e.Source as CanvasCardControl;
             if (card is not null)
             {

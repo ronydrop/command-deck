@@ -768,6 +768,18 @@
                     </ItemsControl>
                 </Canvas>
 
+                <!-- Rubber-band selection rectangle (viewport-space, drawn above cards) -->
+                <Canvas x:Name="SelectionCanvas"
+                        IsHitTestVisible="False"
+                        Panel.ZIndex="99">
+                    <Rectangle x:Name="SelectionRect"
+                               Stroke="{DynamicResource AccentBrush}"
+                               StrokeThickness="1.5"
+                               StrokeDashArray="5 3"
+                               Fill="#2200A8E0"
+                               Visibility="Collapsed" />
+                </Canvas>
+
                 <!-- Mini-map overlay -->
                 <ctrl:MiniMapControl
                     HorizontalAlignment="Right"

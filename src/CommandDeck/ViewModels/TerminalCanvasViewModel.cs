@@ -289,6 +289,16 @@ public partial class TerminalCanvasViewModel : ObservableObject
     {
         HasTerminals = Items.Count > 0;
         ScheduleTiledLayoutRecalculation();
+
+        // Remove any deleted items from the selection set to avoid stale references
+        if (e.Action == NotifyCollectionChangedAction.Remove && e.OldItems is not null)
+        {
+            foreach (CanvasItemViewModel removed in e.OldItems)
+            {
+                if (removed.IsSelected)
+                    RemoveFromSelection(removed);
+            }
+        }
     }
 
     // ─── Layout mode partial callbacks ──────────────────────────────────────
@@ -408,6 +418,84 @@ public partial class TerminalCanvasViewModel : ObservableObject
         return item;
     }
 
+    // ─── Multi-selection ─────────────────────────────────────────────────────
+
+    /// <summary>All currently selected canvas items (drives accent border on cards).</summary>
+    public ObservableCollection<CanvasItemViewModel> SelectedItems { get; } = new();
+
+    /// <summary>Number of selected items — used for UI bindings (badge, context menu label).</summary>
+    [ObservableProperty] private int _selectedCount;
+
+    /// <summary>
+    /// Selects a single terminal, deselecting everything else.
+    /// Sets it as the keyboard-receiving ActiveTerminal.
+    /// </summary>
+    public void SelectSingle(TerminalCanvasItemViewModel item)
+    {
+        ClearSelection();
+        AddToSelection(item);
+        ActiveTerminal = item;
+        _workspaceService.BringToFront(item.Model.Id);
+        _workspaceService.ActiveTerminal = item;
+    }
+
+    /// <summary>
+    /// Toggles the given item in/out of the selection (Ctrl+Click behaviour).
+    /// ActiveTerminal follows the last toggled-on terminal.
+    /// </summary>
+    public void ToggleSelection(CanvasItemViewModel item)
+    {
+        if (item.IsSelected)
+            RemoveFromSelection(item);
+        else
+            AddToSelection(item);
+
+        var lastSelected = SelectedItems.OfType<TerminalCanvasItemViewModel>().LastOrDefault();
+        if (lastSelected is not null)
+        {
+            ActiveTerminal = lastSelected;
+            _workspaceService.ActiveTerminal = lastSelected;
+        }
+    }
+
+    /// <summary>
+    /// Deselects all items. Does NOT null out ActiveTerminal (it keeps keyboard focus).
+    /// </summary>
+    public void ClearSelection()
+    {
+        foreach (var item in SelectedItems)
+            item.IsSelected = false;
+        SelectedItems.Clear();
+        SelectedCount = 0;
+    }
+
+    /// <summary>
+    /// Selects all items returned by <paramref name="items"/>.
+    /// When <paramref name="additive"/> is true, existing selection is preserved.
+    /// Used by rubber-band drag selection.
+    /// </summary>
+    public void SelectRange(System.Collections.Generic.IEnumerable<CanvasItemViewModel> items, bool additive)
+    {
+        if (!additive) ClearSelection();
+        foreach (var item in items)
+            AddToSelection(item);
+    }
+
+    private void AddToSelection(CanvasItemViewModel item)
+    {
+        if (item.IsSelected) return;
+        item.IsSelected = true;
+        SelectedItems.Add(item);
+        SelectedCount = SelectedItems.Count;
+    }
+
+    private void RemoveFromSelection(CanvasItemViewModel item)
+    {
+        item.IsSelected = false;
+        SelectedItems.Remove(item);
+        SelectedCount = SelectedItems.Count;
+    }
+
     // ─── Public methods called from the View ─────────────────────────────────
 
     /// <summary>
@@ -415,15 +503,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
     /// Sets it as the active (keyboard-receiving) terminal.
     /// </summary>
     public void SetActiveTerminal(TerminalCanvasItemViewModel item)
-    {
-        if (ActiveTerminal is not null)
-            ActiveTerminal.IsSelected = false;
-
-        ActiveTerminal = item;
-        item.IsSelected = true;
-        _workspaceService.BringToFront(item.Model.Id);
-        _workspaceService.ActiveTerminal = item;
-    }
+        => SelectSingle(item);
 
     /// <summary>
     /// Triggers animated focus on the item (double-click or sidebar click).
