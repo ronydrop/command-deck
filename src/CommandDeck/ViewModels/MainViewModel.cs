@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Windows;
 using Debug = System.Diagnostics.Trace;
 using System.Linq;
 using System.Threading;
@@ -636,7 +637,6 @@ public partial class MainViewModel : ObservableObject
         {
             CurrentProjectId = CanvasViewModel.CurrentProjectId,
             ActiveTerminals = activeTerminals,
-            ActiveTerminal = null,
             TerminalVmFactory = _terminalVmFactory,
         };
 
@@ -670,20 +670,28 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>
     /// Applies the service result to ViewModel observable properties.
-    /// Runs on the thread-pool; WPF dispatcher marshalling is handled by
-    /// <see cref="ObservableObject"/> property setters and the UI bindings.
+    /// Scalar properties are safe to set from any thread via CommunityToolkit
+    /// property setters. <see cref="ObservableCollection{T}"/> mutations must
+    /// run on the UI thread to avoid cross-thread collection-change exceptions.
     /// </summary>
     private void OnProjectSwitchCompleted(object? sender, ProjectSwitchResult result)
     {
         if (!result.Success) return;
 
-        // Populate the Terminals collection from the restored VMs
-        foreach (var vm in result.RestoredTerminals)
-            Terminals.Add(vm);
-
-        ActiveTerminal = result.ActiveTerminal ?? Terminals.FirstOrDefault();
-        ActiveTerminalCount = Terminals.Count;
+        // Scalar properties — safe via CommunityToolkit property setters
+        CurrentProject = result.SwitchedTo;
         GitBranchDisplay = result.GitBranchDisplay ?? string.Empty;
+
+        // ObservableCollection — must be on UI thread
+        Application.Current?.Dispatcher.Invoke(() =>
+        {
+            Terminals.Clear();
+            foreach (var vm in result.RestoredTerminals)
+                Terminals.Add(vm);
+            ActiveTerminal = result.ActiveTerminal ?? Terminals.FirstOrDefault();
+            ActiveTerminalCount = Terminals.Count;
+        });
+
         StatusBarText = $"Project: {result.SwitchedTo.Name} — ready";
     }
 

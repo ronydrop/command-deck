@@ -17,9 +17,6 @@ public class ProjectSwitchContext
     /// <summary>All terminal view-models currently open on the canvas.</summary>
     public IReadOnlyList<TerminalViewModel> ActiveTerminals { get; init; } = [];
 
-    /// <summary>The terminal that currently has focus (may be null).</summary>
-    public TerminalViewModel? ActiveTerminal { get; init; }
-
     /// <summary>Factory that creates a fresh <see cref="TerminalViewModel"/> from the DI container.</summary>
     public Func<TerminalViewModel> TerminalVmFactory { get; init; } = null!;
 }
