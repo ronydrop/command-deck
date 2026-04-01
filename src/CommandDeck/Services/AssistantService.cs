@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -215,7 +216,8 @@ public sealed class AssistantService : IAssistantService
 
         foreach (var provider in _providers)
         {
-            try { (provider as IDisposable)?.Dispose(); } catch { }
+            try { (provider as IDisposable)?.Dispose(); }
+            catch (Exception ex) { Debug.WriteLine($"[AssistantService] Provider dispose failed: {ex.Message}"); }
         }
     }
 

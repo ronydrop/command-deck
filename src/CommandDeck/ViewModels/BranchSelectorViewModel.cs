@@ -209,4 +209,5 @@ public partial class BranchSelectorViewModel : ObservableObject
             IsSwitching = false;
         }
     }
+
 }

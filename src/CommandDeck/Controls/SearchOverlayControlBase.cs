@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
@@ -34,7 +35,12 @@ public abstract class SearchOverlayControlBase : UserControl
         if (DataContext is null) return;
         var prop = DataContext.GetType()
             .GetProperty(commandPropertyName, BindingFlags.Public | BindingFlags.Instance);
-        if (prop?.GetValue(DataContext) is ICommand cmd)
+        if (prop is null)
+        {
+            Debug.WriteLine($"[SearchOverlayBase] Command not found: {commandPropertyName} on {DataContext?.GetType().Name}");
+            return;
+        }
+        if (prop.GetValue(DataContext) is ICommand cmd)
             cmd.Execute(null);
     }
 
