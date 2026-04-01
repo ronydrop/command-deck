@@ -211,7 +211,7 @@ public partial class MainViewModel : ObservableObject
         };
 
         // Wire up events
-        ProjectList.ProjectSelected += OnProjectSelected;
+        ProjectList.ProjectSelected += async p => await OnProjectSelectedAsync(p);
         ProjectList.AddProjectRequested += OnAddProjectRequested;
         ProjectList.EditProjectRequested += OnEditProjectRequested;
 
@@ -362,7 +362,7 @@ public partial class MainViewModel : ObservableObject
             var lastProject = await _projectService.GetProjectAsync(settings.LastOpenedProjectId);
             if (lastProject != null)
             {
-                OnProjectSelected(lastProject);
+                await OnProjectSelectedAsync(lastProject);
             }
         }
 
@@ -541,7 +541,7 @@ public partial class MainViewModel : ObservableObject
             : projects.FindIndex(p => p.Id == CurrentProject.Id);
 
         int nextIndex = (index + 1) % projects.Count;
-        OnProjectSelected(projects[nextIndex]);
+        await OnProjectSelectedAsync(projects[nextIndex]);
     }
 
     /// <summary>
@@ -586,7 +586,7 @@ public partial class MainViewModel : ObservableObject
 
     // ─── Private Methods ─────────────────────────────────────────────────────
 
-    private async void OnProjectSelected(Project project)
+    private async Task OnProjectSelectedAsync(Project project)
     {
         Debug.WriteLine($"[Perf] OnProjectSelected: {project.Name} (current: {CurrentProject?.Name})");
 
