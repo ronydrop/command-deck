@@ -330,12 +330,6 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(aiMessage))
-        {
-            _notificationService.Notify("A IA não retornou uma mensagem.", NotificationType.Error, NotificationSource.Git);
-            return;
-        }
-
         // 2. Stage all
         var stageResult = await _gitService.StageAllAsync(CurrentProject.Path);
         if (!stageResult.Success)
