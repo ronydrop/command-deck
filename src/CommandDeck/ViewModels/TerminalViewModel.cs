@@ -99,9 +99,9 @@ public partial class TerminalViewModel : ObservableObject, IDisposable, IAsyncDi
 
         // Resolve terminal colors from the active theme
         _terminalFg = Application.Current?.TryFindResource("TextColor") is Color fg
-            ? fg : Color.FromRgb(0xCD, 0xD6, 0xF4);
+            ? fg : ThemeColors.CatppuccinText;
         _terminalBg = Application.Current?.TryFindResource("BaseBg") is Color bg
-            ? bg : Color.FromRgb(0x1E, 0x1E, 0x2E);
+            ? bg : ThemeColors.CatppuccinBase;
 
         _ansiParser = new AnsiParser(_terminalFg, _terminalBg);
 

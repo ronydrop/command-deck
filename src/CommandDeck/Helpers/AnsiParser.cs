@@ -53,8 +53,8 @@ public class AnsiParser
     private readonly Color _defaultForeground;
     private readonly Color _defaultBackground;
 
-    private static readonly Color FallbackFg = Color.FromRgb(0xCD, 0xD6, 0xF4);
-    private static readonly Color FallbackBg = Color.FromRgb(0x1E, 0x1E, 0x2E);
+    private static readonly Color FallbackFg = ThemeColors.CatppuccinText;
+    private static readonly Color FallbackBg = ThemeColors.CatppuccinBase;
 
     // ─── 2-D Screen Buffer ───────────────────────────────────────────────────
     private readonly TerminalLineBuffer _lineBuffer;
