@@ -44,7 +44,10 @@ public class WorkspaceTreeService : IWorkspaceTreeService
                 _roots.AddRange(loaded);
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WorkspaceTreeService] Failed to load workspace tree from disk: {ex.Message}");
+        }
         finally { _lock.Release(); }
     }
 

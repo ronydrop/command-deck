@@ -108,7 +108,10 @@ public class ProcessMonitorService : IProcessMonitorService, IDisposable
                     if (elapsedMs > 0)
                         info.CpuUsage = Math.Round(Math.Min(cpuUsedMs / (Environment.ProcessorCount * elapsedMs) * 100.0, 100.0), 1);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ProcessMonitorService] CPU measurement failed for '{info.Name}': {ex.Message}");
+                }
                 finally
                 {
                     proc.Dispose();

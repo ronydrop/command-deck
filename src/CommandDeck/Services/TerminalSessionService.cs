@@ -385,7 +385,10 @@ public sealed partial class TerminalSessionService : ITerminalSessionService
                 {
                     callback(newState);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[TerminalSessionService] State-change listener threw: {ex.Message}");
+                }
             }
         }
     }

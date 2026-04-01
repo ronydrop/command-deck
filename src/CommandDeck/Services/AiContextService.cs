@@ -65,7 +65,10 @@ public sealed class AiContextService : IAiContextService
                 var gitInfo = await _gitService.GetGitInfoAsync(sessionModel.WorkingDirectory);
                 gitBranch = gitInfo?.Branch;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AiContextService] Failed to fetch git info for context: {ex.Message}");
+            }
         }
 
         return new AiTerminalContext

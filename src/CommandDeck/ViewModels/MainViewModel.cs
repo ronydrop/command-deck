@@ -408,7 +408,10 @@ public partial class MainViewModel : ObservableObject
                     message: "Acesse Configurações > Sobre para atualizar.");
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainViewModel] Update check failed: {ex.Message}");
+        }
     }
 
     /// <summary>

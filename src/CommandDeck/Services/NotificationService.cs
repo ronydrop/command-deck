@@ -202,7 +202,10 @@ public class NotificationService : INotificationService
             if (_settingsService.CurrentSettings.NotificationSoundEnabled)
                 System.Media.SystemSounds.Asterisk.Play();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[NotificationService] Failed to play notification sound: {ex.Message}");
+        }
     }
 
     private static string GetIconForType(NotificationType type) => type switch

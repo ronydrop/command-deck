@@ -393,7 +393,10 @@ public class OpenAIProvider : IAssistantProvider
                     return msgEl.GetString() ?? responseBody;
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[OpenAIProvider] Failed to parse error body as JSON: {ex.Message}");
+        }
 
         return responseBody.Length > 200 ? responseBody[..200] + "..." : responseBody;
     }

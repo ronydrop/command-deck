@@ -290,7 +290,10 @@ public partial class TerminalControl : UserControl
             Canvas.SetTop(CursorBlock, fallback.Y);
             CursorBlock.Height = lineHeight;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[TerminalControl] Cursor position update failed: {ex.Message}");
+        }
     }
 
     /// <summary>
