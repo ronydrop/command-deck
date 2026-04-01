@@ -322,9 +322,9 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             return;
         }
 
-        // GenerateCommitMessageAsync returns "chore: minor changes" for empty diffs,
-        // but we still want to surface the "no changes" warning to the user.
-        if (aiMessage == "chore: minor changes")
+        // GenerateCommitMessageAsync returns string.Empty for empty diffs;
+        // surface the "no changes" warning to the user.
+        if (string.IsNullOrWhiteSpace(aiMessage))
         {
             _notificationService.Notify("Nenhuma alteração detectada para commitar.", NotificationType.Warning, NotificationSource.Git);
             return;

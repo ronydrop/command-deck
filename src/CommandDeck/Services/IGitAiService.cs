@@ -10,7 +10,7 @@ public interface IGitAiService
 {
     /// <summary>
     /// Analyzes the full diff of the repository and returns a suggested commit message.
-    /// Returns "chore: minor changes" when no diff is found.
+    /// Returns <see cref="string.Empty"/> when no diff is found.
     /// </summary>
     Task<string> GenerateCommitMessageAsync(string repoPath, CancellationToken ct = default);
 }

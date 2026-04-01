@@ -30,7 +30,7 @@ public sealed class GitAiService : IGitAiService
 
         var diff = await _gitService.GetFullDiffAsync(repoPath);
         if (string.IsNullOrWhiteSpace(diff))
-            return "chore: minor changes";
+            return string.Empty;
 
         // Build a self-contained prompt so the assistant understands the task
         // regardless of the generic system prompt used by ExplainTerminalOutputAsync.
