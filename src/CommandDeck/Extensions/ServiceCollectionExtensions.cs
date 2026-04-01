@@ -72,6 +72,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAiContinuationService, AiContinuationService>();
         services.AddSingleton<IAiTerminalLauncher, AiTerminalLauncher>();
         services.AddSingleton<IAgentSelectorService, AgentSelectorService>();
+        services.AddSingleton<IAiCommandExecutor, AiCommandExecutor>();
 
         return services;
     }

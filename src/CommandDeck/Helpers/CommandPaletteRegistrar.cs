@@ -219,6 +219,7 @@ public static class CommandPaletteRegistrar
         var aiContextService = serviceProvider.GetRequiredService<IAiContextService>();
         var aiHistory = serviceProvider.GetRequiredService<IAiSessionHistoryService>();
         var aiLauncher = serviceProvider.GetRequiredService<IAiTerminalLauncher>();
+        var aiCommandExecutor = serviceProvider.GetRequiredService<IAiCommandExecutor>();
 
         commandService.RegisterCommand(new CommandDefinition
         {
@@ -342,45 +343,8 @@ public static class CommandPaletteRegistrar
             IsEnabled = () => mainViewModel.ActiveTerminal?.Session is not null,
             Action = async () =>
             {
-                var prompt = await aiContextService.BuildPromptAsync(AiPromptIntent.FixError);
-                if (string.IsNullOrWhiteSpace(prompt)) return;
-
-                var sourceSessionId = mainViewModel.ActiveTerminal?.Session?.Id ?? "";
-                var correlationId = Guid.NewGuid().ToString("N")[..12];
-                aiHistory.Record(new AiSessionHistoryEntry
-                {
-                    SessionId = sourceSessionId,
-                    Intent = AiPromptIntent.FixError,
-                    ModelUsed = "default",
-                    PromptSent = prompt,
-                    Source = AiActionSource.CommandPalette,
-                    CorrelationId = correlationId,
-                    ExecutionStatus = AiExecutionStatus.Running
-                });
-
-                try
-                {
-                    var cli = await aiTerminalService.DetectCliAsync();
-                    if (cli.CcAvailable)
-                    {
-                        await aiLauncher.LaunchAsync(AiSessionType.CcRun);
-                        await Task.Delay(1500);
-                        var activeSession = mainViewModel.ActiveTerminal?.Session;
-                        if (activeSession is not null)
-                            await terminalSessionService.WriteAsync(activeSession.Id, prompt + "\n");
-                    }
-                    else
-                    {
-                        mainViewModel.IsAIPanelOpen = true;
-                        mainViewModel.AssistantPanel.InputText = prompt;
-                        mainViewModel.AssistantPanel.SendMessageCommand.Execute(null);
-                    }
-                    aiHistory.UpdateStatus(sourceSessionId, correlationId, AiExecutionStatus.Completed);
-                }
-                catch
-                {
-                    aiHistory.UpdateStatus(sourceSessionId, correlationId, AiExecutionStatus.Failed);
-                }
+                var activeSessionId = mainViewModel.ActiveTerminal?.Session?.Id ?? "";
+                await aiCommandExecutor.FixLastErrorAsync(activeSessionId);
             },
             Keywords = "ai fix corrigir erro error terminal"
         });
@@ -394,35 +358,8 @@ public static class CommandPaletteRegistrar
             IsEnabled = () => mainViewModel.ActiveTerminal?.Session is not null,
             Action = async () =>
             {
-                var sourceSessionId = mainViewModel.ActiveTerminal?.Session?.Id ?? "";
-                var correlationId = Guid.NewGuid().ToString("N")[..12];
-                var prompt = await aiContextService.BuildPromptAsync(AiPromptIntent.SendContext, outputLines: 50);
-                if (string.IsNullOrWhiteSpace(prompt)) return;
-
-                aiHistory.Record(new AiSessionHistoryEntry
-                {
-                    SessionId = sourceSessionId,
-                    Intent = AiPromptIntent.SendContext,
-                    ModelUsed = "default",
-                    PromptSent = prompt,
-                    Source = AiActionSource.CommandPalette,
-                    CorrelationId = correlationId,
-                    ExecutionStatus = AiExecutionStatus.Running
-                });
-
-                try
-                {
-                    await aiLauncher.LaunchAsync(AiSessionType.Cc);
-                    await Task.Delay(1500);
-                    var activeSession = mainViewModel.ActiveTerminal?.Session;
-                    if (activeSession is not null)
-                        await terminalSessionService.WriteAsync(activeSession.Id, prompt + "\n");
-                    aiHistory.UpdateStatus(sourceSessionId, correlationId, AiExecutionStatus.Completed);
-                }
-                catch
-                {
-                    aiHistory.UpdateStatus(sourceSessionId, correlationId, AiExecutionStatus.Failed);
-                }
+                var activeSessionId = mainViewModel.ActiveTerminal?.Session?.Id ?? "";
+                await aiCommandExecutor.SendOutputToAiAsync(activeSessionId);
             },
             Keywords = "ai enviar output terminal send"
         });
@@ -466,13 +403,4 @@ public static class CommandPaletteRegistrar
         return serviceProvider.GetRequiredService<CommandPaletteViewModel>();
     }
 
-    private static string GetLastLines(string text, int count)
-    {
-        if (string.IsNullOrEmpty(text))
-            return string.Empty;
-
-        var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        var taken = lines.Length > count ? lines[^count..] : lines;
-        return string.Join('\n', taken);
-    }
 }
