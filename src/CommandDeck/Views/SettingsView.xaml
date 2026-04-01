@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:conv="clr-namespace:CommandDeck.Converters"
              xmlns:helpers="clr-namespace:CommandDeck.Helpers"
+             xmlns:models="clr-namespace:CommandDeck.Models"
              mc:Ignorable="d"
              d:DesignWidth="900" d:DesignHeight="900"
              Background="{DynamicResource BaseBgBrush}">
@@ -563,159 +564,143 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                               Margin="0,16,0,0" Padding="0,0,8,0">
                     <StackPanel>
-                        <!-- General AI settings -->
+                        <!-- Mostrar painel do Assistente -->
                         <Border Style="{StaticResource Card}" Margin="0,0,0,16">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <CheckBox IsChecked="{Binding AiAssistantVisible}" VerticalAlignment="Center" Margin="0,0,8,0">
-                                    <TextBlock Text="Mostrar painel do Assistente" Foreground="{DynamicResource TextBrush}" FontSize="13"/>
-                                </CheckBox>
-                            </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="Painel do Assistente" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Exibe o painel lateral de chat com IA" Style="{StaticResource CaptionText}" Opacity="0.6" Margin="0,2,0,0"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding AiAssistantVisible}"/>
+                            </Grid>
                         </Border>
 
-                        <!-- Provider cards 2x2 -->
-                        <UniformGrid Columns="2" Rows="2">
+                        <!-- Lista de ferramentas AI CLI -->
+                        <TextBlock Text="FERRAMENTAS DETECTADAS" Style="{StaticResource CaptionText}" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource SubtextBrush}" Opacity="0.7" FontSize="10" Margin="4,0,0,10"/>
 
-                            <!-- ANTHROPIC -->
-                            <Border Style="{StaticResource Card}" Margin="0,0,8,8">
-                                <StackPanel>
-                                    <Grid Margin="0,0,0,12">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource Surface0Brush}" Margin="0,0,10,0">
-                                                <Image Source="/Resources/Images/anthropic.png" Width="20" Height="20" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                            </Border>
-                                            <StackPanel VerticalAlignment="Center">
-                                                <TextBlock Text="Anthropic" Style="{StaticResource SubheadingText}" FontSize="14" Margin="0"/>
-                                                <TextBlock Text="Claude" Style="{StaticResource CaptionText}" Opacity="0.5" FontSize="11"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                        <Border Grid.Column="1" CornerRadius="10" Padding="10,4" VerticalAlignment="Center">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#585B70" Opacity="0.3"/></Setter.Value></Setter>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding AiProvider}" Value="anthropic">
-                                                            <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#A6E3A1" Opacity="0.15"/></Setter.Value></Setter>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <TextBlock FontSize="11" FontWeight="SemiBold">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock"><Setter Property="Text" Value="Inativo"/><Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/>
-                                                        <Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="anthropic"><Setter Property="Text" Value="Ativo"/><Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}"/></DataTrigger></Style.Triggers>
+                        <ItemsControl ItemsSource="{Binding AiTools}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:AiToolInfo}">
+                                    <Border Style="{StaticResource Card}" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <!-- Linha principal: ícone + nome + badge -->
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Ícone -->
+                                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8"
+                                                        Background="{DynamicResource Surface1Brush}" Margin="0,0,12,0"
+                                                        VerticalAlignment="Center">
+                                                    <Image Width="22" Height="22" RenderOptions.BitmapScalingMode="HighQuality">
+                                                        <Image.Style>
+                                                            <Style TargetType="Image">
+                                                                <Setter Property="Source" Value="{Binding IconPath}"/>
+                                                                <Style.Triggers>
+                                                                    <!-- Fallback quando imagem não existe é tratado silenciosamente pelo WPF -->
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Image.Style>
+                                                    </Image>
+                                                </Border>
+
+                                                <!-- Nome e descrição -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding DisplayName}" Style="{StaticResource BodyText}"
+                                                               FontWeight="SemiBold" FontSize="13" Margin="0"/>
+                                                    <TextBlock Text="{Binding Description}" Style="{StaticResource CaptionText}"
+                                                               Opacity="0.55" FontSize="11" Margin="0,1,0,0"/>
+                                                </StackPanel>
+
+                                                <!-- Badge de status -->
+                                                <Border Grid.Column="2" CornerRadius="10" Padding="10,4" VerticalAlignment="Center">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#585B70" Opacity="0.3"/></Setter.Value></Setter>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Status}" Value="{x:Static models:AiToolDetectionStatus.Detected}">
+                                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#34D85C" Opacity="0.15"/></Setter.Value></Setter>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="{x:Static models:AiToolDetectionStatus.NotFound}">
+                                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#FF5048" Opacity="0.15"/></Setter.Value></Setter>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:AiToolDetectionStatus.Detected}">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:AiToolDetectionStatus.NotFound}">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource AccentRedBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Border>
+                                            </Grid>
+
+                                            <!-- Comando de instalação (só quando não encontrado) -->
+                                            <Border Margin="0,10,0,0" Background="{DynamicResource Surface0Brush}"
+                                                    CornerRadius="6" Padding="10,8">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Status}" Value="{x:Static models:AiToolDetectionStatus.NotFound}">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
                                                     </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </Border>
-                                    </Grid>
-                                    <TextBlock Text="Autenticação" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                    <ComboBox Style="{StaticResource DarkComboBox}" ItemsSource="{Binding AvailableAnthropicAuthModes}" SelectedItem="{Binding AnthropicAuthMode}" Tag="Selecione o tipo" Margin="0,0,0,12"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12" Visibility="{Binding IsAnthropicOAuthMode, Converter={StaticResource BoolToVis}}">
-                                        <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
-                                            <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="#F38BA8"/><Style.Triggers><DataTrigger Binding="{Binding IsClaudeCodeDetected}" Value="True"><Setter Property="Fill" Value="#A6E3A1"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
-                                        </Ellipse>
-                                        <TextBlock Text="{Binding ClaudeSubscriptionInfo}" Style="{StaticResource CaptionText}"/>
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding IsAnthropicOAuthMode}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
-                                        <TextBlock Text="API Key" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                        <PasswordBox Style="{StaticResource DarkPasswordBox}" helpers:PasswordBoxHelper.BoundPassword="{Binding AnthropicApiKey, Mode=TwoWay}" Tag="sk-ant-..." Margin="0,0,0,12"/>
-                                    </StackPanel>
-                                    <Button Command="{Binding SetActiveProviderCommand}" CommandParameter="anthropic" IsEnabled="{Binding CanActivateAnthropic}" Padding="12,7" HorizontalAlignment="Stretch" Cursor="Hand" FontSize="12" FontWeight="SemiBold">
-                                        <Button.Style>
-                                            <Style TargetType="Button"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="Content" Value="Definir como Ativo"/><Setter Property="Template" Value="{StaticResource ProviderButtonTemplate}"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding AiProvider}" Value="anthropic"><Setter Property="Content" Value="Provedor Ativo"/><Setter Property="Opacity" Value="0.5"/><Setter Property="Cursor" Value="Arrow"/></DataTrigger>
-                                                    <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/><Setter Property="Cursor" Value="Arrow"/></Trigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
-                                    </Button>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- OPENAI -->
-                            <Border Style="{StaticResource Card}" Margin="8,0,0,8">
-                                <StackPanel>
-                                    <Grid Margin="0,0,0,12">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource Surface0Brush}" Margin="0,0,10,0">
-                                                <Image Source="/Resources/Images/openai.png" Width="20" Height="20" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                </Border.Style>
+                                                <TextBlock Text="{Binding InstallCommand}"
+                                                           FontFamily="Cascadia Code, Consolas, Courier New"
+                                                           FontSize="12" Foreground="{DynamicResource AccentCyanBrush}"
+                                                           TextWrapping="Wrap"/>
                                             </Border>
-                                            <StackPanel VerticalAlignment="Center">
-                                                <TextBlock Text="OpenAI" Style="{StaticResource SubheadingText}" FontSize="14" Margin="0"/>
-                                                <TextBlock Text="GPT" Style="{StaticResource CaptionText}" Opacity="0.5" FontSize="11"/>
+
+                                            <!-- Campo API Key (só para OpenRouter) -->
+                                            <StackPanel Margin="0,10,0,0">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding RequiresApiKey}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
+                                                <TextBlock Text="API Key" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
+                                                <PasswordBox Style="{StaticResource DarkPasswordBox}"
+                                                             helpers:PasswordBoxHelper.BoundPassword="{Binding DataContext.OpenRouterApiKey, RelativeSource={RelativeSource AncestorType=ItemsControl}, Mode=TwoWay}"
+                                                             Tag="sk-or-..."/>
                                             </StackPanel>
                                         </StackPanel>
-                                        <Border Grid.Column="1" CornerRadius="10" Padding="10,4" VerticalAlignment="Center">
-                                            <Border.Style><Style TargetType="Border"><Setter Property="Background"><Setter.Value><SolidColorBrush Color="#585B70" Opacity="0.3"/></Setter.Value></Setter><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="openai"><Setter Property="Background"><Setter.Value><SolidColorBrush Color="#A6E3A1" Opacity="0.15"/></Setter.Value></Setter></DataTrigger></Style.Triggers></Style></Border.Style>
-                                            <TextBlock FontSize="11" FontWeight="SemiBold"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="Inativo"/><Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="openai"><Setter Property="Text" Value="Ativo"/><Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
-                                        </Border>
-                                    </Grid>
-                                    <TextBlock Text="API Key" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                    <PasswordBox Style="{StaticResource DarkPasswordBox}" helpers:PasswordBoxHelper.BoundPassword="{Binding OpenAiApiKey, Mode=TwoWay}" Tag="sk-..." Margin="0,0,0,12"/>
-                                    <Button Command="{Binding SetActiveProviderCommand}" CommandParameter="openai" IsEnabled="{Binding CanActivateOpenAi}" Padding="12,7" HorizontalAlignment="Stretch" Cursor="Hand" FontSize="12" FontWeight="SemiBold">
-                                        <Button.Style><Style TargetType="Button"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="Content" Value="Definir como Ativo"/><Setter Property="Template" Value="{StaticResource ProviderButtonTemplate}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="openai"><Setter Property="Content" Value="Provedor Ativo"/><Setter Property="Opacity" Value="0.5"/><Setter Property="Cursor" Value="Arrow"/></DataTrigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/><Setter Property="Cursor" Value="Arrow"/></Trigger></Style.Triggers></Style></Button.Style>
-                                    </Button>
-                                </StackPanel>
-                            </Border>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
-                            <!-- OPENROUTER -->
-                            <Border Style="{StaticResource Card}" Margin="0,8,8,0">
-                                <StackPanel>
-                                    <Grid Margin="0,0,0,12">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource Surface0Brush}" Margin="0,0,10,0">
-                                                <Image Source="/Resources/Images/openrouter.png" Width="20" Height="20" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                            </Border>
-                                            <StackPanel VerticalAlignment="Center">
-                                                <TextBlock Text="OpenRouter" Style="{StaticResource SubheadingText}" FontSize="14" Margin="0"/>
-                                                <TextBlock Text="Multi-provider" Style="{StaticResource CaptionText}" Opacity="0.5" FontSize="11"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                        <Border Grid.Column="1" CornerRadius="10" Padding="10,4" VerticalAlignment="Center">
-                                            <Border.Style><Style TargetType="Border"><Setter Property="Background"><Setter.Value><SolidColorBrush Color="#585B70" Opacity="0.3"/></Setter.Value></Setter><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="openrouter"><Setter Property="Background"><Setter.Value><SolidColorBrush Color="#A6E3A1" Opacity="0.15"/></Setter.Value></Setter></DataTrigger></Style.Triggers></Style></Border.Style>
-                                            <TextBlock FontSize="11" FontWeight="SemiBold"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="Inativo"/><Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="openrouter"><Setter Property="Text" Value="Ativo"/><Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
-                                        </Border>
-                                    </Grid>
-                                    <TextBlock Text="API Key" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                    <PasswordBox Style="{StaticResource DarkPasswordBox}" helpers:PasswordBoxHelper.BoundPassword="{Binding OpenRouterApiKey, Mode=TwoWay}" Tag="sk-or-..." Margin="0,0,0,12"/>
-                                    <Button Command="{Binding SetActiveProviderCommand}" CommandParameter="openrouter" IsEnabled="{Binding CanActivateOpenRouter}" Padding="12,7" HorizontalAlignment="Stretch" Cursor="Hand" FontSize="12" FontWeight="SemiBold">
-                                        <Button.Style><Style TargetType="Button"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="Content" Value="Definir como Ativo"/><Setter Property="Template" Value="{StaticResource ProviderButtonTemplate}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="openrouter"><Setter Property="Content" Value="Provedor Ativo"/><Setter Property="Opacity" Value="0.5"/><Setter Property="Cursor" Value="Arrow"/></DataTrigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/><Setter Property="Cursor" Value="Arrow"/></Trigger></Style.Triggers></Style></Button.Style>
-                                    </Button>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- OLLAMA (LOCAL) -->
-                            <Border Style="{StaticResource Card}" Margin="8,8,0,0">
-                                <StackPanel>
-                                    <Grid Margin="0,0,0,12">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource Surface0Brush}" Margin="0,0,10,0">
-                                                <Image Source="/Resources/Images/ollama.png" Width="20" Height="20" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                            </Border>
-                                            <StackPanel VerticalAlignment="Center">
-                                                <TextBlock Text="Ollama" Style="{StaticResource SubheadingText}" FontSize="14" Margin="0"/>
-                                                <TextBlock Text="Local" Style="{StaticResource CaptionText}" Opacity="0.5" FontSize="11"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                        <Border Grid.Column="1" CornerRadius="10" Padding="10,4" VerticalAlignment="Center">
-                                            <Border.Style><Style TargetType="Border"><Setter Property="Background"><Setter.Value><SolidColorBrush Color="#585B70" Opacity="0.3"/></Setter.Value></Setter><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="local"><Setter Property="Background"><Setter.Value><SolidColorBrush Color="#A6E3A1" Opacity="0.15"/></Setter.Value></Setter></DataTrigger></Style.Triggers></Style></Border.Style>
-                                            <TextBlock FontSize="11" FontWeight="SemiBold"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="Inativo"/><Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="local"><Setter Property="Text" Value="Ativo"/><Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
-                                        </Border>
-                                    </Grid>
-                                    <TextBlock Text="Base URL" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                    <TextBox Style="{StaticResource DarkTextBox}" Text="{Binding OllamaBaseUrl, UpdateSourceTrigger=PropertyChanged}" Tag="http://localhost:11434" Margin="0,0,0,12"/>
-                                    <Button Command="{Binding SetActiveProviderCommand}" CommandParameter="local" Padding="12,7" HorizontalAlignment="Stretch" Cursor="Hand" FontSize="12" FontWeight="SemiBold">
-                                        <Button.Style><Style TargetType="Button"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="White"/><Setter Property="Content" Value="Definir como Ativo"/><Setter Property="Template" Value="{StaticResource ProviderButtonTemplate}"/><Style.Triggers><DataTrigger Binding="{Binding AiProvider}" Value="local"><Setter Property="Content" Value="Provedor Ativo"/><Setter Property="Opacity" Value="0.5"/><Setter Property="Cursor" Value="Arrow"/></DataTrigger></Style.Triggers></Style></Button.Style>
-                                    </Button>
-                                </StackPanel>
-                            </Border>
-                        </UniformGrid>
+                        <!-- Botão verificar novamente -->
+                        <Button Command="{Binding DetectAiToolsCommand}" HorizontalAlignment="Left"
+                                Margin="0,4,0,0" Padding="16,8" Style="{StaticResource GhostButton}"
+                                FontSize="12">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#x21BB;  " FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Text="Verificar Novamente" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

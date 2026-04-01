@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommandDeck.Models;
@@ -90,6 +91,56 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _focusTerminalShortcut = "Ctrl+`";
+
+    // ─── Ferramentas AI CLI (detecção automática) ────────────────────────────
+
+    [ObservableProperty]
+    private ObservableCollection<AiToolInfo> _aiTools = new();
+
+    [RelayCommand]
+    private async Task DetectAiTools()
+    {
+        var tools = new List<AiToolInfo>
+        {
+            new() { Id = "claude",     DisplayName = "Claude",          Description = "Anthropic CLI",      IconPath = "/Resources/Images/anthropic.png",  InstallCommand = "npm i -g @anthropic-ai/claude-code",         RequiresApiKey = false },
+            new() { Id = "gemini",     DisplayName = "Gemini",          Description = "Google Gemini CLI",  IconPath = "/Resources/Images/gemini.png",     InstallCommand = "npm i -g @google/gemini-cli",                RequiresApiKey = false },
+            new() { Id = "aider",      DisplayName = "Aider",           Description = "Aider pair programming", IconPath = "/Resources/Images/aider.png",  InstallCommand = "pip install aider-chat",                     RequiresApiKey = false },
+            new() { Id = "codex",      DisplayName = "Codex",           Description = "OpenAI Codex CLI",   IconPath = "/Resources/Images/openai.png",     InstallCommand = "npm i -g @openai/codex",                     RequiresApiKey = false },
+            new() { Id = "copilot",    DisplayName = "Copilot",         Description = "GitHub Copilot CLI", IconPath = "/Resources/Images/copilot.png",    InstallCommand = "gh extension install github/gh-copilot",     RequiresApiKey = false },
+            new() { Id = "openrouter", DisplayName = "OpenRouter",      Description = "Multi-provider",     IconPath = "/Resources/Images/openrouter.png", InstallCommand = string.Empty,                                 RequiresApiKey = true  },
+        };
+
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            AiTools = new ObservableCollection<AiToolInfo>(tools);
+        });
+
+        var detectionTasks = tools.Select(tool => Task.Run(() =>
+        {
+            bool detected;
+            if (tool.RequiresApiKey)
+            {
+                detected = !string.IsNullOrWhiteSpace(OpenRouterApiKey);
+            }
+            else if (tool.Id == "claude")
+            {
+                detected = AiTerminalService.CheckCommandExists("claude") || AiTerminalService.CheckCommandExists("cc");
+            }
+            else
+            {
+                string cmd = tool.Id == "copilot" ? "gh" : tool.Id;
+                detected = AiTerminalService.CheckCommandExists(cmd);
+            }
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                tool.Status = detected ? AiToolDetectionStatus.Detected : AiToolDetectionStatus.NotFound;
+                tool.StatusText = detected ? "Detectado" : "Não encontrado";
+            });
+        }));
+
+        await Task.WhenAll(detectionTasks);
+    }
 
     // ─── Assistente IA ───────────────────────────────────────────────────────
 
@@ -561,6 +612,8 @@ public partial class SettingsViewModel : ObservableObject
             _ => string.Empty
         };
 
+        // Iniciar detecção das ferramentas AI CLI
+        _ = DetectAiTools();
     }
 
     /// <summary>

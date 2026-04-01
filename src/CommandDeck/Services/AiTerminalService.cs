@@ -143,7 +143,7 @@ public sealed class AiTerminalService : IAiTerminalService
 
     public void InvalidateCliCache() => _cachedCliInfo = null;
 
-    private static bool CheckCommandExists(string command)
+    internal static bool CheckCommandExists(string command)
     {
         try
         {
