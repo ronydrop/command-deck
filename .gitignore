@@ -51,3 +51,9 @@ desktop.ini
 # Secrets / Config local
 appsettings.Development.json
 *.local.json
+
+# Build outputs / binaries
+publish/*.exe
+publish/*.pdb
+installer_output/
+*.csproj.*tmp*
