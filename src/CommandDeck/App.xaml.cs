@@ -174,6 +174,16 @@ public partial class App : Application
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<ProjectEditViewModel>();
 
+        // ─── Project Switch Service ──────────────────────────────────────
+        // ViewModels are injected as Lazy<T> so the service never holds a
+        // hard reference to them at construction time (avoids circular deps).
+        services.AddSingleton(sp => new Lazy<TerminalCanvasViewModel>(() => sp.GetRequiredService<TerminalCanvasViewModel>()));
+        services.AddSingleton(sp => new Lazy<DashboardViewModel>(() => sp.GetRequiredService<DashboardViewModel>()));
+        services.AddSingleton(sp => new Lazy<BrowserViewModel>(() => sp.GetRequiredService<BrowserViewModel>()));
+        services.AddSingleton(sp => new Lazy<WorkspaceTreeViewModel>(() => sp.GetRequiredService<WorkspaceTreeViewModel>()));
+        services.AddSingleton(sp => new Lazy<ProjectListViewModel>(() => sp.GetRequiredService<ProjectListViewModel>()));
+        services.AddSingleton<IProjectSwitchService, ProjectSwitchService>();
+
         // Lazy wrappers to break circular DI dependencies
         services.AddSingleton(sp => new Lazy<MainViewModel>(() => sp.GetRequiredService<MainViewModel>()));
 
