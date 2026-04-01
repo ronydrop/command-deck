@@ -648,7 +648,7 @@ public partial class MainViewModel : ObservableObject
                     _terminalPropertyHandlers.Remove(t);
                 }
                 var terminal = t;
-                disposeTasks.Add(Task.Run(() => terminal.DisposeAsync().AsTask()));
+                disposeTasks.Add(terminal.DisposeAsync().AsTask());
             }
             Terminals.Clear();
             ActiveTerminal = null;
