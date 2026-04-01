@@ -27,6 +27,8 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
     private readonly object _bufferLock = new();
     private bool _flushScheduled;
 
+    private bool _disposed;
+
     // ─── Deferred initialization ─────────────────────────────────────────────
     private bool _sessionStarted;
     private ShellType _pendingShellType;
@@ -285,10 +287,11 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
 
     private void OnSessionExited(string sessionId)
     {
-        if (Session?.Id != sessionId) return;
+        if (_disposed || Session?.Id != sessionId) return;
 
-        _dispatcher.Invoke(() =>
+        _dispatcher.BeginInvoke(() =>
         {
+            if (_disposed) return;
             IsConnected = false;
             StatusText = "Disconnected";
             // Render exit message in red via ANSI codes (color 31 = Catppuccin red)
@@ -300,7 +303,7 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
 
     private void OnBackgroundChanged()
     {
-        _dispatcher.Invoke(SyncBackgroundFromService);
+        _dispatcher.BeginInvoke(SyncBackgroundFromService);
     }
 
     private void SyncBackgroundFromService()
@@ -317,6 +320,7 @@ public partial class TerminalViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         _terminalService.OutputReceived -= OnOutputReceived;
         _terminalService.SessionExited  -= OnSessionExited;
 

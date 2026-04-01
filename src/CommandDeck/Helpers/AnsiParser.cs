@@ -76,10 +76,11 @@ public class AnsiParser
         @"\x1B\](?<id>\d+);(?<text>[^\x07\x1B]*?)(?:\x07|\x1B\\)",
         RegexOptions.Compiled);
 
-    private static readonly Regex CharsetSelectRegex = new(@"\x1B[()][AB012]", RegexOptions.Compiled);
-    private static readonly Regex KeypadModeRegex    = new(@"\x1B[=>]",        RegexOptions.Compiled);
-    private static readonly Regex DecPrivateRegex    = new(@"\x1B\x5B\?[0-9;]*[A-Za-z@`]", RegexOptions.Compiled);
-    private static readonly Regex PrivateCsiRegex    = new(@"\x1B\[[><!=][0-9;]*[A-Za-z@`]", RegexOptions.Compiled);
+    private static readonly Regex CharsetSelectRegex  = new(@"\x1B[()][AB012]", RegexOptions.Compiled);
+    private static readonly Regex KeypadModeRegex     = new(@"\x1B[=>]",        RegexOptions.Compiled);
+    private static readonly Regex DecPrivateRegex     = new(@"\x1B\x5B\?[0-9;]*[A-Za-z@`]", RegexOptions.Compiled);
+    private static readonly Regex PrivateCsiRegex     = new(@"\x1B\[[><!=][0-9;]*[A-Za-z@`]", RegexOptions.Compiled);
+    private static readonly Regex DecSaveRestoreRegex = new(@"\x1B[78]", RegexOptions.Compiled);
 
     // ─── Brush Cache ─────────────────────────────────────────────────────────
     private static readonly Dictionary<Color, SolidColorBrush> BrushCache = new();
@@ -165,8 +166,15 @@ public class AnsiParser
         // Strip non-CSI sequences we don't handle
         input = CharsetSelectRegex.Replace(input, "");
         input = KeypadModeRegex.Replace(input, "");
-        input = DecPrivateRegex.Replace(input, "");
+        // DEC private sequences: handle alt-screen switches, strip the rest
+        input = DecPrivateRegex.Replace(input, m => HandleDecPrivateMode(m.Value));
         input = PrivateCsiRegex.Replace(input, "");
+        // ESC 7 / ESC 8: DECSC / DECRC (save/restore cursor)
+        input = DecSaveRestoreRegex.Replace(input, m => {
+            if (m.Value[1] == '7') _lineBuffer.SaveCursor();
+            else                   _lineBuffer.RestoreCursor();
+            return string.Empty;
+        });
 
         if (input.Contains('\x07'))
         {
@@ -241,6 +249,45 @@ public class AnsiParser
         return inlines;
     }
 
+    // ─── DEC Private Mode Handler ────────────────────────────────────────────
+
+    /// <summary>
+    /// Processes DEC private mode sequences (ESC[?...h/l).
+    /// Handles alternate screen switching; all other modes are silently consumed.
+    /// </summary>
+    private string HandleDecPrivateMode(string seq)
+    {
+        // seq format: ESC [ ? <params> <finalChar>
+        // indices:    0   1 2  3..^1    ^1
+        if (seq.Length < 4) return string.Empty;
+
+        char finalChar = seq[^1];
+        string paramStr = seq[3..^1];
+
+        foreach (var part in paramStr.Split(';'))
+        {
+            if (!int.TryParse(part, out int mode)) continue;
+
+            switch (finalChar)
+            {
+                case 'h': // Set mode
+                    if (mode is 1049 or 1047 or 47)
+                    {
+                        _lineBuffer.SwitchToAltScreen();
+                        ResetFormatting();
+                    }
+                    break;
+
+                case 'l': // Reset mode
+                    if (mode is 1049 or 1047 or 47)
+                        _lineBuffer.SwitchToMainScreen();
+                    break;
+            }
+        }
+
+        return string.Empty;
+    }
+
     // ─── Reset & Resize ──────────────────────────────────────────────────────
 
     /// <summary>Full reset: clears formatting, buffer state, and rebuilds the document.</summary>
@@ -248,6 +295,9 @@ public class AnsiParser
     {
         ResetFormatting();
         _pendingInput = string.Empty;
+        // If on alt screen, switch back to main before clearing
+        if (_lineBuffer.IsAltScreen)
+            _lineBuffer.SwitchToMainScreen();
         _lineBuffer.Clear();
         if (_doc != null) Initialize(_doc);
     }
@@ -361,19 +411,31 @@ public class AnsiParser
             case 'S': _lineBuffer.ScrollUp(n);     break; // Scroll Up
             case 'T': _lineBuffer.ScrollDown(n);   break; // Scroll Down
 
-            case 's': case 'u': case 'r': break; // Save/restore cursor, scrolling region — no-op
+            case 'r': // DECSTBM - Set Scroll Region (top;bottom, 1-based)
+            {
+                var parts = (paramString ?? "").Split(';');
+                int top    = parts.Length >= 1 && int.TryParse(parts[0], out int t) && t > 0 ? t : 1;
+                int bottom = parts.Length >= 2 && int.TryParse(parts[1], out int b) && b > 0 ? b : _lineBuffer.ScreenRows;
+                _lineBuffer.SetScrollRegion(top - 1, bottom - 1);
+                _lineBuffer.SetCursor(0, 0); // DECSTBM moves cursor to home
+                break;
+            }
+
+            case 's': _lineBuffer.SaveCursor();    break; // Save Cursor Position
+            case 'u': _lineBuffer.RestoreCursor(); break; // Restore Cursor Position
         }
     }
 
     // ─── Internal: Scrollback & Screen Render ────────────────────────────────
 
     /// <summary>
-    /// Transfers lines that scrolled off the top of the screen to scrollback Paragraphs
-    /// inserted before the screen paragraph.
+    /// Transfers lines that scrolled off the top of the main screen to scrollback Paragraphs
+    /// inserted before the screen paragraph. No-op while the alternate screen is active.
     /// </summary>
     private void CommitScrolledLines()
     {
         if (_doc == null || _screenParagraph == null) return;
+        if (_lineBuffer.IsAltScreen) return; // alt screen never produces scrollback
         while (_lineBuffer.HasScrolledLines)
         {
             var cells = _lineBuffer.DequeueScrolledLine();
@@ -393,7 +455,12 @@ public class AnsiParser
 
         _screenParagraph.Inlines.Clear();
 
-        int lastRow = Math.Max(_lineBuffer.CursorRow, _lineBuffer.GetLastUsedRow());
+        // On alt screen render the full grid so TUI apps have a clean fixed-size canvas.
+        // On main screen clamp to screen height to avoid ghost rows from stale buffer data.
+        int lastRow = _lineBuffer.IsAltScreen
+            ? _lineBuffer.ScreenRows - 1
+            : Math.Min(_lineBuffer.ScreenRows - 1,
+                       Math.Max(_lineBuffer.CursorRow, _lineBuffer.GetLastUsedRow()));
 
         for (int r = 0; r <= lastRow; r++)
         {

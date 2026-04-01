@@ -297,58 +297,6 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Vertical separator -->
-                    <Rectangle Width="1" Height="20"
-                               Fill="{DynamicResource Surface1Brush}"
-                               Opacity="0.6"
-                               Margin="0,0,8,0" />
-
-                    <!-- Exit focus mode button (collapsed by default) -->
-                    <Button x:Name="BtnVerTodos"
-                            Style="{StaticResource GhostButton}"
-                            Padding="10,4"
-                            Margin="4,0"
-                            Visibility="Collapsed"
-                            Click="OnVerTodosClick"
-                            ToolTip="Voltar à visão geral (ESC)">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Data="M 2 2 L 10 2 L 10 10 L 2 10 Z M 14 2 L 22 2 L 22 10 L 14 10 Z M 2 14 L 10 14 L 10 22 L 2 22 Z M 14 14 L 22 14 L 22 22 L 14 22 Z"
-                                  Stroke="{DynamicResource SubtextBrush}"
-                                  Fill="Transparent"
-                                  StrokeThickness="1.5"
-                                  Width="12" Height="12"
-                                  Stretch="Uniform"
-                                  VerticalAlignment="Center"
-                                  Margin="0,0,6,0" />
-                            <TextBlock Text="Ver Todos"
-                                       Style="{StaticResource BodyText}"
-                                       FontSize="12"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-
-                    <!-- Toggle terminal panel button (visible when panel is hidden) -->
-                    <Button Style="{StaticResource GhostButton}"
-                            Padding="6,4"
-                            Margin="4,0"
-                            Command="{Binding DataContext.ToggleTerminalPanelCommand,
-                                      RelativeSource={RelativeSource AncestorType=Window}}"
-                            ToolTip="Mostrar painel de terminais"
-                            Visibility="{Binding DataContext.IsTerminalPanelVisible,
-                                         RelativeSource={RelativeSource AncestorType=Window},
-                                         Converter={StaticResource BoolToVis},
-                                         ConverterParameter=Invert}">
-                        <Path Data="{StaticResource TerminalIcon}"
-                              Stroke="{DynamicResource SubtextBrush}"
-                              StrokeThickness="1.5"
-                              StrokeLineJoin="Round"
-                              StrokeStartLineCap="Round"
-                              StrokeEndLineCap="Round"
-                              Fill="Transparent"
-                              Stretch="Uniform"
-                              Width="14" Height="14" />
-                    </Button>
-
                     <!-- Vertical separator before AI button -->
                     <Rectangle Width="1" Height="20"
                                Fill="{DynamicResource Surface1Brush}"

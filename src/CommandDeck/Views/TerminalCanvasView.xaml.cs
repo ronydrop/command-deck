@@ -367,6 +367,8 @@ public partial class TerminalCanvasView : UserControl
         CanvasTranslate.X  = _zoomCurrentTransX;
         CanvasTranslate.Y  = _zoomCurrentTransY;
 
+        // Sync camera every frame so the minimap updates in real-time during zoom
+        _canvasVm?.SyncCamera(_zoomCurrentTransX, _zoomCurrentTransY, _zoomCurrentScale);
 
         // Check convergence
         bool converged =
@@ -467,7 +469,7 @@ public partial class TerminalCanvasView : UserControl
         return null;
     }
 
-    private void OnCardCloseRequested(object sender, RoutedEventArgs e)
+    private async void OnCardCloseRequested(object sender, RoutedEventArgs e)
     {
         // Prefer sender.DataContext (direct reference), fall back to visual-tree walk.
         var item = (sender as FrameworkElement)?.DataContext as CanvasItemViewModel
@@ -476,7 +478,10 @@ public partial class TerminalCanvasView : UserControl
 
         // Execute removal immediately — don't delay behind animation callback.
         if (item is TerminalCanvasItemViewModel tvm)
-            _mainVm?.CloseTerminalCommand.Execute(tvm.Terminal);
+        {
+            if (_mainVm?.CloseTerminalCommand is not null)
+                await _mainVm.CloseTerminalCommand.ExecuteAsync(tvm.Terminal);
+        }
         else
             _mainVm?.CanvasViewModel.Items.Remove(item);
 
@@ -612,12 +617,13 @@ public partial class TerminalCanvasView : UserControl
         }
     }
 
-    private void OnSidebarCloseClick(object sender, RoutedEventArgs e)
+    private async void OnSidebarCloseClick(object sender, RoutedEventArgs e)
     {
         e.Handled = true; // prevent OnSidebarItemClick from firing
         if ((sender as FrameworkElement)?.DataContext is TerminalCanvasItemViewModel item)
         {
-            _mainVm?.CloseTerminalCommand.Execute(item.Terminal);
+            if (_mainVm?.CloseTerminalCommand is not null)
+                await _mainVm.CloseTerminalCommand.ExecuteAsync(item.Terminal);
         }
     }
 

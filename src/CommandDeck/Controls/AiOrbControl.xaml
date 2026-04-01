@@ -46,7 +46,7 @@
         <!-- ═══ Camada 1: visual do orb ══════════════════════════════════════
              BitmapCache removido: cortava o blur do DropShadowEffect nos
              limites dos 56px e causava blur em monitores com DPI > 100%. -->
-        <Grid x:Name="OrbRoot" Width="56" Height="56" ClipToBounds="False">
+        <Grid x:Name="OrbRoot" Width="56" Height="56">
             <Grid.RenderTransform>
                 <ScaleTransform x:Name="OrbScale" ScaleX="1" ScaleY="1" CenterX="28" CenterY="28" />
             </Grid.RenderTransform>
@@ -120,7 +120,9 @@
                      Fill="Transparent"
                      Visibility="Collapsed" />
 
-            <!-- Clickable button layer — Focusable=False para não roubar foco do terminal -->
+            <!-- Clickable button layer — Focusable=False para não roubar foco do terminal.
+                 O Command foi removido: click vs drag é controlado inteiramente no code-behind
+                 para evitar conflito entre Button.Click e o sistema de drag. -->
             <Button x:Name="OrbButton"
                     Width="48" Height="48"
                     HorizontalAlignment="Center"
@@ -130,7 +132,6 @@
                     Cursor="Hand"
                     Focusable="False"
                     IsTabStop="False"
-                    Command="{Binding ToggleRadialMenuCommand}"
                     ToolTip="AI Dev Assistant (Ctrl+Alt+A)"
                     Panel.ZIndex="10">
                 <Button.Template>
@@ -141,21 +142,26 @@
                     </ControlTemplate>
                 </Button.Template>
 
-                <!-- Icon: Robot (idle/active), Mic (recording), Spinner dots (processing) -->
-                <Grid Width="28" Height="28">
-                    <!-- Robot icon (idle/active) — stroke adicionado para melhor legibilidade em qualquer DPI -->
+                <!-- Icon: Sparkles (idle/active), Mic (recording), Spinner dots (processing) -->
+                <Grid Width="26" Height="26">
+                    <!-- Sparkles icon (idle/active) — ícone Lucide "sparkles" para AI assistant -->
                     <Path x:Name="RobotIcon"
-                          Data="M12 2C13.1 2 14 2.9 14 4C14 4.74 13.6 5.39 13 5.73V7H15C16.1 7 17 7.9 17 9V18C17 19.1 16.1 20 15 20H9C7.9 20 7 19.1 7 18V9C7 7.9 7.9 7 9 7H11V5.73C10.4 5.39 10 4.74 10 4C10 2.9 10.9 2 12 2M9 9V18H15V9H9M10 10H11V12H10V10M13 10H14V12H13V10M10 14H14V16H10V14Z"
-                          Fill="White"
+                          Data="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
                           Stroke="White"
-                          StrokeThickness="0.3"
+                          StrokeThickness="1.2"
+                          StrokeLineJoin="Round"
+                          Fill="White"
                           Stretch="Uniform"
-                          Opacity="1.0" />
+                          Opacity="0.95" />
 
-                    <!-- Mic icon (recording) -->
+                    <!-- Mic icon (recording) — Lucide "mic" com stroke para visual mais limpo -->
                     <Path x:Name="MicIcon"
-                          Data="M12 2C10.3 2 9 3.3 9 5V11C9 12.7 10.3 14 12 14S15 12.7 15 11V5C15 3.3 13.7 2 12 2M17.3 11C17.3 14 14.76 16.1 12 16.1C9.24 16.1 6.7 14 6.7 11H5C5 14.41 7.72 17.23 11 17.72V21H13V17.72C16.28 17.23 19 14.41 19 11H17.3Z"
-                          Fill="#F38BA8"
+                          Data="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z M19 10v2a7 7 0 0 1-14 0v-2 M12 19v3"
+                          Stroke="#F38BA8"
+                          StrokeThickness="1.6"
+                          StrokeLineJoin="Round"
+                          StrokeLineCap="Round"
+                          Fill="Transparent"
                           Stretch="Uniform"
                           Opacity="0.95"
                           Visibility="Collapsed" />

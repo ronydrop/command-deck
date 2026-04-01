@@ -26,8 +26,7 @@ public partial class AiOrbControl : UserControl
         DataContextChanged += OnDataContextChanged;
 
         // AddHandler com handledEventsToo:true garante que o drag inicia mesmo quando
-        // ButtonBase.OnMouseLeftButtonDown() marca e.Handled = true internamente,
-        // o que bloqueava o drag quando o menu radial estava fechado.
+        // ButtonBase.OnMouseLeftButtonDown() marca e.Handled = true internamente.
         AddHandler(UIElement.MouseLeftButtonDownEvent,
             new MouseButtonEventHandler(OnMouseLeftButtonDownCore),
             handledEventsToo: true);
@@ -35,6 +34,12 @@ public partial class AiOrbControl : UserControl
             new MouseButtonEventHandler(OnMouseLeftButtonUpCore),
             handledEventsToo: true);
     }
+
+    // Desativa o LayoutClip automático do WPF que corta o glow/shadow nos limites
+    // do ArrangeOverride (56×56 do UserControl). O DropShadowEffect e a GlowAura
+    // (64×64 + BlurRadius=32) precisam de ~128×128px — sem este override aparecem
+    // clipados em forma quadrada independentemente de ClipToBounds="False".
+    protected override Geometry? GetLayoutClip(Size layoutSlotSize) => null;
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
@@ -70,17 +75,15 @@ public partial class AiOrbControl : UserControl
     {
         // Start tracking from anywhere on the control.
         // Mouse capture is deferred to OnMouseMove after the 5px threshold,
-        // so the OrbButton's Click still fires on a plain tap (no drag).
+        // so tap (no drag) still fires the toggle-menu logic in OnMouseLeftButtonUpCore.
         _isDragging = true;
         _wasDragged = false;
 
-        // Usar o Canvas pai como referência de coordenadas para ficar no mesmo
-        // espaço que Canvas.Left/Top e evitar discrepâncias com DWM/transforms.
+        // Usar o Canvas pai como referência de coordenadas — mesmo espaço de Canvas.Left/Top.
         var canvas = VisualTreeHelper.GetParent(this) as IInputElement;
         _dragStart = e.GetPosition(canvas);
 
-        // Proteção contra NaN: Canvas.GetLeft retorna NaN se o binding ainda não
-        // foi avaliado. Nesse caso, usa o valor do ViewModel como fallback.
+        // Proteção contra NaN: Canvas.GetLeft retorna NaN se o binding ainda não foi avaliado.
         var leftVal = Canvas.GetLeft(this);
         var topVal  = Canvas.GetTop(this);
         if (DataContext is AiOrbViewModel vm)
@@ -104,13 +107,13 @@ public partial class AiOrbControl : UserControl
         double dx = current.X - _dragStart.X;
         double dy = current.Y - _dragStart.Y;
 
-        // Require 5px movement to confirm drag (avoids interfering with clicks)
+        // Require 5px movement to confirm drag (avoids interfering with taps)
         if (!_wasDragged && Math.Abs(dx) < 5 && Math.Abs(dy) < 5) return;
 
         if (!_wasDragged)
         {
             _wasDragged = true;
-            CaptureMouse(); // Capture only once drag is confirmed
+            CaptureMouse(); // Capture mouse so events arrive even outside the control
         }
 
         var parent = VisualTreeHelper.GetParent(this) as FrameworkElement;
@@ -135,10 +138,19 @@ public partial class AiOrbControl : UserControl
         if (!_isDragging) return;
         _isDragging = false;
 
-        if (_wasDragged) ReleaseMouseCapture();
-
-        if (_wasDragged && DataContext is AiOrbViewModel vm)
-            vm.SavePosition();
+        if (_wasDragged)
+        {
+            // Foi um drag: liberar captura e salvar posição. NÃO abrir menu.
+            ReleaseMouseCapture();
+            if (DataContext is AiOrbViewModel vm)
+                vm.SavePosition();
+        }
+        else
+        {
+            // Foi um tap simples: toggle do menu radial.
+            if (DataContext is AiOrbViewModel vm)
+                vm.ToggleRadialMenuCommand.Execute(null);
+        }
     }
 
     // ─── State-driven animations ─────────────────────────────────────────────

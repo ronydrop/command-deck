@@ -1,6 +1,10 @@
+using System;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using CommandDeck.ViewModels;
 
 namespace CommandDeck.Controls;
@@ -11,9 +15,7 @@ namespace CommandDeck.Controls;
 /// Responsibilities (UI-only):
 ///   - Notify the ViewModel about the current viewport size so it can compute the viewport rect.
 ///   - Forward mouse clicks and drags on the map canvas to the ViewModel.
-///   - Keep the ViewModel in sync when this control is resized.
-///
-/// All visual logic (item colours, positions, viewport rect) is driven by data binding.
+///   - Animate collapse/expand of the panel and chevron rotation.
 /// </summary>
 public partial class MiniMapControl : UserControl
 {
@@ -24,22 +26,73 @@ public partial class MiniMapControl : UserControl
     private double _dragOffsetAtStartX;
     private double _dragOffsetAtStartY;
 
+    // ─── Collapse animation state ─────────────────────────────────────────────
+
+    private MiniMapViewModel? _vm;
+
+    private static readonly Duration AnimDuration = new(TimeSpan.FromMilliseconds(220));
+    private static readonly IEasingFunction AnimEase = new CubicEase { EasingMode = EasingMode.EaseOut };
+
     // ─── Constructor ─────────────────────────────────────────────────────────
 
     public MiniMapControl()
     {
         InitializeComponent();
 
-        // Once the control is in the visual tree we can measure the host viewport
-        Loaded  += OnLoaded;
-        SizeChanged += OnSizeChanged;
+        Loaded             += OnLoaded;
+        SizeChanged        += OnSizeChanged;
+        DataContextChanged += OnDataContextChanged;
     }
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        BindViewModel(DataContext as MiniMapViewModel);
         NotifyViewportSize();
+    }
+
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        BindViewModel(e.NewValue as MiniMapViewModel);
+    }
+
+    private void BindViewModel(MiniMapViewModel? vm)
+    {
+        if (_vm is not null)
+            _vm.PropertyChanged -= OnVmPropertyChanged;
+
+        _vm = vm;
+
+        if (_vm is null) return;
+
+        _vm.PropertyChanged += OnVmPropertyChanged;
+
+        // Apply initial state without animation
+        BeginAnimation(HeightProperty, null);
+        Height = _vm.IsCollapsed ? 22 : _vm.MiniMapHeight;
+        ChevronRotation.Angle = _vm.IsCollapsed ? 0 : 180;
+    }
+
+    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MiniMapViewModel.IsCollapsed))
+            AnimateToggle(_vm!.IsCollapsed);
+    }
+
+    /// <summary>Animates height and chevron when the user collapses or expands the panel.</summary>
+    private void AnimateToggle(bool collapse)
+    {
+        if (_vm is null) return;
+
+        double targetHeight = collapse ? 22 : _vm.MiniMapHeight;
+        double targetAngle  = collapse ? 0   : 180;
+
+        BeginAnimation(HeightProperty,
+            new DoubleAnimation(targetHeight, AnimDuration) { EasingFunction = AnimEase });
+
+        ChevronRotation.BeginAnimation(RotateTransform.AngleProperty,
+            new DoubleAnimation(targetAngle, AnimDuration) { EasingFunction = AnimEase });
     }
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)

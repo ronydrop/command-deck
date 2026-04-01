@@ -381,7 +381,8 @@ public partial class TerminalControl : UserControl
         double vPad = OutputArea.Padding.Top   + OutputArea.Padding.Bottom
                     + OutputArea.Document.PagePadding.Top  + OutputArea.Document.PagePadding.Bottom;
 
-        double usableWidth  = Math.Max(0, ActualWidth  - hPad);
+        // Reserve scrollbar width so ConPTY columns stay stable whether or not the scrollbar is visible
+        double usableWidth  = Math.Max(0, ActualWidth  - hPad - SystemParameters.VerticalScrollBarWidth);
         double usableHeight = Math.Max(0, ActualHeight - vPad);
 
         short columns = (short)Math.Max(40, (int)(usableWidth  / charWidth));

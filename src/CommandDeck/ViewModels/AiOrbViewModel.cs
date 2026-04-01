@@ -36,23 +36,32 @@ public partial class AiOrbViewModel : ObservableObject
         _orbService = orbService;
         _voiceService = voiceService;
 
+        // BeginInvoke (assíncrono) em vez de Invoke (síncrono) para evitar deadlock:
+        // SpeechRecognitionEngine dispara eventos de background threads — Invoke síncrono
+        // bloquearia esperando a UI thread enquanto ela pode estar bloqueada no RecognizeAsyncStop.
         _voiceService.TranscriptionUpdated += text =>
         {
-            Application.Current?.Dispatcher.Invoke(() =>
-            {
-                TranscriptionText = text;
-            });
+            Application.Current?.Dispatcher.BeginInvoke(() => TranscriptionText = text);
         };
 
-        _voiceService.TranscriptionCompleted += async text =>
+        // async void não existe aqui: o delegate Action<string> não permite Task de retorno.
+        // Encapsular o await dentro do BeginInvoke para evitar o padrão "async void" implícito.
+        _voiceService.TranscriptionCompleted += text =>
         {
-            Application.Current?.Dispatcher.Invoke(() =>
+            Application.Current?.Dispatcher.BeginInvoke(async () =>
             {
                 TranscriptionText = text;
                 IsRecording = false;
                 State = OrbState.Processing;
+                try
+                {
+                    await ProcessTranscriptionAsync(text);
+                }
+                catch
+                {
+                    State = OrbState.Idle;
+                }
             });
-            await ProcessTranscriptionAsync(text);
         };
 
         // Load persisted position
@@ -67,21 +76,75 @@ public partial class AiOrbViewModel : ObservableObject
     [RelayCommand]
     private void ToggleRadialMenu()
     {
-        if (State == OrbState.Recording || State == OrbState.Processing) return;
+        // Se está gravando: click no orb serve como escape — força stop da gravação.
+        // Isso evita o travamento permanente se StartRecording falhou silenciosamente.
+        if (State == OrbState.Recording)
+        {
+            _ = ForceStopRecordingAsync();
+            return;
+        }
+        if (State == OrbState.Processing) return;
 
         IsRadialMenuOpen = !IsRadialMenuOpen;
         State = IsRadialMenuOpen ? OrbState.Active : OrbState.Idle;
+    }
+
+    /// <summary>
+    /// Para a gravação de forma forçada, restaurando o estado para Idle independentemente
+    /// do estado interno do VoiceInputService. Usado como escape se o estado travar.
+    /// </summary>
+    private async Task ForceStopRecordingAsync()
+    {
+        try { await _voiceService.StopAndTranscribeAsync(); }
+        catch { /* ignore — apenas restaurar estado */ }
+        IsRecording = false;
+        State = OrbState.Idle;
+        TranscriptionText = string.Empty;
+        StatusMessage = string.Empty;
     }
 
     [RelayCommand]
     private async Task StartRecordingAsync()
     {
         if (_voiceService.IsRecording) return;
+
+        // Verificar disponibilidade do microfone ANTES de mudar qualquer estado visual.
+        if (!_voiceService.IsAvailable)
+        {
+            StatusMessage = "Microfone não disponível";
+            await Task.Delay(2000);
+            StatusMessage = string.Empty;
+            return;
+        }
+
         IsRecording = true;
         IsRadialMenuOpen = false;
         State = OrbState.Recording;
         TranscriptionText = string.Empty;
-        await _voiceService.StartRecordingAsync();
+
+        try
+        {
+            await _voiceService.StartRecordingAsync();
+
+            // Se o service falhou silenciosamente (engoliu exceção mas _isRecording=false),
+            // detectar e restaurar o estado do ViewModel — evita travamento permanente.
+            if (!_voiceService.IsRecording)
+            {
+                IsRecording = false;
+                State = OrbState.Idle;
+                StatusMessage = "Falha ao iniciar gravação";
+                await Task.Delay(2000);
+                StatusMessage = string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            IsRecording = false;
+            State = OrbState.Idle;
+            StatusMessage = $"Erro: {ex.Message}";
+            await Task.Delay(2000);
+            StatusMessage = string.Empty;
+        }
     }
 
     [RelayCommand]

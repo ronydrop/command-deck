@@ -8,7 +8,6 @@
              d:DesignWidth="200" d:DesignHeight="140"
              d:DataContext="{d:DesignInstance Type={x:Type vm:MiniMapViewModel}}"
              Width="{Binding MiniMapWidth}"
-             Height="{Binding ControlHeight}"
              IsHitTestVisible="True"
              Focusable="False">
 
@@ -28,19 +27,8 @@
             <Grid.RowDefinitions>
                 <!-- Header label row -->
                 <RowDefinition Height="22" />
-                <!-- Map canvas row — collapses to 0 when minimized -->
-                <RowDefinition>
-                    <RowDefinition.Style>
-                        <Style TargetType="RowDefinition">
-                            <Setter Property="Height" Value="*" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                                    <Setter Property="Height" Value="0" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </RowDefinition.Style>
-                </RowDefinition>
+                <!-- Map canvas row — height controlled via animation in code-behind -->
+                <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
             <!-- ── Header ─────────────────────────────────────────────────── -->
@@ -101,19 +89,6 @@
                             <Path.RenderTransform>
                                 <RotateTransform x:Name="ChevronRotation" Angle="180" />
                             </Path.RenderTransform>
-                            <Path.Style>
-                                <Style TargetType="Path">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
-                                            <Setter Property="RenderTransform">
-                                                <Setter.Value>
-                                                    <RotateTransform Angle="0" />
-                                                </Setter.Value>
-                                            </Setter>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Path.Style>
                         </Path>
                     </Button>
                 </Grid>

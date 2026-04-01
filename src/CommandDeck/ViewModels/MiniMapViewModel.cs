@@ -217,28 +217,48 @@ public partial class MiniMapViewModel : ObservableObject
         double scaleX = SafeScale(MiniMapWidth,  WorldWidth);
         double scaleY = SafeScale(MiniMapHeight, WorldHeight);
 
-        ItemRects.Clear();
+        var items = _workspaceService.Items;
+        int i = 0;
 
-        foreach (var item in _workspaceService.Items)
+        // Update existing rects in-place to avoid ObservableCollection churn at 60 fps
+        foreach (var item in items)
         {
             double mmX = (item.X - WorldMinX) * scaleX;
             double mmY = (item.Y - WorldMinY) * scaleY;
             double mmW = Math.Max(2, item.Width  * scaleX);
             double mmH = Math.Max(2, item.Height * scaleY);
-
             var isAi = item is TerminalCanvasItemViewModel tci && tci.IsAiSession;
 
-            ItemRects.Add(new MiniMapItemRect
+            if (i < ItemRects.Count)
             {
-                X          = mmX,
-                Y          = mmY,
-                Width      = mmW,
-                Height     = mmH,
-                IsTerminal = item.ItemType == CanvasItemType.Terminal,
-                IsAiSession = isAi,
-                IsSelected = item.IsSelected
-            });
+                var r = ItemRects[i];
+                r.X          = mmX;
+                r.Y          = mmY;
+                r.Width      = mmW;
+                r.Height     = mmH;
+                r.IsTerminal = item.ItemType == CanvasItemType.Terminal;
+                r.IsAiSession = isAi;
+                r.IsSelected  = item.IsSelected;
+            }
+            else
+            {
+                ItemRects.Add(new MiniMapItemRect
+                {
+                    X          = mmX,
+                    Y          = mmY,
+                    Width      = mmW,
+                    Height     = mmH,
+                    IsTerminal = item.ItemType == CanvasItemType.Terminal,
+                    IsAiSession = isAi,
+                    IsSelected  = item.IsSelected
+                });
+            }
+            i++;
         }
+
+        // Remove excess entries if items were deleted
+        while (ItemRects.Count > i)
+            ItemRects.RemoveAt(ItemRects.Count - 1);
     }
 
     private void UpdateViewportRect(double viewportW, double viewportH)

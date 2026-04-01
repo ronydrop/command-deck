@@ -32,21 +32,37 @@ internal struct TerminalCell
 
 /// <summary>
 /// Full 2-D virtual terminal screen buffer.
-/// Manages a <c>rows × cols</c> grid of <see cref="TerminalCell"/> values,
-/// cursor positioning, all standard erase/scroll/insert/delete operations,
-/// and a scrollback queue for lines that roll off the top.
+/// Supports dual-buffer (main + alternate screen), scroll regions (DECSTBM),
+/// cursor save/restore, and all standard erase/scroll/insert/delete operations.
 /// </summary>
 internal sealed class TerminalLineBuffer
 {
-    private TerminalCell[,] _screen;
+    // ─── Dual-buffer fields ──────────────────────────────────────────────────
+    private TerminalCell[,] _screen;       // active screen (main or alt)
+    private TerminalCell[,] _mainScreen;   // main screen buffer
+    private TerminalCell[,]? _altScreen;   // alternate screen buffer (lazy)
+    private bool _isAltScreen;
+
+    // Saved cursors for screen switching (ESC[?1049h/l)
+    private (int Row, int Col) _mainSavedCursor;
+    private (int Row, int Col) _altSavedCursor;
+
     private int _rows;
     private int _cols;
 
     private readonly Color _defaultFg;
     private readonly Color _defaultBg;
 
-    // Lines that scrolled off the top; consumed by AnsiParser for scrollback rendering.
+    // Lines that scrolled off the top of the MAIN screen; consumed by AnsiParser for scrollback.
     private readonly Queue<TerminalCell[]> _scrolledOffLines = new();
+
+    // ─── Scroll Region (DECSTBM) ─────────────────────────────────────────────
+    private int _scrollTop;
+    private int _scrollBottom;
+
+    // ─── Cursor Save/Restore (CSI s / CSI u) ────────────────────────────────
+    private int _savedCursorRow;
+    private int _savedCursorCol;
 
     // ─── Public Properties ───────────────────────────────────────────────────
 
@@ -62,6 +78,9 @@ internal sealed class TerminalLineBuffer
     /// <summary>True when there are lines that scrolled off and are waiting to be committed.</summary>
     public bool HasScrolledLines => _scrolledOffLines.Count > 0;
 
+    /// <summary>True when the alternate screen buffer is active.</summary>
+    public bool IsAltScreen => _isAltScreen;
+
     // ─── Constructor ─────────────────────────────────────────────────────────
 
     public TerminalLineBuffer(int columns = 120)
@@ -73,8 +92,10 @@ internal sealed class TerminalLineBuffer
         _defaultBg = defaultBg;
         _rows = 30;
         _cols = Math.Max(1, columns);
-        _screen = new TerminalCell[_rows, _cols];
+        _mainScreen = new TerminalCell[_rows, _cols];
+        _screen = _mainScreen;
         FillEmpty(0, _rows);
+        _scrollBottom = _rows - 1;
     }
 
     // ─── Screen Fill ─────────────────────────────────────────────────────────
@@ -92,6 +113,14 @@ internal sealed class TerminalLineBuffer
         var cell = new TerminalCell { Char = ' ', Foreground = _defaultFg, Background = _defaultBg };
         for (int c = 0; c < _cols; c++)
             _screen[row, c] = cell;
+    }
+
+    private static void FillBufferEmpty(TerminalCell[,] buf, int rows, int cols, Color fg, Color bg)
+    {
+        var cell = new TerminalCell { Char = ' ', Foreground = fg, Background = bg };
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                buf[r, c] = cell;
     }
 
     // ─── Character Write ─────────────────────────────────────────────────────
@@ -154,46 +183,137 @@ internal sealed class TerminalLineBuffer
     public void MoveCursorRight(int n = 1) => CursorCol = Math.Min(_cols - 1, CursorCol + n);
     public void MoveCursorToColumn(int col) => CursorCol = Math.Clamp(col, 0, _cols - 1);
 
+    // ─── Cursor Save/Restore ─────────────────────────────────────────────────
+
+    /// <summary>Saves current cursor position (CSI s / ESC 7).</summary>
+    public void SaveCursor()
+    {
+        _savedCursorRow = CursorRow;
+        _savedCursorCol = CursorCol;
+    }
+
+    /// <summary>Restores previously saved cursor position (CSI u / ESC 8).</summary>
+    public void RestoreCursor()
+    {
+        CursorRow = Math.Clamp(_savedCursorRow, 0, _rows - 1);
+        CursorCol = Math.Clamp(_savedCursorCol, 0, _cols - 1);
+    }
+
+    // ─── Alternate Screen Buffer ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Switches to the alternate screen buffer (ESC[?1049h / ESC[?47h).
+    /// Saves the main cursor position, clears the alt buffer, resets cursor to (0,0).
+    /// </summary>
+    public void SwitchToAltScreen()
+    {
+        if (_isAltScreen) return;
+
+        _mainSavedCursor = (CursorRow, CursorCol);
+
+        // Allocate or reuse the alt buffer at current dimensions
+        if (_altScreen == null || _altScreen.GetLength(0) != _rows || _altScreen.GetLength(1) != _cols)
+            _altScreen = new TerminalCell[_rows, _cols];
+
+        // Always start with a clean alt screen
+        FillBufferEmpty(_altScreen, _rows, _cols, _defaultFg, _defaultBg);
+
+        _screen = _altScreen;
+        _isAltScreen = true;
+        CursorRow = 0;
+        CursorCol = 0;
+        _scrollTop = 0;
+        _scrollBottom = _rows - 1;
+    }
+
+    /// <summary>
+    /// Returns to the main screen buffer (ESC[?1049l / ESC[?47l).
+    /// Restores the main cursor position saved on entry.
+    /// </summary>
+    public void SwitchToMainScreen()
+    {
+        if (!_isAltScreen) return;
+
+        _altSavedCursor = (CursorRow, CursorCol);
+        _screen = _mainScreen;
+        _isAltScreen = false;
+
+        CursorRow = Math.Clamp(_mainSavedCursor.Row, 0, _rows - 1);
+        CursorCol = Math.Clamp(_mainSavedCursor.Col, 0, _cols - 1);
+        _scrollTop = 0;
+        _scrollBottom = _rows - 1;
+    }
+
+    // ─── Scroll Region (DECSTBM) ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Sets the scrolling region (ESC[top;bottomr).  Both indices are 0-based.
+    /// If top >= bottom the region resets to the full screen.
+    /// </summary>
+    public void SetScrollRegion(int top, int bottom)
+    {
+        _scrollTop    = Math.Clamp(top,    0, _rows - 1);
+        _scrollBottom = Math.Clamp(bottom, 0, _rows - 1);
+        if (_scrollTop >= _scrollBottom)
+        {
+            _scrollTop    = 0;
+            _scrollBottom = _rows - 1;
+        }
+    }
+
     // ─── Line Feed & Scroll ──────────────────────────────────────────────────
 
-    /// <summary>Advances cursor down one row; scrolls if at the bottom.</summary>
+    /// <summary>Advances cursor down one row; scrolls the active region if at the bottom margin.</summary>
     public void LineFeed() => LineFeedInternal();
 
     private void LineFeedInternal()
     {
-        if (CursorRow < _rows - 1)
+        if (CursorRow == _scrollBottom)
+            // At the bottom margin: scroll the region
+            ScrollUpRegion(1);
+        else if (CursorRow < _rows - 1)
+            // Inside or above the region: simply move down
             CursorRow++;
-        else
-            ScrollUpBuffer(1);
+        // Below _scrollBottom but at _rows-1: cursor stays (no scroll outside region)
     }
 
-    private void ScrollUpBuffer(int n)
+    /// <summary>
+    /// Scrolls the scroll region up by n lines.
+    /// Lines that leave the top of the region are captured to scrollback only when
+    /// the region starts at row 0 and the buffer is in main-screen mode.
+    /// </summary>
+    private void ScrollUpRegion(int n)
     {
         for (int i = 0; i < n; i++)
         {
-            // Capture the scrolled-off row before overwriting
-            var line = new TerminalCell[_cols];
-            for (int c = 0; c < _cols; c++)
-                line[c] = _screen[0, c];
-            _scrolledOffLines.Enqueue(line);
+            // Capture the leaving row to scrollback only for main-screen full-screen scrolls
+            if (_scrollTop == 0 && !_isAltScreen)
+            {
+                var line = new TerminalCell[_cols];
+                for (int c = 0; c < _cols; c++)
+                    line[c] = _screen[_scrollTop, c];
+                _scrolledOffLines.Enqueue(line);
+            }
 
-            // Shift every row up by 1
-            for (int r = 0; r < _rows - 1; r++)
+            // Shift rows up within the region
+            for (int r = _scrollTop; r < _scrollBottom; r++)
                 for (int c = 0; c < _cols; c++)
                     _screen[r, c] = _screen[r + 1, c];
 
-            FillRowEmpty(_rows - 1);
+            FillRowEmpty(_scrollBottom);
         }
     }
 
-    private void ScrollDownBuffer(int n)
+    /// <summary>Scrolls the scroll region down by n lines; blank lines appear at the top margin.</summary>
+    private void ScrollDownRegion(int n)
     {
         for (int i = 0; i < n; i++)
         {
-            for (int r = _rows - 1; r > 0; r--)
+            for (int r = _scrollBottom; r > _scrollTop; r--)
                 for (int c = 0; c < _cols; c++)
                     _screen[r, c] = _screen[r - 1, c];
-            FillRowEmpty(0);
+
+            FillRowEmpty(_scrollTop);
         }
     }
 
@@ -250,25 +370,33 @@ internal sealed class TerminalLineBuffer
 
     // ─── Line Insert / Delete ────────────────────────────────────────────────
 
-    /// <summary>Insert n blank lines at cursor row, pushing existing lines down (ESC[L).</summary>
+    /// <summary>Insert n blank lines at cursor row within the scroll region (ESC[L).</summary>
     public void InsertLines(int n)
     {
-        n = Math.Min(n, _rows - CursorRow);
-        for (int r = _rows - 1; r >= CursorRow + n; r--)
+        int regionBottom = _scrollBottom;
+        n = Math.Min(n, regionBottom - CursorRow + 1);
+        if (n <= 0) return;
+
+        for (int r = regionBottom; r >= CursorRow + n; r--)
             for (int c = 0; c < _cols; c++)
                 _screen[r, c] = _screen[r - n, c];
-        for (int r = CursorRow; r < CursorRow + n && r < _rows; r++)
+
+        for (int r = CursorRow; r < CursorRow + n && r <= regionBottom; r++)
             FillRowEmpty(r);
     }
 
-    /// <summary>Delete n lines at cursor row, pulling lines below up (ESC[M).</summary>
+    /// <summary>Delete n lines at cursor row within the scroll region (ESC[M).</summary>
     public void DeleteLines(int n)
     {
-        n = Math.Min(n, _rows - CursorRow);
-        for (int r = CursorRow; r < _rows - n; r++)
+        int regionBottom = _scrollBottom;
+        n = Math.Min(n, regionBottom - CursorRow + 1);
+        if (n <= 0) return;
+
+        for (int r = CursorRow; r <= regionBottom - n; r++)
             for (int c = 0; c < _cols; c++)
                 _screen[r, c] = _screen[r + n, c];
-        for (int r = _rows - n; r < _rows; r++)
+
+        for (int r = regionBottom - n + 1; r <= regionBottom; r++)
             FillRowEmpty(r);
     }
 
@@ -297,15 +425,15 @@ internal sealed class TerminalLineBuffer
 
     // ─── Scroll Sequences ────────────────────────────────────────────────────
 
-    /// <summary>Scroll screen up n lines (ESC[S). Lines scrolled off go to scrollback.</summary>
-    public void ScrollUp(int n) => ScrollUpBuffer(n);
+    /// <summary>Scroll region up n lines (ESC[S). Respects DECSTBM scroll region.</summary>
+    public void ScrollUp(int n) => ScrollUpRegion(n);
 
-    /// <summary>Scroll screen down n lines (ESC[T). Blank lines appear at the top.</summary>
-    public void ScrollDown(int n) => ScrollDownBuffer(n);
+    /// <summary>Scroll region down n lines (ESC[T). Respects DECSTBM scroll region.</summary>
+    public void ScrollDown(int n) => ScrollDownRegion(n);
 
     // ─── Full Reset ──────────────────────────────────────────────────────────
 
-    /// <summary>Clears the entire screen and scrollback queue, resets cursor to (0,0).</summary>
+    /// <summary>Clears the active screen and scrollback queue, resets cursor to (0,0).</summary>
     public void Clear()
     {
         FillEmpty(0, _rows);
@@ -316,31 +444,48 @@ internal sealed class TerminalLineBuffer
 
     // ─── Resize ──────────────────────────────────────────────────────────────
 
-    /// <summary>Resizes the screen buffer, preserving existing content.</summary>
+    /// <summary>Resizes the screen buffer(s), preserving existing content.</summary>
     public void SetSize(int rows, int cols)
     {
         rows = Math.Max(1, rows);
         cols = Math.Max(1, cols);
         if (rows == _rows && cols == _cols) return;
 
-        var newScreen = new TerminalCell[rows, cols];
-        var empty = new TerminalCell { Char = ' ', Foreground = _defaultFg, Background = _defaultBg };
+        _mainScreen = ResizeBuffer(_mainScreen, _rows, _cols, rows, cols);
 
-        for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-                newScreen[r, c] = empty;
+        if (_altScreen != null)
+            _altScreen = ResizeBuffer(_altScreen, _rows, _cols, rows, cols);
 
-        int copyRows = Math.Min(rows, _rows);
-        int copyCols = Math.Min(cols, _cols);
-        for (int r = 0; r < copyRows; r++)
-            for (int c = 0; c < copyCols; c++)
-                newScreen[r, c] = _screen[r, c];
+        // Re-point _screen to the correct (now resized) buffer
+        _screen = _isAltScreen ? _altScreen! : _mainScreen;
 
-        _screen = newScreen;
         _rows = rows;
         _cols = cols;
+
+        // Reset scroll region to full screen after resize
+        _scrollTop    = 0;
+        _scrollBottom = rows - 1;
+
         CursorRow = Math.Clamp(CursorRow, 0, rows - 1);
         CursorCol = Math.Clamp(CursorCol, 0, cols - 1);
+    }
+
+    private TerminalCell[,] ResizeBuffer(TerminalCell[,] old, int oldRows, int oldCols, int newRows, int newCols)
+    {
+        var newBuf = new TerminalCell[newRows, newCols];
+        var empty  = new TerminalCell { Char = ' ', Foreground = _defaultFg, Background = _defaultBg };
+
+        for (int r = 0; r < newRows; r++)
+            for (int c = 0; c < newCols; c++)
+                newBuf[r, c] = empty;
+
+        int copyRows = Math.Min(newRows, oldRows);
+        int copyCols = Math.Min(newCols, oldCols);
+        for (int r = 0; r < copyRows; r++)
+            for (int c = 0; c < copyCols; c++)
+                newBuf[r, c] = old[r, c];
+
+        return newBuf;
     }
 
     // Keep old single-axis setters for backward compatibility
@@ -352,7 +497,7 @@ internal sealed class TerminalLineBuffer
     /// <summary>Returns the cell at a given screen position.</summary>
     public TerminalCell GetCell(int row, int col) => _screen[row, col];
 
-    /// <summary>Dequeues the oldest line that scrolled off the top of the screen.</summary>
+    /// <summary>Dequeues the oldest line that scrolled off the top of the main screen.</summary>
     public TerminalCell[] DequeueScrolledLine() => _scrolledOffLines.Dequeue();
 
     /// <summary>
@@ -361,7 +506,6 @@ internal sealed class TerminalLineBuffer
     /// </summary>
     public int GetLastUsedRow()
     {
-        var empty = new TerminalCell { Char = ' ', Foreground = _defaultFg, Background = _defaultBg };
         for (int r = _rows - 1; r > 0; r--)
             for (int c = 0; c < _cols; c++)
             {
