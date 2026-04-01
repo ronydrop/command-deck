@@ -781,8 +781,9 @@ public partial class SettingsViewModel : ObservableObject
                 UpdateStatusText = "Você está usando a versão mais recente.";
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Debug.WriteLine($"[SettingsViewModel.CheckForUpdate] Update check failed: {ex.Message}");
             UpdateStatusText = "Erro ao verificar atualizações.";
         }
         finally
