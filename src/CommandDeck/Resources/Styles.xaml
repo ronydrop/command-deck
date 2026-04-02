@@ -14,10 +14,37 @@
            DurationSlow   = 0:0:0.400  (400 ms)  — focus mode, fit-all
          ═══════════════════════════════════════════════════════════════════════ -->
 
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         ORB / RADIAL MENU COLORS
+         Catppuccin Mocha palette with alpha — defined here so OrbTooltipStyle
+         and RadialMenuButtonStyle don't hardcode hex values.
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <SolidColorBrush x:Key="OrbTooltipBackgroundBrush"  Color="#CC1E1E2E" />
+    <SolidColorBrush x:Key="OrbTooltipBorderBrush"      Color="#44CBA6F7" />
+    <SolidColorBrush x:Key="OrbTooltipForegroundBrush"  Color="#CDD6F4" />
+    <SolidColorBrush x:Key="RadialBtnFillBrush"         Color="#331E1E2E" />
+    <SolidColorBrush x:Key="RadialBtnStrokeBrush"       Color="#33CBA6F7" />
+    <SolidColorBrush x:Key="RadialBtnFillHoverBrush"    Color="#441E1E2E" />
+    <SolidColorBrush x:Key="RadialBtnStrokeHoverBrush"  Color="#55CBA6F7" />
+    <SolidColorBrush x:Key="RadialBtnFillPressBrush"    Color="#661E1E2E" />
+
     <!-- Easing functions keyed as resources for reuse across animations -->
     <QuadraticEase  x:Key="EaseOut"     EasingMode="EaseOut" />
     <CubicEase      x:Key="EaseInOut"   EasingMode="EaseInOut" />
     <ExponentialEase x:Key="EaseOutExpo" EasingMode="EaseOut" Exponent="4" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         ORB / RADIAL MENU BRUSHES (Catppuccin Mocha)
+         Centralised here so theme overrides only touch this section.
+         ═══════════════════════════════════════════════════════════════════════ -->
+    <SolidColorBrush x:Key="OrbTooltipBackgroundBrush" Color="#CC1E1E2E"/>
+    <SolidColorBrush x:Key="OrbTooltipBorderBrush"     Color="#44CBA6F7"/>
+    <SolidColorBrush x:Key="OrbTooltipForegroundBrush" Color="#CDD6F4"/>
+    <SolidColorBrush x:Key="RadialBtnFillBrush"        Color="#331E1E2E"/>
+    <SolidColorBrush x:Key="RadialBtnStrokeBrush"      Color="#33CBA6F7"/>
+    <SolidColorBrush x:Key="RadialBtnFillHoverBrush"   Color="#441E1E2E"/>
+    <SolidColorBrush x:Key="RadialBtnStrokeHoverBrush" Color="#55CBA6F7"/>
+    <SolidColorBrush x:Key="RadialBtnFillPressBrush"   Color="#661E1E2E"/>
 
     <!-- ═══════════════════════════════════════════════════════════════════════
          FONTS
@@ -223,10 +250,10 @@
 
     <Style x:Key="OrbTooltipStyle" TargetType="ToolTip">
         <Setter Property="Padding" Value="10,6" />
-        <Setter Property="Background" Value="#CC1E1E2E" />
-        <Setter Property="BorderBrush" Value="#44CBA6F7" />
+        <Setter Property="Background" Value="{StaticResource OrbTooltipBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OrbTooltipBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Foreground" Value="#CDD6F4" />
+        <Setter Property="Foreground" Value="{StaticResource OrbTooltipForegroundBrush}" />
         <Setter Property="FontSize" Value="11" />
         <Setter Property="Template">
             <Setter.Value>
@@ -264,21 +291,21 @@
                         </Grid.RenderTransform>
                         <Ellipse x:Name="ButtonEllipse"
                                  Width="40" Height="40"
-                                 Fill="#331E1E2E"
-                                 Stroke="#33CBA6F7"
+                                 Fill="{StaticResource RadialBtnFillBrush}"
+                                 Stroke="{StaticResource RadialBtnStrokeBrush}"
                                  StrokeThickness="1"/>
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="ButtonEllipse" Property="Fill" Value="#441E1E2E"/>
-                            <Setter TargetName="ButtonEllipse" Property="Stroke" Value="#55CBA6F7"/>
+                            <Setter TargetName="ButtonEllipse" Property="Fill"   Value="{StaticResource RadialBtnFillHoverBrush}"/>
+                            <Setter TargetName="ButtonEllipse" Property="Stroke" Value="{StaticResource RadialBtnStrokeHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="PressScale" Property="ScaleX" Value="0.92"/>
                             <Setter TargetName="PressScale" Property="ScaleY" Value="0.92"/>
-                            <Setter TargetName="ButtonEllipse" Property="Fill" Value="#661E1E2E"/>
+                            <Setter TargetName="ButtonEllipse" Property="Fill" Value="{StaticResource RadialBtnFillPressBrush}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.3"/>

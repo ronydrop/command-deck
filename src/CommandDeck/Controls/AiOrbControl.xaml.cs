@@ -40,6 +40,19 @@ public partial class AiOrbControl : UserControl
 
         MouseEnter += OnMouseEnterCore;
         MouseLeave += OnMouseLeaveCore;
+        Unloaded += OnUnloaded;
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        // Unsubscribe cross-lifetime references: ViewModel (singleton) → Control (scoped)
+        if (DataContext is AiOrbViewModel vm)
+            vm.PropertyChanged -= OnViewModelPropertyChanged;
+
+        DataContextChanged -= OnDataContextChanged;
+        MouseEnter -= OnMouseEnterCore;
+        MouseLeave -= OnMouseLeaveCore;
+        Unloaded -= OnUnloaded;
     }
 
     protected override Geometry? GetLayoutClip(Size layoutSlotSize) => null;
