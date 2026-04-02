@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text;
 using System.Windows.Documents;
-using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommandDeck.Models;
@@ -21,11 +20,13 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
     private readonly ISettingsService _settingsService;
     private readonly ISecretStorageService _secretStorageService;
     private readonly IClaudeOAuthService _claudeOAuthService;
+    private readonly IDatabaseService _db;
     private CancellationTokenSource? _cts;
-    private readonly DispatcherTimer _availabilityTimer;
 
     /// <summary>Timestamp of the last successful provider availability check.</summary>
     private DateTime _lastAvailabilityCheck = DateTime.MinValue;
+
+    private string _currentConversationId = Guid.NewGuid().ToString("N");
 
     /// <summary>How long to cache provider availability before re-checking.</summary>
     private static readonly TimeSpan AvailabilityCacheDuration = TimeSpan.FromSeconds(30);
@@ -130,9 +131,8 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
         };
 
         // ObservableCollection must be mutated on the UI thread (CollectionView constraint).
-        // RefreshProviderInfoAsync can resume on a thread-pool thread after awaiting
-        // GetSettingsAsync (which uses ConfigureAwait(false)), so we always dispatch here.
-        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        // Use BeginInvoke (non-blocking) so background threads aren't stalled waiting for the UI.
+        System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
         {
             AvailableModels.Clear();
             foreach (var m in models) AvailableModels.Add(m);
@@ -151,6 +151,7 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
         ISettingsService settingsService,
         ISecretStorageService secretStorageService,
         IClaudeOAuthService claudeOAuthService,
+        IDatabaseService db,
         AssistantSettings assistantSettings)
     {
         _assistant = assistant;
@@ -159,14 +160,8 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
         _settingsService = settingsService;
         _secretStorageService = secretStorageService;
         _claudeOAuthService = claudeOAuthService;
+        _db = db;
         _assistantSettings = assistantSettings;
-
-        _availabilityTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromSeconds(60)
-        };
-        _availabilityTimer.Tick += (_, _) => _ = RefreshProviderInfoAsync();
-        // Timer starts only when panel is opened (via OnPanelOpenedAsync)
 
         // Listen for settings changes (e.g. user changed AI provider in Settings screen)
         _settingsService.SettingsChanged += OnSettingsChanged;
@@ -189,12 +184,31 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
         InputText = string.Empty;
         await ExecuteWithProviderGuardAsync(async ct =>
         {
-            // Build conversation history and trim to the active model's context window
-            var history = TrimToContextWindow(
-                Messages.Select(m => (m.Role, m.Content)).Append(("user", text)).ToList());
+            // Build conversation history using AssistantMessage
+            var messages = new List<AssistantMessage>();
+
+            // Inject system prompt if configured
+            var settings = await _settingsService.GetSettingsAsync();
+            if (!string.IsNullOrWhiteSpace(settings.AiSystemPrompt))
+                messages.Add(AssistantMessage.System(settings.AiSystemPrompt));
+
+            // Add existing messages
+            foreach (var m in Messages)
+                messages.Add(m.IsUser ? AssistantMessage.User(m.Content) : AssistantMessage.Assistant(m.Content));
+
+            // Add the new user message
+            messages.Add(AssistantMessage.User(text));
+
+            // Trim to context window
+            messages = await Task.Run(() => TrimToContextWindow(messages), ct);
 
             // Add user message to UI
             Messages.Add(ChatMessage.FromUser(text));
+            _ = _db.SaveChatMessageAsync(_currentConversationId, "user", text,
+                GetCurrentModelName(), GetCurrentProviderName())
+                .ContinueWith(t => System.Diagnostics.Debug.WriteLine(
+                    $"[AssistantPanel] SaveChatMessage failed: {t.Exception?.InnerException?.Message}"),
+                    TaskContinuationOptions.OnlyOnFaulted);
 
             // Add a loading placeholder for the assistant reply
             var loadingMsg = ChatMessage.Loading();
@@ -206,9 +220,14 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
             {
                 var lastUiUpdate = DateTime.UtcNow;
                 loadingMsg.IsStreaming = true;
-                await foreach (var chunk in _assistant.StreamChatAsync(history, ct))
+                await foreach (var response in _assistant.StreamChatAsync((IReadOnlyList<AssistantMessage>)messages, ct))
                 {
-                    sb.Append(chunk);
+                    if (response.IsError)
+                    {
+                        sb.Append($"\n\n[Erro: {response.Error}]");
+                        break;
+                    }
+                    sb.Append(response.Content);
                     var now = DateTime.UtcNow;
                     if ((now - lastUiUpdate).TotalMilliseconds >= 80)
                     {
@@ -218,26 +237,37 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
                 }
                 // Final update to ensure all content is shown
                 loadingMsg.Content = sb.ToString();
+                _ = _db.SaveChatMessageAsync(_currentConversationId, "assistant", loadingMsg.Content,
+                    GetCurrentModelName(), GetCurrentProviderName())
+                    .ContinueWith(t => System.Diagnostics.Debug.WriteLine(
+                        $"[AssistantPanel] SaveChatMessage failed: {t.Exception?.InnerException?.Message}"),
+                        TaskContinuationOptions.OnlyOnFaulted);
             }
             catch (OperationCanceledException)
             {
                 sb.Append("[cancelado]");
                 loadingMsg.Content = sb.ToString();
             }
-
-            loadingMsg.IsStreaming = false;
+            catch (Exception ex)
+            {
+                sb.Append($"\n\n[Erro: {ex.Message}]");
+                loadingMsg.Content = sb.ToString();
+            }
+            finally
+            {
+                loadingMsg.IsStreaming = false;
+            }
         });
     }
 
     private bool CanSendMessage() => !IsLoading && !string.IsNullOrWhiteSpace(InputText);
 
     /// <summary>
-    /// Trims <paramref name="history"/> so the total estimated token count fits within
+    /// Trims <paramref name="messages"/> so the total estimated token count fits within
     /// the active model's context window minus a reserve for the response.
     /// Oldest non-system messages are dropped first; system messages are always kept.
     /// </summary>
-    private List<(string Role, string Content)> TrimToContextWindow(
-        List<(string Role, string Content)> history)
+    private List<AssistantMessage> TrimToContextWindow(List<AssistantMessage> messages)
     {
         var model = _assistantSettings.ActiveProvider switch
         {
@@ -251,20 +281,18 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
         var contextWindow = ModelContextWindows.Get(model);
         var tokenBudget = contextWindow - ModelContextWindows.ResponseReserveTokens;
 
-        // Rough estimate: 4 chars ≈ 1 token
         static int Estimate(string text) => Math.Max(1, text.Length / 4);
 
-        var totalTokens = history.Sum(m => Estimate(m.Content));
-        if (totalTokens <= tokenBudget) return history;
+        var totalTokens = messages.Sum(m => Estimate(m.Content));
+        if (totalTokens <= tokenBudget) return messages;
 
-        var systemMessages = history.Where(m => m.Role == "system").ToList();
-        var otherMessages  = history.Where(m => m.Role != "system").ToList();
+        var systemMessages = messages.Where(m => m.Role == AssistantRole.System).ToList();
+        var otherMessages  = messages.Where(m => m.Role != AssistantRole.System).ToList();
 
         var systemTokens = systemMessages.Sum(m => Estimate(m.Content));
         var remaining = tokenBudget - systemTokens;
 
-        // Keep newest messages first, discard oldest until under budget
-        var kept = new List<(string Role, string Content)>();
+        var kept = new List<AssistantMessage>();
         for (var i = otherMessages.Count - 1; i >= 0; i--)
         {
             var t = Estimate(otherMessages[i].Content);
@@ -377,7 +405,8 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
     private void ClearHistory()
     {
         Messages.Clear();
-        StatusText = "Histórico apagado.";
+        _currentConversationId = Guid.NewGuid().ToString("N");
+        StatusText = "Nova conversa iniciada.";
     }
 
     /// <summary>
@@ -388,6 +417,35 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
     {
         _cts?.Cancel();
         StatusText = "Cancelado.";
+    }
+
+    /// <summary>
+    /// Retries the last failed AI response by re-sending the last user message.
+    /// </summary>
+    [RelayCommand]
+    private async Task RetryLastMessage()
+    {
+        // Find the last user message (skip error assistant messages)
+        ChatMessage? lastUser = null;
+        ChatMessage? lastAssistant = null;
+        for (var i = Messages.Count - 1; i >= 0; i--)
+        {
+            if (lastAssistant is null && !Messages[i].IsUser && Messages[i].HasError)
+                lastAssistant = Messages[i];
+            else if (lastUser is null && Messages[i].IsUser)
+                lastUser = Messages[i];
+            if (lastUser is not null && lastAssistant is not null) break;
+        }
+
+        if (lastUser is null || lastAssistant is null) return;
+
+        // Remove the error response and the user message
+        Messages.Remove(lastAssistant);
+        Messages.Remove(lastUser);
+
+        // Re-send
+        InputText = lastUser.Content;
+        await SendMessage();
     }
 
     /// <summary>
@@ -523,16 +581,37 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
     /// </summary>
     public async Task OnPanelOpenedAsync()
     {
-        _availabilityTimer.Start();
+        // Load last conversation if chat is empty
+        if (Messages.Count == 0)
+        {
+            try
+            {
+                var lastId = await _db.GetLastConversationIdAsync();
+                if (lastId is not null)
+                {
+                    _currentConversationId = lastId;
+                    var records = await _db.GetChatMessagesAsync(lastId);
+                    foreach (var r in records)
+                        Messages.Add(r.Role == "user"
+                            ? ChatMessage.FromUser(r.Content)
+                            : ChatMessage.FromAssistant(r.Content));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AssistantPanel] LoadHistory failed: {ex.Message}");
+            }
+        }
+
         await RefreshProviderInfoAsync(force: true);
     }
 
     /// <summary>
-    /// Call when the AI assistant panel is closed to stop unnecessary polling.
+    /// Call when the AI assistant panel is closed.
     /// </summary>
     public void OnPanelClosed()
     {
-        _availabilityTimer.Stop();
+        // No-op — timer was removed; kept for API compatibility.
     }
 
     /// <summary>
@@ -591,6 +670,9 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
                 NotificationSource.AI,
                 message: ex.Message);
             System.Diagnostics.Debug.WriteLine($"[AssistantPanel] {ex}");
+
+            // Re-check availability on error to update UI
+            await RefreshProviderInfoAsync(force: true);
         }
         finally
         {
@@ -689,10 +771,27 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
         await RefreshProviderInfoAsync(force: true);
     }
 
+    private string GetCurrentModelName() => _assistantSettings.ActiveProvider switch
+    {
+        AssistantProviderType.Anthropic  => _assistantSettings.AnthropicModel,
+        AssistantProviderType.OpenAI     => _assistantSettings.OpenAIModel,
+        AssistantProviderType.OpenRouter => _assistantSettings.OpenRouterModel,
+        AssistantProviderType.Ollama     => _assistantSettings.OllamaModel,
+        _                                => string.Empty
+    };
+
+    private string GetCurrentProviderName() => _assistantSettings.ActiveProvider switch
+    {
+        AssistantProviderType.Anthropic  => "anthropic",
+        AssistantProviderType.OpenAI     => "openai",
+        AssistantProviderType.OpenRouter => "openrouter",
+        AssistantProviderType.Ollama     => "ollama",
+        _                                => "none"
+    };
+
     public void Dispose()
     {
         _settingsService.SettingsChanged -= OnSettingsChanged;
-        _availabilityTimer.Stop();
         _cts?.Cancel();
         _cts?.Dispose();
     }

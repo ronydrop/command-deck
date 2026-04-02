@@ -9,7 +9,7 @@
         xmlns:controls="clr-namespace:CommandDeck.Controls"
         mc:Ignorable="d"
         Title="Command Deck"
-        Width="1400" Height="900"
+        Width="1600" Height="900"
         MinWidth="800" MinHeight="600"
         WindowStartupLocation="CenterScreen"
         Style="{StaticResource DarkWindowStyle}"
@@ -538,7 +538,7 @@
                                 <Border Grid.Row="0" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+Shift+G" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Próximo Projeto" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
                                 <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Shift+Tab" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Lançar Claude" Foreground="{DynamicResource SubtextBrush}" FontSize="13" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Lançar Claude Code" Foreground="{DynamicResource SubtextBrush}" FontSize="13" VerticalAlignment="Center"/>
                                 <Border Grid.Row="2" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3"><TextBlock Text="Ctrl+Shift+C" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
                             </Grid>
 
@@ -573,7 +573,8 @@
         <!-- ═══════════════════════════════════════════════════════════════
              PROJECT SWITCH LOADING OVERLAY
              ═══════════════════════════════════════════════════════════════ -->
-        <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="0" Grid.RowSpan="3"
+        <Border x:Name="ProjectSwitchOverlay"
+                Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="0" Grid.RowSpan="3"
                 Panel.ZIndex="950"
                 Visibility="{Binding IsProjectSwitching, Converter={StaticResource BoolToVis}}"
                 Background="#CC181825"
@@ -588,7 +589,8 @@
             </Border.Resources>
             <Border.Triggers>
                 <EventTrigger RoutedEvent="Border.Loaded">
-                    <BeginStoryboard Storyboard="{StaticResource SpinnerAnimation}" />
+                    <BeginStoryboard x:Name="SpinnerStoryboard"
+                                     Storyboard="{StaticResource SpinnerAnimation}" />
                 </EventTrigger>
             </Border.Triggers>
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">

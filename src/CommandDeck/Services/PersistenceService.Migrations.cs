@@ -102,27 +102,52 @@ public sealed partial class PersistenceService
 
     private static async Task Migrate_1_1_0(SqliteConnection conn)
     {
-        await using var cmd = conn.CreateCommand();
+        // Add new columns individually (idempotent — skips if column already exists)
+        var columns = new (string Name, string Definition)[]
+        {
+            ("color",            "TEXT NOT NULL DEFAULT '#CBA6F7'"),
+            ("icon",             "TEXT NOT NULL DEFAULT 'FolderIcon'"),
+            ("is_active",        "INTEGER NOT NULL DEFAULT 0"),
+            ("settings_json",    "TEXT NOT NULL DEFAULT '{}'"),
+            ("last_accessed_at", "TEXT NOT NULL DEFAULT (datetime('now'))"),
+        };
 
-        // Add new columns to workspaces table for multi-workspace support
-        cmd.CommandText = @"
-            ALTER TABLE workspaces ADD COLUMN color           TEXT NOT NULL DEFAULT '#CBA6F7';
-            ALTER TABLE workspaces ADD COLUMN icon            TEXT NOT NULL DEFAULT 'FolderIcon';
-            ALTER TABLE workspaces ADD COLUMN is_active       INTEGER NOT NULL DEFAULT 0;
-            ALTER TABLE workspaces ADD COLUMN settings_json   TEXT NOT NULL DEFAULT '{}';
-            ALTER TABLE workspaces ADD COLUMN last_accessed_at TEXT NOT NULL DEFAULT (datetime('now'));";
-        await cmd.ExecuteNonQueryAsync();
+        // Query existing columns once
+        var existingColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using (var infoCmd = conn.CreateCommand())
+        {
+            infoCmd.CommandText = "PRAGMA table_info(workspaces);";
+            await using var reader = await infoCmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+                existingColumns.Add(reader.GetString(1)); // column index 1 = name
+        }
+
+        foreach (var (name, definition) in columns)
+        {
+            if (existingColumns.Contains(name))
+                continue;
+
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"ALTER TABLE workspaces ADD COLUMN {name} {definition};";
+            await cmd.ExecuteNonQueryAsync();
+        }
 
         // Mark the first workspace as active (migration from single to multi-workspace)
-        cmd.CommandText = @"
-            UPDATE workspaces SET is_active = 1
-            WHERE id = (SELECT id FROM workspaces ORDER BY updated_at DESC LIMIT 1);";
-        await cmd.ExecuteNonQueryAsync();
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                UPDATE workspaces SET is_active = 1
+                WHERE id = (SELECT id FROM workspaces ORDER BY updated_at DESC LIMIT 1)
+                AND NOT EXISTS (SELECT 1 FROM workspaces WHERE is_active = 1);";
+            await cmd.ExecuteNonQueryAsync();
+        }
 
         // Index for quick lookup of the active workspace
-        cmd.CommandText = @"
-            CREATE INDEX IF NOT EXISTS idx_workspaces_active ON workspaces(is_active);";
-        await cmd.ExecuteNonQueryAsync();
+        await using (var idxCmd = conn.CreateCommand())
+        {
+            idxCmd.CommandText = "CREATE INDEX IF NOT EXISTS idx_workspaces_active ON workspaces(is_active);";
+            await idxCmd.ExecuteNonQueryAsync();
+        }
     }
 
     // ─── Migration Runner ───────────────────────────────────────────────────

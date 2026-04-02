@@ -74,8 +74,7 @@ public sealed class AssistantService : IAssistantService
             AssistantMessage.System("You are a helpful developer assistant. Explain the following terminal output concisely."),
             AssistantMessage.User(output)
         };
-        var response = await _active.ChatAsync(messages);
-        ReportUsage(response);
+        var response = await ChatAsync(messages);
         return response.IsError ? $"AI Error: {response.Error}" : response.Content ?? string.Empty;
     }
 
@@ -87,20 +86,36 @@ public sealed class AssistantService : IAssistantService
             AssistantMessage.System("You are a helpful developer assistant. Suggest a shell command. Reply with only the command."),
             AssistantMessage.User($"Task: {description}{shellPart}")
         };
-        var response = await _active.ChatAsync(messages);
-        ReportUsage(response);
+        var response = await ChatAsync(messages);
         return response.IsError ? $"AI Error: {response.Error}" : response.Content ?? string.Empty;
     }
 
-    public IAsyncEnumerable<string> StreamChatAsync(
-        IEnumerable<(string role, string content)> history,
-        CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task<AssistantResponse> ChatAsync(IReadOnlyList<AssistantMessage> messages)
     {
-        System.Diagnostics.Debug.WriteLine(
-            $"[AssistantService] StreamChat — provider={_settings.ActiveProvider}, " +
-            $"model={_settings.ActiveProvider switch { AssistantProviderType.Anthropic => _settings.AnthropicModel, AssistantProviderType.OpenAI => _settings.OpenAIModel, AssistantProviderType.OpenRouter => _settings.OpenRouterModel, _ => _settings.OllamaModel }}, " +
-            $"active={_active?.ProviderName ?? "none"}");
-        return _active.ChatStreamAsync(history, ct);
+        await _active.InitializeAsync();
+
+        if (!_active.IsConfigured)
+            return AssistantResponse.Failed("Provider ativo não está configurado.");
+
+        if (!_active.IsAvailable)
+            return AssistantResponse.Failed("Provider ativo não está disponível.");
+
+        var response = await _active.ChatAsync(messages);
+        ReportUsage(response);
+        return response;
+    }
+
+    public async IAsyncEnumerable<AssistantResponse> StreamChatAsync(
+        IReadOnlyList<AssistantMessage> messages,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+    {
+        await foreach (var response in _active.StreamChatAsync(messages))
+        {
+            ct.ThrowIfCancellationRequested();
+            ReportUsage(response);
+            yield return response;
+        }
     }
 
     /// <summary>

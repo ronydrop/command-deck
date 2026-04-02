@@ -18,7 +18,6 @@ public class VoiceInputService : IVoiceInputService, IDisposable
     private bool? _isAvailableCache; // cached to avoid repeated hardware probing
 
     public event Action<string>? TranscriptionUpdated;
-    public event Action<string>? TranscriptionCompleted;
 
     public bool IsRecording => _isRecording;
 
@@ -42,9 +41,10 @@ public class VoiceInputService : IVoiceInputService, IDisposable
         }
     }
 
-    public Task StartRecordingAsync()
+    public Task<VoiceStartResult> StartRecordingAsync()
     {
-        if (_isRecording) return Task.CompletedTask;
+        if (_isRecording)
+            return Task.FromResult(new VoiceStartResult(false, "Gravação já está em andamento."));
 
         try
         {
@@ -62,18 +62,21 @@ public class VoiceInputService : IVoiceInputService, IDisposable
             _engine.RecognizeAsync(RecognizeMode.Multiple);
 
             _isRecording = true;
+            return Task.FromResult(new VoiceStartResult(true));
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[VoiceInput] StartRecording failed: {ex}");
+            DisposeEngine();
+            _isRecording = false;
+            return Task.FromResult(new VoiceStartResult(false, ex.Message));
         }
-
-        return Task.CompletedTask;
     }
 
-    public Task<string> StopAndTranscribeAsync()
+    public Task<VoiceStopResult> StopRecordingAsync()
     {
-        if (!_isRecording) return Task.FromResult(_currentTranscript);
+        if (!_isRecording)
+            return Task.FromResult(new VoiceStopResult(true, false, _currentTranscript.Trim()));
 
         try
         {
@@ -81,13 +84,36 @@ public class VoiceInputService : IVoiceInputService, IDisposable
             _engine?.RecognizeAsyncStop();
 
             var final = _currentTranscript.Trim();
-            TranscriptionCompleted?.Invoke(final);
-            return Task.FromResult(final);
+            return Task.FromResult(new VoiceStopResult(true, false, final));
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[VoiceInput] StopRecording failed: {ex}");
-            return Task.FromResult(_currentTranscript);
+            return Task.FromResult(new VoiceStopResult(false, false, _currentTranscript.Trim(), ex.Message));
+        }
+        finally
+        {
+            DisposeEngine();
+        }
+    }
+
+    public Task<VoiceStopResult> CancelRecordingAsync()
+    {
+        if (!_isRecording)
+            return Task.FromResult(new VoiceStopResult(true, true));
+
+        try
+        {
+            _isRecording = false;
+            _engine?.RecognizeAsyncCancel();
+            _currentTranscript = string.Empty;
+            TranscriptionUpdated?.Invoke(string.Empty);
+            return Task.FromResult(new VoiceStopResult(true, true));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[VoiceInput] CancelRecording failed: {ex}");
+            return Task.FromResult(new VoiceStopResult(false, true, string.Empty, ex.Message));
         }
         finally
         {

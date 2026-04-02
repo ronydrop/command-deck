@@ -45,7 +45,6 @@ internal sealed class TerminalLineBuffer
 
     // Saved cursors for screen switching (ESC[?1049h/l)
     private (int Row, int Col) _mainSavedCursor;
-    private (int Row, int Col) _altSavedCursor;
 
     private int _rows;
     private int _cols;
@@ -250,7 +249,6 @@ internal sealed class TerminalLineBuffer
     {
         if (!_isAltScreen) return;
 
-        _altSavedCursor = (CursorRow, CursorCol);
         _screen = _mainScreen;
         _isAltScreen = false;
 

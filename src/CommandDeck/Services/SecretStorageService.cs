@@ -168,12 +168,10 @@ public sealed class SecretStorageService : ISecretStorageService
     /// </summary>
     private static byte[] GetEntropy(string key)
     {
-        // Use HMAC-SHA256 with a fixed application key to derive 16-byte entropy
         var appKey = Encoding.UTF8.GetBytes("CommandDeck.SecretStorage.Entropy");
         var keyBytes = Encoding.UTF8.GetBytes(key);
 
-        using var hmac = HMACSHA256.Create();
-        hmac.Key = appKey;
+        using var hmac = new HMACSHA256(appKey);
         var hash = hmac.ComputeHash(keyBytes);
 
         // Use first 16 bytes as entropy

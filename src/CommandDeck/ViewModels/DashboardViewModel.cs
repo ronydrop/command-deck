@@ -78,10 +78,10 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private string _claudeTokensDisplay = "0";
 
     [ObservableProperty]
-    private string _claudeCostUsdDisplay = "$0.0000";
+    private string _claudeCostUsdDisplay = "$0.00";
 
     [ObservableProperty]
-    private string _claudeCostBrlDisplay = "R$ 0,0000";
+    private string _claudeCostBrlDisplay = "R$ 0,00";
 
     [ObservableProperty]
     private string _claudeModelDisplay = "—";
@@ -144,8 +144,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 ? $"{total / 1_000.0:F1}k"
                 : total.ToString();
 
-        ClaudeCostUsdDisplay = $"${_claudeUsage.SessionCostUsd:F4}";
-        ClaudeCostBrlDisplay = $"R$ {_claudeUsage.SessionCostBrl:F4}";
+        ClaudeCostUsdDisplay = $"${_claudeUsage.SessionCostUsd:F2}";
+        ClaudeCostBrlDisplay = $"R$ {_claudeUsage.SessionCostBrl:F2}";
         ClaudeModelDisplay   = _claudeUsage.CurrentModel ?? "—";
     }
 

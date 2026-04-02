@@ -41,7 +41,8 @@ public class OpenAIProvider : IAssistantProvider
     public string Name => "openai";
 
     /// <inheritdoc/>
-    public string DisplayName => "OpenAI";
+    public string DisplayName => "GPT";
+    public string DisplayColor => "#A6E3A1";  // Catppuccin green
 
     /// <inheritdoc/>
     public bool IsAvailable => true; // Always available (network-dependent at runtime)
@@ -151,12 +152,113 @@ public class OpenAIProvider : IAssistantProvider
         IReadOnlyList<AssistantMessage> messages,
         Action<string>? onChunk = null)
     {
-        // Streaming not yet implemented - returns single response as fallback
-        await Task.Yield();
-        yield return await ChatAsync(messages);
-#pragma warning disable CS0162 // Unreachable code - will be implemented in future
-        yield break;
-#pragma warning restore CS0162
+        ThrowIfDisposed();
+
+        if (!_isInitialized)
+            await InitializeAsync();
+
+        if (!IsConfigured)
+        {
+            yield return AssistantResponse.Failed("OpenAI provider is not configured. Please set an API key in settings.");
+            yield break;
+        }
+
+        // Link to a CTS for cancellation support
+        _currentCts?.Cancel();
+        _currentCts = new CancellationTokenSource();
+        var ct = _currentCts.Token;
+
+        var apiKeyToUse = !string.IsNullOrWhiteSpace(_settings.OpenAIKey) ? _settings.OpenAIKey : _apiKey;
+
+        // Build request body with stream = true
+        var modelToUse = !string.IsNullOrWhiteSpace(_settings.OpenAIModel) ? _settings.OpenAIModel : _model;
+        var requestBody = JsonSerializer.Serialize(new
+        {
+            model = modelToUse,
+            messages = messages.Select(m => new
+            {
+                role = m.Role.ToString().ToLowerInvariant(),
+                content = m.Content
+            }),
+            temperature = 0.7,
+            max_tokens = 2048,
+            stream = true
+        }, JsonOptions);
+
+        HttpResponseMessage? response = null;
+        string? networkError = null;
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "chat/completions");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKeyToUse);
+            request.Content = new StringContent(requestBody, System.Text.Encoding.UTF8, "application/json");
+
+            response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                var detail = TryExtractErrorMessage(errorBody, response.StatusCode);
+                networkError = $"OpenAI API error ({(int)response.StatusCode}): {detail}";
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            networkError = "Request was cancelled.";
+        }
+        catch (HttpRequestException ex)
+        {
+            networkError = $"Network error communicating with OpenAI: {ex.Message}";
+        }
+
+        if (networkError is not null || response is null)
+        {
+            yield return AssistantResponse.Failed(networkError ?? "Unknown error connecting to OpenAI.");
+            yield break;
+        }
+
+        // Parse SSE stream
+        using (response)
+        {
+            using var stream = await response.Content.ReadAsStreamAsync(ct);
+            using var reader = new System.IO.StreamReader(stream);
+
+            while (!reader.EndOfStream && !ct.IsCancellationRequested)
+            {
+                var line = await reader.ReadLineAsync(ct);
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                if (!line.StartsWith("data: ")) continue;
+
+                var data = line["data: ".Length..];
+                if (data == "[DONE]") yield break;
+
+                string? chunk = null;
+                try
+                {
+                    using var doc = JsonDocument.Parse(data);
+                    var choices = doc.RootElement.GetProperty("choices");
+                    if (choices.GetArrayLength() > 0)
+                    {
+                        var delta = choices[0].GetProperty("delta");
+                        if (delta.TryGetProperty("content", out var contentEl))
+                        {
+                            chunk = contentEl.GetString();
+                        }
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Skip malformed JSON lines from SSE stream
+                }
+
+                if (!string.IsNullOrEmpty(chunk))
+                {
+                    onChunk?.Invoke(chunk);
+                    yield return AssistantResponse.Success(chunk);
+                }
+            }
+        }
     }
 
     /// <inheritdoc/>
@@ -202,97 +304,6 @@ public class OpenAIProvider : IAssistantProvider
         return ChatAsync(messages).ContinueWith(t =>
             t.IsFaulted ? t.Exception?.InnerException?.Message ?? "Error" :
             t.Result.IsError ? t.Result.Error : t.Result.Content ?? string.Empty, ct);
-    }
-
-    /// <inheritdoc/>
-    public async IAsyncEnumerable<string> ChatStreamAsync(
-        IEnumerable<(string role, string content)> history,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
-    {
-        if (!_isInitialized)
-            await InitializeAsync();
-
-        var apiKey = _apiKey;
-        var model = !string.IsNullOrWhiteSpace(_settings?.OpenAIModel) ? _settings.OpenAIModel : _model;
-
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            yield return "Configure uma API key do OpenAI nas Configurações.";
-            yield break;
-        }
-
-        if (string.IsNullOrWhiteSpace(model)) model = DefaultModel;
-
-        var msgPayload = history.Select(h => new { role = h.role, content = h.content }).ToList();
-
-        var requestBody = JsonSerializer.Serialize(new
-        {
-            model,
-            messages = msgPayload,
-            temperature = 0.7,
-            max_tokens = 2048,
-            stream = true
-        }, JsonOptions);
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, "chat/completions");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        request.Content = new StringContent(requestBody, System.Text.Encoding.UTF8, "application/json");
-
-        HttpResponseMessage? response = null;
-        string? networkError = null;
-        try
-        {
-            response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            response.EnsureSuccessStatusCode();
-        }
-        catch (HttpRequestException ex)
-        {
-            networkError = $"Erro de rede com OpenAI: {ex.Message}";
-        }
-
-        if (networkError is not null || response is null)
-        {
-            yield return networkError ?? "Erro desconhecido ao conectar com OpenAI.";
-            yield break;
-        }
-
-        using (response)
-        {
-            using var stream = await response.Content.ReadAsStreamAsync(ct);
-            using var reader = new System.IO.StreamReader(stream);
-
-            while (!reader.EndOfStream && !ct.IsCancellationRequested)
-            {
-                var line = await reader.ReadLineAsync(ct);
-                if (string.IsNullOrWhiteSpace(line)) continue;
-                if (!line.StartsWith("data: ")) continue;
-
-                var data = line["data: ".Length..];
-                if (data == "[DONE]") yield break;
-
-                string? chunk = null;
-                try
-                {
-                    using var doc = JsonDocument.Parse(data);
-                    var choices = doc.RootElement.GetProperty("choices");
-                    if (choices.GetArrayLength() > 0)
-                    {
-                        var delta = choices[0].GetProperty("delta");
-                        if (delta.TryGetProperty("content", out var contentEl))
-                        {
-                            chunk = contentEl.GetString();
-                        }
-                    }
-                }
-                catch (JsonException)
-                {
-                    // Skip malformed JSON lines from SSE stream
-                }
-
-                if (!string.IsNullOrEmpty(chunk))
-                    yield return chunk;
-            }
-        }
     }
 
     // ─── Private: Build / Parse OpenAI API structures ─────────────────────

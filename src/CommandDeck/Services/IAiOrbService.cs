@@ -17,6 +17,9 @@ public interface IAiOrbService
     /// <summary>Returns the active provider info (name + glow color).</summary>
     OrbProviderInfo GetActiveProviderInfo();
 
+    /// <summary>Returns true if a provider is configured and available.</summary>
+    bool HasActiveProvider();
+
     /// <summary>Improves the last command in the active terminal.</summary>
     Task<string> ImproveLastCommandAsync();
 

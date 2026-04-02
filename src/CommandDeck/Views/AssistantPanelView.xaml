@@ -31,7 +31,13 @@
                     <TextBlock Text="{Binding Content}"
                                Foreground="{DynamicResource TextBrush}"
                                FontSize="12.5"
-                               TextWrapping="Wrap" />
+                               TextWrapping="Wrap">
+                        <TextBlock.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Copiar" Click="CopyMessage_Click" />
+                            </ContextMenu>
+                        </TextBlock.ContextMenu>
+                    </TextBlock>
                 </Border>
 
                 <!-- Assistant message -->
@@ -41,35 +47,114 @@
                         Padding="0,6"
                         Visibility="Collapsed">
                     <StackPanel>
-                        <TextBlock Text="{Binding Content}"
+                        <TextBlock conv:MarkdownTextBlock.Markdown="{Binding Content}"
                                    Foreground="{DynamicResource SubtextBrush}"
                                    FontSize="12.5"
                                    TextWrapping="Wrap"
-                                   LineHeight="20" />
-                        <!-- Streaming dots (animated) -->
+                                   LineHeight="20">
+                            <TextBlock.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Copiar" Click="CopyMessage_Click" />
+                                </ContextMenu>
+                            </TextBlock.ContextMenu>
+                        </TextBlock>
+                        <!-- Copy button (visible on hover) -->
+                        <Button x:Name="CopyBtn"
+                                Style="{StaticResource IconButton}"
+                                Width="20" Height="20"
+                                HorizontalAlignment="Right"
+                                Margin="0,2,0,0"
+                                ToolTip="Copiar mensagem"
+                                Click="CopyMessage_Click"
+                                Cursor="Hand"
+                                Opacity="0">
+                            <Path Data="M9,2 L3,2 C2.45,2 2,2.45 2,3 L2,13 L3,13 L3,3 L9,3 Z M11,0 L5,0 C4.45,0 4,0.45 4,1 L4,11 C4,11.55 4.45,12 5,12 L11,12 C11.55,12 12,11.55 12,11 L12,1 C12,0.45 11.55,0 11,0 Z M11,11 L5,11 L5,1 L11,1 Z"
+                                  Fill="{DynamicResource Overlay0Brush}"
+                                  Width="12" Height="12"
+                                  Stretch="Uniform" />
+                        </Button>
+                        <!-- Streaming dots — each dot owns its animation via Style.Triggers (avoids NameScope issues in DataTemplates) -->
                         <StackPanel x:Name="StreamingDots"
                                     Orientation="Horizontal"
                                     Margin="0,6,0,0"
-                                    Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVis}}">
-                            <StackPanel.Resources>
-                                <Storyboard x:Key="DotPulse" RepeatBehavior="Forever">
-                                    <DoubleAnimation Storyboard.TargetName="Dot1" Storyboard.TargetProperty="Opacity"
-                                                     From="0.2" To="1" Duration="0:0:0.45" BeginTime="0:0:0" AutoReverse="True"/>
-                                    <DoubleAnimation Storyboard.TargetName="Dot2" Storyboard.TargetProperty="Opacity"
-                                                     From="0.2" To="1" Duration="0:0:0.45" BeginTime="0:0:0.15" AutoReverse="True"/>
-                                    <DoubleAnimation Storyboard.TargetName="Dot3" Storyboard.TargetProperty="Opacity"
-                                                     From="0.2" To="1" Duration="0:0:0.45" BeginTime="0:0:0.3" AutoReverse="True"/>
-                                </Storyboard>
-                            </StackPanel.Resources>
-                            <StackPanel.Triggers>
-                                <EventTrigger RoutedEvent="StackPanel.Loaded">
-                                    <BeginStoryboard Storyboard="{StaticResource DotPulse}" />
-                                </EventTrigger>
-                            </StackPanel.Triggers>
-                            <Ellipse x:Name="Dot1" Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,0" Opacity="0.2" />
-                            <Ellipse x:Name="Dot2" Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,0" Opacity="0.2" />
-                            <Ellipse x:Name="Dot3" Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Opacity="0.2" />
+                                    Visibility="Collapsed">
+                            <Ellipse Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,0">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Opacity" Value="0.2"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsVisible" Value="True">
+                                                <Trigger.EnterActions>
+                                                    <BeginStoryboard x:Name="Pulse1">
+                                                        <Storyboard RepeatBehavior="Forever">
+                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                             From="0.2" To="1.0" Duration="0:0:0.45" AutoReverse="True"/>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.EnterActions>
+                                                <Trigger.ExitActions>
+                                                    <StopStoryboard BeginStoryboardName="Pulse1"/>
+                                                </Trigger.ExitActions>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <Ellipse Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,0">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Opacity" Value="0.2"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsVisible" Value="True">
+                                                <Trigger.EnterActions>
+                                                    <BeginStoryboard x:Name="Pulse2">
+                                                        <Storyboard RepeatBehavior="Forever">
+                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                             From="0.2" To="1.0" Duration="0:0:0.45"
+                                                                             BeginTime="0:0:0.15" AutoReverse="True"/>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.EnterActions>
+                                                <Trigger.ExitActions>
+                                                    <StopStoryboard BeginStoryboardName="Pulse2"/>
+                                                </Trigger.ExitActions>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <Ellipse Width="5" Height="5" Fill="{DynamicResource AccentBrush}">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Opacity" Value="0.2"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsVisible" Value="True">
+                                                <Trigger.EnterActions>
+                                                    <BeginStoryboard x:Name="Pulse3">
+                                                        <Storyboard RepeatBehavior="Forever">
+                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                             From="0.2" To="1.0" Duration="0:0:0.45"
+                                                                             BeginTime="0:0:0.3" AutoReverse="True"/>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.EnterActions>
+                                                <Trigger.ExitActions>
+                                                    <StopStoryboard BeginStoryboardName="Pulse3"/>
+                                                </Trigger.ExitActions>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
                         </StackPanel>
+                        <!-- Retry button for error messages -->
+                        <Button x:Name="RetryButton"
+                                Content="&#x21bb; Tentar novamente"
+                                Margin="0,6,0,0" Padding="8,4" FontSize="11" Cursor="Hand"
+                                Foreground="{DynamicResource AccentBrush}"
+                                Background="Transparent" BorderThickness="0"
+                                Click="RetryMessage_Click"
+                                Visibility="Collapsed"/>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -83,6 +168,17 @@
                     <Setter TargetName="UserBubble" Property="Visibility" Value="Collapsed" />
                     <Setter TargetName="AssistantBubble" Property="Visibility" Value="Visible" />
                 </DataTrigger>
+                <DataTrigger Binding="{Binding HasError}" Value="True">
+                    <Setter TargetName="RetryButton" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <!-- Show dots when streaming (animation is handled per-Ellipse via Style.Triggers) -->
+                <DataTrigger Binding="{Binding IsStreaming}" Value="True">
+                    <Setter TargetName="StreamingDots" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <!-- Show copy button on hover -->
+                <Trigger SourceName="AssistantBubble" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="CopyBtn" Property="Opacity" Value="0.7" />
+                </Trigger>
             </DataTemplate.Triggers>
         </DataTemplate>
     </UserControl.Resources>
@@ -450,6 +546,13 @@
                            Margin="4,6,0,0"
                            TextTrimming="CharacterEllipsis"
                            Visibility="{Binding StatusText, Converter={StaticResource NullToVis}}" />
+
+                <!-- Input shortcut hint -->
+                <TextBlock Text="Enter envia &#183; Shift+Enter nova linha"
+                           FontSize="10"
+                           Foreground="{DynamicResource Overlay0Brush}"
+                           Opacity="0.5"
+                           Margin="4,2,0,0" />
             </StackPanel>
         </Border>
 

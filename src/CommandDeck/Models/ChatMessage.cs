@@ -23,6 +23,22 @@ public partial class ChatMessage : ObservableObject
     [ObservableProperty]
     private bool _isStreaming;
 
+    /// <summary>True when this assistant message contains an error.</summary>
+    public bool HasError => !IsUser && !IsStreaming && (
+        Content.Contains("[Erro:", StringComparison.OrdinalIgnoreCase) ||
+        Content.StartsWith("Erro", StringComparison.OrdinalIgnoreCase) ||
+        Content.StartsWith("AI Error:", StringComparison.OrdinalIgnoreCase));
+
+    partial void OnContentChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasError));
+    }
+
+    partial void OnIsStreamingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(HasError));
+    }
+
     // ─── Factory helpers ──────────────────────────────────────────────────────
 
     public static ChatMessage FromUser(string content) =>

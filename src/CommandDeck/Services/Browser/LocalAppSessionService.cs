@@ -37,10 +37,10 @@ public class LocalAppSessionService : ILocalAppSessionService
     {
         try
         {
+            using var cts = new CancellationTokenSource(300);
             using var client = new TcpClient();
-            var connectTask = client.ConnectAsync("localhost", port);
-            var completed = await Task.WhenAny(connectTask, Task.Delay(300));
-            return completed == connectTask && client.Connected;
+            await client.ConnectAsync("localhost", port, cts.Token);
+            return client.Connected;
         }
         catch
         {

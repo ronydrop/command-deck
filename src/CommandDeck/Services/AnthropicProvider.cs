@@ -1,6 +1,5 @@
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -36,7 +35,8 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
 
     public string ProviderName => "Anthropic";
     public string Name => "anthropic";
-    public string DisplayName => "Claude (Anthropic)";
+    public string DisplayName => "Claude";
+    public string DisplayColor => "#CBA6F7";  // Catppuccin mauve
     public bool IsAvailable => true;
 
     public bool IsConfigured =>
@@ -139,64 +139,46 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
         }
     }
 
-    public async IAsyncEnumerable<string> ChatStreamAsync(
-        IEnumerable<(string role, string content)> history,
-        [EnumeratorCancellation] CancellationToken ct = default)
+    public async IAsyncEnumerable<AssistantResponse> StreamChatAsync(
+        IReadOnlyList<AssistantMessage> messages,
+        Action<string>? onChunk = null)
     {
+        ThrowIfDisposed();
+
         if (!_isInitialized)
             await InitializeAsync();
 
         if (!IsConfigured)
         {
-            yield return IsOAuthMode
-                ? "Claude Code não encontrado. Instale o Claude Code ou use uma API key."
-                : "Configure uma API key da Anthropic nas Configurações.";
+            var hint = IsOAuthMode
+                ? "Claude Code nao encontrado. Instale o Claude Code ou use uma API key."
+                : "Anthropic provider nao configurado. Defina uma API key nas Configuracoes.";
+            yield return AssistantResponse.Failed(hint);
             yield break;
         }
 
-        var model = !string.IsNullOrWhiteSpace(_settings.AnthropicModel) ? _settings.AnthropicModel : _model;
-        if (string.IsNullOrWhiteSpace(model)) model = DefaultModel;
+        _currentCts?.Cancel();
+        _currentCts = new CancellationTokenSource();
+        var ct = _currentCts.Token;
 
-        // Separate system from user/assistant messages
-        string? systemPrompt = null;
-        var apiMessages = new List<object>();
-
-        foreach (var (role, content) in history)
-        {
-            if (role == "system")
-            {
-                systemPrompt = content;
-                continue;
-            }
-            apiMessages.Add(new { role, content });
-        }
-
-        var bodyObj = new Dictionary<string, object>
-        {
-            ["model"] = model,
-            ["max_tokens"] = 4096,
-            ["stream"] = true,
-            ["messages"] = apiMessages
-        };
-        if (!string.IsNullOrWhiteSpace(systemPrompt))
-            bodyObj["system"] = systemPrompt;
-
-        var json = JsonSerializer.Serialize(bodyObj);
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl.TrimEnd('/')}/v1/messages");
-        await ConfigureRequestAuthAsync(request);
-        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+        var modelToUse = !string.IsNullOrWhiteSpace(_settings.AnthropicModel) ? _settings.AnthropicModel : _model;
+        var (systemPrompt, userMessages) = SplitMessages(messages);
+        var requestBody = BuildRequestBody(modelToUse, systemPrompt, userMessages, stream: true);
 
         HttpResponseMessage? response = null;
         string? networkError = null;
         try
         {
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl.TrimEnd('/')}/v1/messages");
+            await ConfigureRequestAuthAsync(request);
+            request.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+
             response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync(ct);
                 var detail = TryExtractErrorMessage(errorBody);
-                networkError = $"Erro {(int)response.StatusCode} da Anthropic: {detail}";
+                networkError = $"Anthropic API error ({(int)response.StatusCode}): {detail}";
             }
         }
         catch (HttpRequestException ex)
@@ -206,7 +188,7 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
 
         if (networkError is not null || response is null)
         {
-            yield return networkError ?? "Erro desconhecido ao conectar com Anthropic.";
+            yield return AssistantResponse.Failed(networkError ?? "Erro desconhecido ao conectar com Anthropic.");
             yield break;
         }
 
@@ -230,9 +212,6 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
                     using var doc = JsonDocument.Parse(data);
                     var root = doc.RootElement;
 
-                    // Anthropic SSE event types:
-                    // content_block_delta -> delta.text
-                    // message_stop -> end
                     if (root.TryGetProperty("type", out var typeEl))
                     {
                         var eventType = typeEl.GetString();
@@ -254,7 +233,10 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
                 }
 
                 if (!string.IsNullOrEmpty(chunk))
-                    yield return chunk;
+                {
+                    onChunk?.Invoke(chunk);
+                    yield return AssistantResponse.Success(chunk);
+                }
             }
         }
     }

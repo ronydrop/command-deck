@@ -57,6 +57,7 @@ public partial class App : Application
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<IPaneStateService, PaneStateService>();
         services.AddSingleton<IAiAgentStateService, AiAgentStateService>();
+        services.AddSingleton<IDynamicIslandEventService, DynamicIslandEventService>();
         services.AddSingleton<ICommandPaletteService, CommandPaletteService>();
         services.AddSingleton<IUpdateService, UpdateService>();
 

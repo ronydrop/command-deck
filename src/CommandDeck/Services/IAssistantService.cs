@@ -23,8 +23,10 @@ public interface IAssistantService : IDisposable
     /// <summary>Ask the active provider to suggest a shell command.</summary>
     Task<string> SuggestCommandAsync(string description, string? shell = null, CancellationToken ct = default);
 
-    /// <summary>Stream a chat response from the active provider.</summary>
-    IAsyncEnumerable<string> StreamChatAsync(IEnumerable<(string role, string content)> history, CancellationToken ct = default);
+    /// <summary>Stream a chat response using the AssistantMessage API.</summary>
+    IAsyncEnumerable<AssistantResponse> StreamChatAsync(
+        IReadOnlyList<AssistantMessage> messages,
+        CancellationToken ct = default);
 
     /// <summary>Switch the active provider at runtime.</summary>
     void SwitchProvider(AssistantProviderType type);
@@ -85,4 +87,10 @@ public interface IAssistantService : IDisposable
     /// Initializes the service and all registered providers.
     /// </summary>
     Task InitializeAsync();
+
+    /// <summary>
+    /// Sends a chat request through the active provider with usage tracking.
+    /// Validates that the provider is configured and available; returns an error response if not.
+    /// </summary>
+    Task<AssistantResponse> ChatAsync(IReadOnlyList<AssistantMessage> messages);
 }

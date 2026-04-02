@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using CommandDeck.Models;
@@ -22,11 +20,6 @@ public interface IAssistantProvider
     /// <summary>Legacy provider name. Default: falls back to Name.</summary>
     string ProviderName => Name;
 
-    /// <summary>Legacy streaming API — converts history tuples to chat response chunks.</summary>
-    IAsyncEnumerable<string> ChatStreamAsync(
-        IEnumerable<(string role, string content)> history,
-        [EnumeratorCancellation] CancellationToken ct = default);
-
     // ─── WSL-style members (with defaults for old providers) ──────────────
 
     /// <summary>Unique machine-readable identifier. Default: ProviderName.</summary>
@@ -34,6 +27,9 @@ public interface IAssistantProvider
 
     /// <summary>Human-readable display name. Default: ProviderName.</summary>
     string DisplayName => ProviderName;
+
+    /// <summary>Hex color string for provider display (Catppuccin palette). Default: overlay0.</summary>
+    string DisplayColor => "#6C7086";
 
     /// <summary>Whether configured with required credentials. Default: IsAvailable.</summary>
     bool IsConfigured => IsAvailable;
@@ -45,10 +41,10 @@ public interface IAssistantProvider
     Task<AssistantResponse> ChatAsync(IReadOnlyList<AssistantMessage> messages)
         => Task.FromResult(AssistantResponse.Failed("ChatAsync not implemented by this provider."));
 
-    /// <summary>Streaming chat completion. Default: returns single ChatAsync result.</summary>
+    /// <summary>Streaming chat completion. Default: not supported.</summary>
     IAsyncEnumerable<AssistantResponse> StreamChatAsync(
         IReadOnlyList<AssistantMessage> messages,
-        Action<string>? onChunk = null) => LegacyStreamChatFallback(messages, onChunk);
+        Action<string>? onChunk = null) => DefaultStreamChatFallback();
 
     /// <summary>Cancel current request. Default: no-op.</summary>
     void CancelCurrentRequest() { }
@@ -82,12 +78,9 @@ public interface IAssistantProvider
 
     // ─── Static helper for default StreamChatAsync ────────────────────────
 
-    private static async IAsyncEnumerable<AssistantResponse> LegacyStreamChatFallback(
-        IReadOnlyList<AssistantMessage> messages,
-        Action<string>? onChunk)
+    private static async IAsyncEnumerable<AssistantResponse> DefaultStreamChatFallback()
     {
-        var result = await Task.FromResult(
+        yield return await Task.FromResult(
             AssistantResponse.Failed("StreamChatAsync not implemented by this provider."));
-        yield return result;
     }
 }

@@ -1,6 +1,5 @@
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using CommandDeck.Models;
@@ -36,6 +35,7 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
     public string ProviderName => "OpenRouter";
     public string Name => "openrouter";
     public string DisplayName => "OpenRouter";
+    public string DisplayColor => "#89DCEB";  // Catppuccin sky
     public bool IsAvailable => true;
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey) || !string.IsNullOrWhiteSpace(_settings.OpenRouterKey);
 
@@ -103,56 +103,64 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
         catch (Exception ex) { return AssistantResponse.Failed($"Erro inesperado: {ex.Message}"); }
     }
 
-    public async IAsyncEnumerable<string> ChatStreamAsync(
-        IEnumerable<(string role, string content)> history,
-        [EnumeratorCancellation] CancellationToken ct = default)
+    public async IAsyncEnumerable<AssistantResponse> StreamChatAsync(
+        IReadOnlyList<AssistantMessage> messages,
+        Action<string>? onChunk = null)
     {
+        ThrowIfDisposed();
         if (!_isInitialized) await InitializeAsync();
 
         var apiKey = !string.IsNullOrWhiteSpace(_settings.OpenRouterKey) ? _settings.OpenRouterKey : _apiKey;
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            yield return "Configure uma API key do OpenRouter nas Configurações.";
+            yield return AssistantResponse.Failed("OpenRouter nao configurado. Defina uma API key nas Configuracoes.");
             yield break;
         }
 
+        _currentCts?.Cancel();
+        _currentCts = new CancellationTokenSource();
+        var ct = _currentCts.Token;
+
         var model = !string.IsNullOrWhiteSpace(_settings.OpenRouterModel) ? _settings.OpenRouterModel : DefaultModel;
-        var msgPayload = history.Select(h => new { role = h.role, content = h.content }).ToList();
 
         var body = JsonSerializer.Serialize(new
         {
             model,
-            messages = msgPayload,
+            messages = messages.Select(m => new { role = m.Role.ToString().ToLowerInvariant(), content = m.Content }),
             temperature = 0.7,
             max_tokens = 4096,
             stream = true
         }, JsonOptions);
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/chat/completions");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        request.Headers.Add("HTTP-Referer", "https://commanddeck.app");
-        request.Headers.Add("X-Title", "CommandDeck");
-        request.Content = new StringContent(body, Encoding.UTF8, "application/json");
-
         HttpResponseMessage? response = null;
         string? networkError = null;
         try
         {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/chat/completions");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            request.Headers.Add("HTTP-Referer", "https://commanddeck.app");
+            request.Headers.Add("X-Title", "CommandDeck");
+            request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+
             response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                networkError = $"OpenRouter error ({(int)response.StatusCode}): {ExtractError(errorBody)}";
+            }
         }
         catch (HttpRequestException ex)
         {
             networkError = $"Erro de rede com OpenRouter: {ex.Message}";
         }
 
-        if (networkError is not null)
+        if (networkError is not null || response is null)
         {
-            yield return networkError;
+            yield return AssistantResponse.Failed(networkError ?? "Erro desconhecido ao conectar com OpenRouter.");
             yield break;
         }
 
-        using (response!)
+        using (response)
         {
             using var stream = await response.Content.ReadAsStreamAsync(ct);
             using var reader = new System.IO.StreamReader(stream);
@@ -166,7 +174,6 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
                 if (data == "[DONE]") yield break;
 
                 string? chunk = null;
-                bool parseOk = true;
                 try
                 {
                     using var doc = JsonDocument.Parse(data);
@@ -178,10 +185,13 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
                             chunk = contentEl.GetString();
                     }
                 }
-                catch (JsonException) { parseOk = false; }
+                catch (JsonException) { /* skip malformed lines */ }
 
-                if (parseOk && !string.IsNullOrEmpty(chunk))
-                    yield return chunk;
+                if (!string.IsNullOrEmpty(chunk))
+                {
+                    onChunk?.Invoke(chunk);
+                    yield return AssistantResponse.Success(chunk);
+                }
             }
         }
     }
@@ -194,7 +204,7 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
             AssistantMessage.User($"Explain this terminal output:\n```\n{terminalOutput}\n```")
         };
         var result = await ChatAsync(messages);
-        return result.IsError ? result.Error : result.Content ?? string.Empty;
+        return result.IsError ? result.Error ?? string.Empty : result.Content ?? string.Empty;
     }
 
     public async Task<string> SuggestCommandAsync(string description, string? shellHint = null, CancellationToken ct = default)
@@ -206,7 +216,7 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
             AssistantMessage.User($"Suggest a shell command to accomplish: {description}{shellPart}")
         };
         var result = await ChatAsync(messages);
-        return result.IsError ? result.Error : result.Content ?? string.Empty;
+        return result.IsError ? result.Error ?? string.Empty : result.Content ?? string.Empty;
     }
 
     public void CancelCurrentRequest()

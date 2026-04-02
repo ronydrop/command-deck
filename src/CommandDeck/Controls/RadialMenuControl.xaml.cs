@@ -4,42 +4,28 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using CommandDeck.Helpers;
 using CommandDeck.ViewModels;
 
 namespace CommandDeck.Controls;
 
-/// <summary>
-/// Radial menu displayed around the AI Orb when activated.
-/// Positions 5 action buttons at computed orbital positions and
-/// plays a stagger open/close animation when it becomes visible/hidden.
-/// </summary>
 public partial class RadialMenuControl : UserControl
 {
-    // Open stagger order: Agent → Voice → Improve → Run → Copy
     private static readonly string[] _staggerOpen =
     [
-        "BtnChooseAgent",
         "BtnVoice",
         "BtnImprovePrompt",
         "BtnRunSuggestion",
         "BtnCopyContext"
     ];
 
-    // Close stagger order: reverso (Copy → Run → Improve → Voice → Agent)
     private static readonly string[] _staggerClose =
     [
         "BtnCopyContext",
         "BtnRunSuggestion",
         "BtnImprovePrompt",
-        "BtnVoice",
-        "BtnChooseAgent"
+        "BtnVoice"
     ];
-
-    private const double StaggerDelayMs  = 30;
-    private const double OpenOpDuration  = 150;
-    private const double OpenScDuration  = 220;
-    private const double CloseOpDuration = 110;
-    private const double CloseScDuration = 140;
 
     public RadialMenuControl()
     {
@@ -47,8 +33,6 @@ public partial class RadialMenuControl : UserControl
         IsVisibleChanged += OnIsVisibleChanged;
         DataContextChanged += OnDataContextChanged;
     }
-
-    // ─── DataContext / ViewModel observation ─────────────────────────────────
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
@@ -69,18 +53,13 @@ public partial class RadialMenuControl : UserControl
         }
     }
 
-    // ─── Visibility-driven open ───────────────────────────────────────────────
-
     private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if ((bool)e.NewValue)
             PlayStaggerOpen();
-        // Close is driven by IsRadialMenuClosing; reset handles instant-close edge cases.
         else
             ResetButtons();
     }
-
-    // ─── Open animation ───────────────────────────────────────────────────────
 
     private void PlayStaggerOpen()
     {
@@ -90,57 +69,23 @@ public partial class RadialMenuControl : UserControl
         for (int i = 0; i < _staggerOpen.Length; i++)
         {
             if (FindName(_staggerOpen[i]) is not FrameworkElement btn) continue;
-            double beginTime = i * StaggerDelayMs;
-
-            var opAnim = new DoubleAnimation
-            {
-                From = 0, To = 1,
-                Duration = TimeSpan.FromMilliseconds(OpenOpDuration),
-                BeginTime = TimeSpan.FromMilliseconds(beginTime),
-                EasingFunction = ease
-            };
-            var sxAnim = new DoubleAnimation
-            {
-                From = 0.5, To = 1.0,
-                Duration = TimeSpan.FromMilliseconds(OpenScDuration),
-                BeginTime = TimeSpan.FromMilliseconds(beginTime),
-                EasingFunction = ease
-            };
-            var syAnim = new DoubleAnimation
-            {
-                From = 0.5, To = 1.0,
-                Duration = TimeSpan.FromMilliseconds(OpenScDuration),
-                BeginTime = TimeSpan.FromMilliseconds(beginTime),
-                EasingFunction = ease
-            };
-
-            EnsureScaleTransform(btn);
-            btn.BeginAnimation(OpacityProperty, opAnim);
-            ((ScaleTransform)btn.RenderTransform).BeginAnimation(ScaleTransform.ScaleXProperty, sxAnim);
-            ((ScaleTransform)btn.RenderTransform).BeginAnimation(ScaleTransform.ScaleYProperty, syAnim);
+            var (opAnim, sxAnim, syAnim) = CreateButtonAnims(i, isOpening: true, ease);
+            ApplyButtonAnims(btn, opAnim, sxAnim, syAnim);
         }
     }
-
-    // ─── Close animation ──────────────────────────────────────────────────────
 
     private void PlayStaggerClose()
     {
         var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
 
-        // Identificar o último botão existente para anexar o callback de finalização
         int lastFoundIndex = -1;
         for (int i = _staggerClose.Length - 1; i >= 0; i--)
         {
-            if (FindName(_staggerClose[i]) is FrameworkElement)
-            {
-                lastFoundIndex = i;
-                break;
-            }
+            if (FindName(_staggerClose[i]) is FrameworkElement) { lastFoundIndex = i; break; }
         }
 
         if (lastFoundIndex < 0)
         {
-            // Nenhum botão encontrado — fechar imediatamente
             if (DataContext is AiOrbViewModel vm)
                 vm.CloseRadialMenuCommand.Execute(null);
             return;
@@ -149,48 +94,62 @@ public partial class RadialMenuControl : UserControl
         for (int i = 0; i < _staggerClose.Length; i++)
         {
             if (FindName(_staggerClose[i]) is not FrameworkElement btn) continue;
-            double beginTime = i * StaggerDelayMs;
+            var (opAnim, sxAnim, syAnim) = CreateButtonAnims(i, isOpening: false, ease);
 
-            var opAnim = new DoubleAnimation
-            {
-                To = 0,
-                Duration = TimeSpan.FromMilliseconds(CloseOpDuration),
-                BeginTime = TimeSpan.FromMilliseconds(beginTime),
-                EasingFunction = ease
-            };
-            var sxAnim = new DoubleAnimation
-            {
-                To = 0.5,
-                Duration = TimeSpan.FromMilliseconds(CloseScDuration),
-                BeginTime = TimeSpan.FromMilliseconds(beginTime),
-                EasingFunction = ease
-            };
-            var syAnim = new DoubleAnimation
-            {
-                To = 0.5,
-                Duration = TimeSpan.FromMilliseconds(CloseScDuration),
-                BeginTime = TimeSpan.FromMilliseconds(beginTime),
-                EasingFunction = ease
-            };
-
-            // Último botão encontrado — ao terminar dispara CloseRadialMenuCommand
             if (i == lastFoundIndex)
-            {
                 opAnim.Completed += (_, _) =>
                 {
                     if (DataContext is AiOrbViewModel vm)
                         vm.CloseRadialMenuCommand.Execute(null);
                 };
-            }
 
-            EnsureScaleTransform(btn);
-            btn.BeginAnimation(OpacityProperty, opAnim);
-            ((ScaleTransform)btn.RenderTransform).BeginAnimation(ScaleTransform.ScaleXProperty, sxAnim);
-            ((ScaleTransform)btn.RenderTransform).BeginAnimation(ScaleTransform.ScaleYProperty, syAnim);
+            ApplyButtonAnims(btn, opAnim, sxAnim, syAnim);
         }
     }
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
+    private static (DoubleAnimation op, DoubleAnimation sx, DoubleAnimation sy) CreateButtonAnims(
+        int index, bool isOpening, IEasingFunction ease)
+    {
+        double beginMs = index * OrbAnimationConstants.StaggerDelayMs;
+        var begin = TimeSpan.FromMilliseconds(beginMs);
+
+        var op = new DoubleAnimation
+        {
+            From = isOpening ? 0 : null,
+            To   = isOpening ? 1 : 0,
+            Duration = TimeSpan.FromMilliseconds(
+                isOpening ? OrbAnimationConstants.OpenOpacityDurationMs : OrbAnimationConstants.CloseOpacityDurationMs),
+            BeginTime = begin,
+            EasingFunction = ease
+        };
+        var sx = new DoubleAnimation
+        {
+            From = isOpening ? 0.5 : null,
+            To   = isOpening ? 1.0 : 0.5,
+            Duration = TimeSpan.FromMilliseconds(
+                isOpening ? OrbAnimationConstants.OpenScaleDurationMs : OrbAnimationConstants.CloseScaleDurationMs),
+            BeginTime = begin,
+            EasingFunction = ease
+        };
+        var sy = new DoubleAnimation
+        {
+            From = isOpening ? 0.5 : null,
+            To   = isOpening ? 1.0 : 0.5,
+            Duration = sx.Duration,
+            BeginTime = begin,
+            EasingFunction = ease
+        };
+        return (op, sx, sy);
+    }
+
+    private static void ApplyButtonAnims(FrameworkElement btn,
+        DoubleAnimation opAnim, DoubleAnimation sxAnim, DoubleAnimation syAnim)
+    {
+        EnsureScaleTransform(btn);
+        btn.BeginAnimation(OpacityProperty, opAnim);
+        ((ScaleTransform)btn.RenderTransform).BeginAnimation(ScaleTransform.ScaleXProperty, sxAnim);
+        ((ScaleTransform)btn.RenderTransform).BeginAnimation(ScaleTransform.ScaleYProperty, syAnim);
+    }
 
     private void ResetButtons()
     {

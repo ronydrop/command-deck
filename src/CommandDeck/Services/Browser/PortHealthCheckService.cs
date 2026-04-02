@@ -9,6 +9,7 @@ public class PortHealthCheckService : IDisposable
 {
     private readonly ConcurrentDictionary<int, PortHealthState> _monitored = new();
     private readonly ConcurrentDictionary<int, int> _consecutiveCount = new();
+    private readonly CancellationTokenSource _cts = new();
     private Timer? _timer;
     private bool _disposed;
 
@@ -39,7 +40,8 @@ public class PortHealthCheckService : IDisposable
     {
         try
         {
-            using var cts = new CancellationTokenSource(ConnectTimeout);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+            cts.CancelAfter(ConnectTimeout);
             using var client = new TcpClient();
             await client.ConnectAsync("127.0.0.1", port, cts.Token);
             return true;
@@ -52,6 +54,8 @@ public class PortHealthCheckService : IDisposable
 
     private async void OnTimerTick(object? state)
     {
+        if (_disposed) return;
+
         var ports = _monitored.Keys.ToArray();
 
         foreach (var port in ports)
@@ -83,8 +87,10 @@ public class PortHealthCheckService : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _cts.Cancel();
         _timer?.Dispose();
         _timer = null;
+        _cts.Dispose();
         GC.SuppressFinalize(this);
     }
 }

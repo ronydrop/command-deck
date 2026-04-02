@@ -3,6 +3,14 @@ using System.Threading.Tasks;
 
 namespace CommandDeck.Services;
 
+public sealed record VoiceStartResult(bool Success, string? ErrorMessage = null);
+
+public sealed record VoiceStopResult(
+    bool Success,
+    bool WasCanceled,
+    string Transcript = "",
+    string? ErrorMessage = null);
+
 /// <summary>
 /// Provides voice capture and transcription for the AI Orb.
 /// Uses Windows Speech Recognition (System.Speech) for real-time dictation.
@@ -12,9 +20,6 @@ public interface IVoiceInputService
     /// <summary>Fired when a partial transcription is available (real-time feedback).</summary>
     event Action<string>? TranscriptionUpdated;
 
-    /// <summary>Fired when transcription is complete (user stopped recording).</summary>
-    event Action<string>? TranscriptionCompleted;
-
     /// <summary>True while voice capture is active.</summary>
     bool IsRecording { get; }
 
@@ -22,8 +27,11 @@ public interface IVoiceInputService
     bool IsAvailable { get; }
 
     /// <summary>Starts capturing voice input.</summary>
-    Task StartRecordingAsync();
+    Task<VoiceStartResult> StartRecordingAsync();
 
     /// <summary>Stops capturing and returns the final transcription text.</summary>
-    Task<string> StopAndTranscribeAsync();
+    Task<VoiceStopResult> StopRecordingAsync();
+
+    /// <summary>Cancels the current capture without emitting a final transcription.</summary>
+    Task<VoiceStopResult> CancelRecordingAsync();
 }

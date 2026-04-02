@@ -41,6 +41,14 @@ public partial class WorkspaceTreeNodeViewModel : ObservableObject
     [RelayCommand]
     private void ToggleExpand() => IsExpanded = !IsExpanded;
 
+    /// <summary>Notifies the UI that forwarded model properties have changed.</summary>
+    public void Refresh()
+    {
+        OnPropertyChanged(nameof(Name));
+        OnPropertyChanged(nameof(Color));
+        OnPropertyChanged(nameof(IconKey));
+    }
+
     public void AddChild(WorkspaceTreeNodeViewModel child)
     {
         Children.Add(child);

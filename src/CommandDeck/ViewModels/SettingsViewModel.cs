@@ -248,6 +248,19 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _notificationSoundEnabled;
 
+    /// <summary>Play a short sound when the Dynamic Island surfaces approval or question events.</summary>
+    [ObservableProperty]
+    private bool _dynamicIslandSoundEnabled;
+
+    [ObservableProperty]
+    private int _dynamicIslandMaxFeedEvents = 30;
+
+    [ObservableProperty]
+    private int _dynamicIslandQueueVisibleLimit = 5;
+
+    [ObservableProperty]
+    private int _dynamicIslandNotificationDedupeWindowSeconds = 30;
+
     // ─── Canvas Wallpaper ───────────────────────────────────────────────
 
     [ObservableProperty]
@@ -612,6 +625,10 @@ public partial class SettingsViewModel : ObservableObject
         NotifyAiEvents = settings.NotifyAiEvents;
         NotifySystemEvents = settings.NotifySystemEvents;
         NotificationSoundEnabled = settings.NotificationSoundEnabled;
+        DynamicIslandSoundEnabled = settings.DynamicIslandSoundEnabled;
+        DynamicIslandMaxFeedEvents = Math.Clamp(settings.DynamicIslandMaxFeedEvents, 5, 200);
+        DynamicIslandQueueVisibleLimit = Math.Clamp(settings.DynamicIslandQueueVisibleLimit, 1, 20);
+        DynamicIslandNotificationDedupeWindowSeconds = Math.Clamp(settings.DynamicIslandNotificationDedupeWindowSeconds, 5, 300);
 
         // Canvas Wallpaper
         CanvasWallpaperPath = settings.CanvasWallpaperPath;
@@ -665,6 +682,9 @@ public partial class SettingsViewModel : ObservableObject
         GitRefreshIntervalSeconds = Math.Clamp(GitRefreshIntervalSeconds, 1, 300);
         ProcessMonitorIntervalSeconds = Math.Clamp(ProcessMonitorIntervalSeconds, 1, 300);
         ProjectScanMaxDepth = Math.Clamp(ProjectScanMaxDepth, 1, 10);
+        DynamicIslandMaxFeedEvents = Math.Clamp(DynamicIslandMaxFeedEvents, 5, 200);
+        DynamicIslandQueueVisibleLimit = Math.Clamp(DynamicIslandQueueVisibleLimit, 1, 20);
+        DynamicIslandNotificationDedupeWindowSeconds = Math.Clamp(DynamicIslandNotificationDedupeWindowSeconds, 5, 300);
         var settings = await _settingsService.GetSettingsAsync();
 
         // Aparência
@@ -740,6 +760,10 @@ public partial class SettingsViewModel : ObservableObject
         settings.NotifyAiEvents = NotifyAiEvents;
         settings.NotifySystemEvents = NotifySystemEvents;
         settings.NotificationSoundEnabled = NotificationSoundEnabled;
+        settings.DynamicIslandSoundEnabled = DynamicIslandSoundEnabled;
+        settings.DynamicIslandMaxFeedEvents = DynamicIslandMaxFeedEvents;
+        settings.DynamicIslandQueueVisibleLimit = DynamicIslandQueueVisibleLimit;
+        settings.DynamicIslandNotificationDedupeWindowSeconds = DynamicIslandNotificationDedupeWindowSeconds;
 
         // Ferramenta AI padrão do dropdown
         settings.DefaultAiToolId = DefaultAiToolId;

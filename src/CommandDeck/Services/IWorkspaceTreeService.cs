@@ -26,4 +26,11 @@ public interface IWorkspaceTreeService
 
     WorkspaceNodeModel? FindById(string nodeId);
     IReadOnlyList<WorkspaceNodeModel> Search(string query);
+
+    /// <summary>
+    /// Removes orphan terminal nodes whose LinkedCanvasItemId is not in the valid set.
+    /// Also removes nodes with invalid ParentId references.
+    /// Returns the number of nodes removed.
+    /// </summary>
+    Task<int> ValidateAndCleanAsync(IReadOnlySet<string> validCanvasItemIds);
 }

@@ -60,6 +60,21 @@ public sealed class DatabaseService : IDatabaseService
                     Value  TEXT NOT NULL,
                     PRIMARY KEY (NodeId, Key)
                 );");
+
+            await ExecuteNonQueryAsync(conn, ct, @"
+                CREATE TABLE IF NOT EXISTS ChatMessages (
+                    Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ConversationId  TEXT NOT NULL,
+                    Role            TEXT NOT NULL,
+                    Content         TEXT NOT NULL,
+                    Timestamp       TEXT NOT NULL,
+                    Model           TEXT,
+                    Provider        TEXT
+                );");
+
+            await ExecuteNonQueryAsync(conn, ct, @"
+                CREATE INDEX IF NOT EXISTS IX_ChatMessages_ConvId
+                ON ChatMessages(ConversationId);");
         }
         finally
         {
@@ -253,6 +268,123 @@ public sealed class DatabaseService : IDatabaseService
 
             var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
             return result is DBNull or null ? null : (string)result;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    // ── Chat History ─────────────────────────────────────────────────────
+
+    public async Task SaveChatMessageAsync(
+        string conversationId, string role, string content,
+        string? model = null, string? provider = null,
+        CancellationToken ct = default)
+    {
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
+
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                INSERT INTO ChatMessages (ConversationId, Role, Content, Timestamp, Model, Provider)
+                VALUES (@convId, @role, @content, @ts, @model, @provider);";
+            cmd.Parameters.AddWithValue("@convId", conversationId);
+            cmd.Parameters.AddWithValue("@role", role);
+            cmd.Parameters.AddWithValue("@content", content);
+            cmd.Parameters.AddWithValue("@ts", DateTime.UtcNow.ToString("O"));
+            cmd.Parameters.AddWithValue("@model", (object?)model ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@provider", (object?)provider ?? DBNull.Value);
+
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task<IReadOnlyList<ChatMessageRecord>> GetChatMessagesAsync(
+        string conversationId, int limit = 200, CancellationToken ct = default)
+    {
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
+
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT Id, ConversationId, Role, Content, Timestamp, Model, Provider
+                FROM ChatMessages
+                WHERE ConversationId = @convId
+                ORDER BY Id ASC
+                LIMIT @limit;";
+            cmd.Parameters.AddWithValue("@convId", conversationId);
+            cmd.Parameters.AddWithValue("@limit", limit);
+
+            var results = new List<ChatMessageRecord>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                results.Add(new ChatMessageRecord
+                {
+                    Id             = reader.GetInt64(0),
+                    ConversationId = reader.GetString(1),
+                    Role           = reader.GetString(2),
+                    Content        = reader.GetString(3),
+                    Timestamp      = DateTime.Parse(reader.GetString(4)),
+                    Model          = reader.IsDBNull(5) ? null : reader.GetString(5),
+                    Provider       = reader.IsDBNull(6) ? null : reader.GetString(6)
+                });
+            }
+
+            return results.AsReadOnly();
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task<string?> GetLastConversationIdAsync(CancellationToken ct = default)
+    {
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
+
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT ConversationId FROM ChatMessages ORDER BY Id DESC LIMIT 1;";
+
+            var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+            return result is DBNull or null ? null : (string)result;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task DeleteConversationAsync(string conversationId, CancellationToken ct = default)
+    {
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
+
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                DELETE FROM ChatMessages WHERE ConversationId = @convId;";
+            cmd.Parameters.AddWithValue("@convId", conversationId);
+
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
         finally
         {

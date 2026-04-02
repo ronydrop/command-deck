@@ -1,4 +1,8 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -10,19 +14,27 @@ namespace CommandDeck.ViewModels;
 
 /// <summary>
 /// ViewModel for the Dynamic Island floating overlay window.
-/// Tracks active terminal sessions and provides navigation actions.
+/// Surfaces prioritized events (AI + notifications) and a secondary session list.
 /// </summary>
 public partial class DynamicIslandViewModel : ObservableObject, IDisposable
 {
     private readonly ITerminalSessionService _sessionService;
     private readonly ISettingsService _settingsService;
     private readonly INotificationService _notificationService;
+    private readonly IDynamicIslandEventService _eventService;
     private readonly Lazy<MainViewModel> _mainViewModel;
     private DispatcherTimer? _durationTimer;
     private bool _disposed;
     private bool _savingVisibility;
+    private DynamicIslandEventItem? _primaryEventSubscription;
 
     public ObservableCollection<DynamicIslandSessionItem> Sessions { get; } = new();
+
+    /// <summary>Prioritized event feed (AI + promoted notifications).</summary>
+    public ReadOnlyObservableCollection<DynamicIslandEventItem> IslandEvents => _eventService.Events;
+
+    /// <summary>Events after the current primary (secondary queue, capped for display).</summary>
+    public ObservableCollection<DynamicIslandEventItem> QueuedEvents { get; } = new();
 
     [ObservableProperty]
     private bool _isVisible = false; // start hidden; InitializeAsync sets the persisted value
@@ -36,6 +48,47 @@ public partial class DynamicIslandViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private DynamicIslandState _islandState = DynamicIslandState.Pill;
 
+    /// <summary>Top-priority island event, or null when the feed is empty.</summary>
+    [ObservableProperty]
+    private DynamicIslandEventItem? _primaryEvent;
+
+    /// <summary>Agent label from <see cref="PrimaryEvent"/> for compact bindings.</summary>
+    [ObservableProperty]
+    private string _currentAgentLabel = string.Empty;
+
+    /// <summary>One-line preview from <see cref="PrimaryEvent"/>.</summary>
+    [ObservableProperty]
+    private string _currentPreview = string.Empty;
+
+    /// <summary>Tool/error secondary line for the pill when <see cref="DynamicIslandEventItem.ActionDetail"/> is set.</summary>
+    [ObservableProperty]
+    private string _currentActionDetail = string.Empty;
+
+    /// <summary>When the queue has more than the configured visible limit, how many are hidden.</summary>
+    [ObservableProperty]
+    private int _queuedOverflowCount;
+
+    /// <summary>Localized hint e.g. "e mais 3" when <see cref="QueuedOverflowCount"/> &gt; 0.</summary>
+    [ObservableProperty]
+    private string _queuedOverflowHint = string.Empty;
+
+    /// <summary>True when there are events after the primary item.</summary>
+    [ObservableProperty]
+    private bool _hasQueuedEvents;
+
+    /// <summary>True when the primary AI event is in a busy visual state (thinking / executing).</summary>
+    [ObservableProperty]
+    private bool _isPrimaryAgentBusy;
+
+    [ObservableProperty]
+    private int _attentionEventCount;
+
+    [ObservableProperty]
+    private int _busyEventCount;
+
+    [ObservableProperty]
+    private int _decisionEventCount;
+
     /// <summary>
     /// Fired when the island should slide down from minimized state.
     /// The code-behind subscribes to run the slide-down animation.
@@ -46,11 +99,13 @@ public partial class DynamicIslandViewModel : ObservableObject, IDisposable
         ITerminalSessionService sessionService,
         ISettingsService settingsService,
         INotificationService notificationService,
+        IDynamicIslandEventService eventService,
         Lazy<MainViewModel> mainViewModel)
     {
         _sessionService = sessionService;
         _settingsService = settingsService;
         _notificationService = notificationService;
+        _eventService = eventService;
         _mainViewModel = mainViewModel;
 
         _sessionService.SessionCreated += OnSessionCreated;
@@ -58,6 +113,23 @@ public partial class DynamicIslandViewModel : ObservableObject, IDisposable
         _sessionService.SessionStateChanged += OnSessionStateChanged;
         _sessionService.SessionTitleChanged += OnSessionTitleChanged;
         _notificationService.NotificationAdded += OnNotificationAdded;
+
+        _eventService.PrimaryEventChanged += OnPrimaryIslandEventChanged;
+        if (_eventService.Events is INotifyCollectionChanged incc)
+            incc.CollectionChanged += OnIslandEventsCollectionChanged;
+
+        _settingsService.SettingsChanged += OnAppSettingsChanged;
+
+        SyncPrimaryFromService();
+    }
+
+    private void OnAppSettingsChanged(AppSettings _)
+    {
+        Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            if (_disposed) return;
+            RefreshQueuedEvents();
+        });
     }
 
     /// <summary>
@@ -199,6 +271,91 @@ public partial class DynamicIslandViewModel : ObservableObject, IDisposable
         Application.Current.Dispatcher.BeginInvoke(() => TriggerShowIfMinimized());
     }
 
+    private void OnPrimaryIslandEventChanged(DynamicIslandEventItem? _)
+    {
+        Application.Current.Dispatcher.BeginInvoke(SyncPrimaryFromService);
+    }
+
+    private void OnIslandEventsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        Application.Current.Dispatcher.BeginInvoke(SyncPrimaryFromService);
+    }
+
+    private void SyncPrimaryFromService()
+    {
+        UnsubscribePrimaryEvent();
+
+        PrimaryEvent = _eventService.PrimaryEvent;
+        CurrentAgentLabel = PrimaryEvent?.AgentLabel ?? string.Empty;
+        CurrentPreview = PrimaryEvent?.PrimarySnippet ?? PrimaryEvent?.PreviewText ?? string.Empty;
+        CurrentActionDetail = PrimaryEvent?.SecondarySnippet ?? PrimaryEvent?.ActionDetail ?? string.Empty;
+        IsPrimaryAgentBusy = PrimaryEvent?.AgentState is AiAgentState.Thinking or AiAgentState.Executing;
+
+        SubscribePrimaryEvent(PrimaryEvent);
+        RefreshQueuedEvents();
+        RefreshEventCounters();
+    }
+
+    private void SubscribePrimaryEvent(DynamicIslandEventItem? evt)
+    {
+        if (evt == null) return;
+        _primaryEventSubscription = evt;
+        evt.PropertyChanged += OnPrimaryEventPropertyChanged;
+    }
+
+    private void UnsubscribePrimaryEvent()
+    {
+        if (_primaryEventSubscription is null) return;
+        _primaryEventSubscription.PropertyChanged -= OnPrimaryEventPropertyChanged;
+        _primaryEventSubscription = null;
+    }
+
+    private void OnPrimaryEventPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is not DynamicIslandEventItem evt) return;
+        if (e.PropertyName is nameof(DynamicIslandEventItem.PreviewText)
+            or nameof(DynamicIslandEventItem.PrimarySnippet)
+            or nameof(DynamicIslandEventItem.SecondarySnippet)
+            or nameof(DynamicIslandEventItem.Title)
+            or nameof(DynamicIslandEventItem.AgentLabel)
+            or nameof(DynamicIslandEventItem.AgentState)
+            or nameof(DynamicIslandEventItem.ActionDetail))
+        {
+            CurrentAgentLabel = evt.AgentLabel;
+            CurrentPreview = string.IsNullOrWhiteSpace(evt.PrimarySnippet) ? evt.PreviewText : evt.PrimarySnippet;
+            CurrentActionDetail = string.IsNullOrWhiteSpace(evt.SecondarySnippet) ? evt.ActionDetail ?? string.Empty : evt.SecondarySnippet;
+            IsPrimaryAgentBusy = evt.AgentState is AiAgentState.Thinking or AiAgentState.Executing;
+        }
+    }
+
+    private void RefreshQueuedEvents()
+    {
+        var maxVisible = Math.Clamp(_settingsService.CurrentSettings.DynamicIslandQueueVisibleLimit, 1, 20);
+        QueuedEvents.Clear();
+        var list = _eventService.Events;
+        var queue = new List<DynamicIslandEventItem>();
+        for (var i = 1; i < list.Count; i++)
+            queue.Add(list[i]);
+
+        var total = queue.Count;
+        var visible = Math.Min(maxVisible, total);
+        for (var i = 0; i < visible; i++)
+            QueuedEvents.Add(queue[i]);
+
+        QueuedOverflowCount = Math.Max(0, total - maxVisible);
+        QueuedOverflowHint = QueuedOverflowCount > 0 ? $"e mais {QueuedOverflowCount}" : string.Empty;
+        HasQueuedEvents = total > 0;
+        RefreshEventCounters();
+    }
+
+    private void RefreshEventCounters()
+    {
+        var list = _eventService.Events;
+        AttentionEventCount = list.Count(e => e.EventKind is DynamicIslandEventKind.Approval or DynamicIslandEventKind.Question or DynamicIslandEventKind.Error);
+        BusyEventCount = list.Count(e => e.AgentState is AiAgentState.Thinking or AiAgentState.Executing);
+        DecisionEventCount = list.Count(e => e.IsDecisionEvent);
+    }
+
     private void TriggerShowIfMinimized()
     {
         if (IslandState != DynamicIslandState.Minimized) return;
@@ -239,11 +396,17 @@ public partial class DynamicIslandViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
 
+        UnsubscribePrimaryEvent();
+        _eventService.PrimaryEventChanged -= OnPrimaryIslandEventChanged;
+        if (_eventService.Events is INotifyCollectionChanged incc)
+            incc.CollectionChanged -= OnIslandEventsCollectionChanged;
+
         _sessionService.SessionCreated -= OnSessionCreated;
         _sessionService.SessionClosed -= OnSessionClosed;
         _sessionService.SessionStateChanged -= OnSessionStateChanged;
         _sessionService.SessionTitleChanged -= OnSessionTitleChanged;
         _notificationService.NotificationAdded -= OnNotificationAdded;
+        _settingsService.SettingsChanged -= OnAppSettingsChanged;
 
         _durationTimer?.Stop();
         GC.SuppressFinalize(this);

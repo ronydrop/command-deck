@@ -53,8 +53,28 @@ public partial class AssistantPanelView : UserControl
     {
         Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
         {
-            ChatScrollViewer?.ScrollToEnd();
+            if (ChatScrollViewer is null) return;
+            // Only auto-scroll if user is near the bottom (not scrolled up reading history)
+            var isNearBottom = ChatScrollViewer.ScrollableHeight <= 0
+                || ChatScrollViewer.VerticalOffset >= ChatScrollViewer.ScrollableHeight - 60;
+            if (isNearBottom)
+                ChatScrollViewer.ScrollToEnd();
         });
+    }
+
+    private void CopyMessage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is CommandDeck.Models.ChatMessage msg)
+        {
+            if (!string.IsNullOrEmpty(msg.Content))
+                System.Windows.Clipboard.SetText(msg.Content);
+        }
+    }
+
+    private void RetryMessage_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is AssistantPanelViewModel vm)
+            _ = vm.RetryLastMessageCommand.ExecuteAsync(null);
     }
 
     /// <summary>
@@ -75,7 +95,7 @@ public partial class AssistantPanelView : UserControl
             // Plain Enter: send the message, suppress the newline
             if (DataContext is AssistantPanelViewModel vm && vm.SendMessageCommand.CanExecute(null))
             {
-                vm.SendMessageCommand.Execute(null);
+                _ = vm.SendMessageCommand.ExecuteAsync(null);
             }
             e.Handled = true;
         }

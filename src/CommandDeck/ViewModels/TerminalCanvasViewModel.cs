@@ -245,9 +245,10 @@ public partial class TerminalCanvasViewModel : ObservableObject
         if (allItems.Count == 0) return;
 
         double vpW = ViewportWidth > 0 ? ViewportWidth : 1200;
-        double vpH = ViewportHeight > 0 ? ViewportHeight : 800;
 
-        var layout = _freeStrategy.CalculateLayout(allItems.Count, vpW, vpH);
+        var widths = allItems.Select(i => i.Width).ToList();
+        var heights = allItems.Select(i => i.Height).ToList();
+        var layout = _freeStrategy.CalculateReflowPreserveSizes(widths, heights, vpW);
 
         for (int i = 0; i < allItems.Count && i < layout.Placements.Count; i++)
         {
@@ -255,8 +256,6 @@ public partial class TerminalCanvasViewModel : ObservableObject
             var item = allItems[i];
             item.X = p.X;
             item.Y = p.Y;
-            item.Width = p.Width;
-            item.Height = p.Height;
         }
     }
 

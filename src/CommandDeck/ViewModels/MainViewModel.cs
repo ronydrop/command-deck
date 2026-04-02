@@ -392,6 +392,13 @@ public partial class MainViewModel : ObservableObject
 
         await ProjectList.LoadProjectsAsync();
         await WorkspaceTree.LoadAsync();
+
+        // Clean orphan terminal nodes from the workspace tree (nodes whose
+        // linked canvas item no longer exists in any saved workspace).
+        var validIds = new HashSet<string>(
+            _workspaceService.CurrentWorkspace?.Items.Select(i => i.Id) ?? []);
+        await WorkspaceTree.ValidateAgainstCanvasAsync(validIds);
+
         await AiOrb.InitializeAsync();
         _ = LoadAvailableAiToolsAsync();
         RegisterBaseCommands();
@@ -636,11 +643,19 @@ public partial class MainViewModel : ObservableObject
 
         if (!await _projectSwitchLock.WaitAsync(0)) return; // skip if already switching
 
+        // Show overlay BEFORE any synchronous UI-thread work so the spinner is
+        // visible during the teardown below (Terminals.Clear fires CollectionChanged).
+        IsProjectSwitching = true;
+        ProjectSwitchMessage = $"Carregando {project.Name}…";
+        StatusBarText = $"Switching to {project.Name}…";
+
+        // Force the dispatcher to process the Render pass so the overlay is actually
+        // painted on screen before the heavy synchronous work below blocks the UI thread.
+        await Application.Current.Dispatcher.InvokeAsync(
+            static () => { }, System.Windows.Threading.DispatcherPriority.Render);
+
         // Snapshot of ViewModel-owned state consumed by the service
         var activeTerminals = TerminalManager.Terminals.ToList();
-
-        // Clean up property handlers on the UI thread before disposal
-        TerminalManager.DetachAllPropertyHandlers(activeTerminals);
 
         // Update CurrentProject and view before handing off to the service so that
         // bindings that read CurrentProject are consistent during the switch.
@@ -650,10 +665,6 @@ public partial class MainViewModel : ObservableObject
         TerminalManager.Terminals.Clear();
         TerminalManager.ActiveTerminal = null;
         TerminalManager.ActiveTerminalCount = 0;
-
-        IsProjectSwitching = true;
-        ProjectSwitchMessage = $"Carregando {project.Name}…";
-        StatusBarText = $"Switching to {project.Name}…";
 
         var context = new ProjectSwitchContext
         {

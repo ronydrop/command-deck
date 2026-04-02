@@ -42,7 +42,6 @@ public static class ServiceCollectionExtensions
 
         // Multi-registration: each provider resolves as IAssistantProvider
         services.AddSingleton<IAssistantProvider>(sp => new OllamaProvider(
-            sp.GetRequiredService<HttpClient>(),
             sp.GetRequiredService<AssistantSettings>()));
         services.AddSingleton<IAssistantProvider>(sp => new OpenAIProvider(
             sp.GetService<ISecretStorageService>(),
@@ -115,7 +114,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IWorkspaceLifecycleService>(sp => sp.GetRequiredService<IWorkspaceService>());
 
         services.AddSingleton<IWorkspaceTreeService, WorkspaceTreeService>();
-        services.AddSingleton<IWorkspaceHierarchyService, WorkspaceHierarchyService>();
 
         services.AddSingleton<FreeCanvasLayoutStrategy>();
         services.AddSingleton<TiledLayoutStrategy>();

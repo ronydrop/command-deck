@@ -23,6 +23,11 @@ public enum AiAgentState
 }
 
 /// <summary>
+/// Parsed multiple-choice line for <see cref="AiAgentState.WaitingInput"/> (display + text sent to terminal).
+/// </summary>
+public sealed record AiAgentChoiceOption(string Label, string SendText);
+
+/// <summary>
 /// Event args emitted by <see cref="Services.IAiAgentStateService"/> when a session's state changes.
 /// </summary>
 public sealed class AiAgentStateChangedArgs
@@ -31,6 +36,19 @@ public sealed class AiAgentStateChangedArgs
     public required AiAgentState State { get; init; }
     public required string Icon { get; init; }
     public required string Label { get; init; }
+    public string? PrimarySnippet { get; init; }
+    public string? SecondarySnippet { get; init; }
+    public string? SessionTitle { get; init; }
+    public bool SupportsMarkdown { get; init; }
+    public bool CanJumpToExactContext { get; init; }
+
+    /// <summary>When <see cref="State"/> is <see cref="AiAgentState.WaitingInput"/>, clickable options for the island.</summary>
+    public IReadOnlyList<AiAgentChoiceOption> ChoiceOptions { get; init; } = Array.Empty<AiAgentChoiceOption>();
+
+    /// <summary>
+    /// Secondary line for the island: first argument to the last tool call, error line snippet, etc.
+    /// </summary>
+    public string? ActionDetail { get; init; }
 
     /// <summary>Returns the canonical icon for a given state.</summary>
     public static string GetIcon(AiAgentState state) => state switch

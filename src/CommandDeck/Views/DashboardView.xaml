@@ -428,36 +428,36 @@
                         </Grid.RowDefinitions>
 
                         <!-- Header: ícone + nome + reset -->
-                        <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                        <DockPanel Grid.Row="0" Margin="0,0,0,8">
                             <Button DockPanel.Dock="Right"
                                     Style="{StaticResource GhostButton}"
                                     Padding="4,2"
                                     ToolTip="Resetar estatísticas da sessão"
                                     Command="{Binding ResetClaudeUsageCommand}">
-                                <TextBlock Text="↺" FontSize="12" Foreground="#80CC785C" />
+                                <TextBlock Text="↺" FontSize="13" Foreground="#80CC785C" />
                             </Button>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Border Width="28" Height="28" CornerRadius="7" Margin="0,0,8,0">
+                                <Border Width="38" Height="38" CornerRadius="9" Padding="2" Margin="0,0,10,0">
                                     <Border.Background>
                                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                                             <GradientStop Color="#CC785C" Offset="0"/>
                                             <GradientStop Color="#A0522D" Offset="1"/>
                                         </LinearGradientBrush>
                                     </Border.Background>
-                                    <TextBlock Text="✦" FontSize="14" FontWeight="Bold"
+                                    <TextBlock Text="✦" FontSize="20" FontWeight="Bold"
                                                Foreground="White"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center" />
                                 </Border>
                                 <TextBlock Text="Claude Code"
-                                           FontSize="13" FontWeight="SemiBold"
+                                           FontSize="15" FontWeight="SemiBold"
                                            Foreground="#E8C4A0"
                                            VerticalAlignment="Center" />
                             </StackPanel>
                         </DockPanel>
 
                         <!-- Tokens + descrição -->
-                        <StackPanel Grid.Row="1" Margin="0,2,0,0">
+                        <StackPanel Grid.Row="1" Margin="0,4,0,0">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding ClaudeTokensDisplay}"
                                            FontSize="28" FontWeight="Bold"
@@ -466,20 +466,20 @@
                                            VerticalAlignment="Center"
                                            ToolTip="Total de tokens consumidos pelo Claude Code nesta sessão" />
                                 <TextBlock Text=" tokens"
-                                           FontSize="11" Foreground="#80CC785C"
+                                           FontSize="13" Foreground="#80CC785C"
                                            VerticalAlignment="Bottom"
-                                           Margin="0,0,0,5" />
+                                           Margin="3,0,0,6" />
                             </StackPanel>
                             <TextBlock Text="consumidos na sessão"
-                                       FontSize="10" Foreground="#50CC785C"
-                                       Margin="0,1,0,0" />
+                                       FontSize="12" Foreground="#50CC785C"
+                                       Margin="0,5,0,0" />
                             <!-- Modelo em uso -->
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
                                 <TextBlock Text="Modelo: "
-                                           FontSize="10" Foreground="#50CC785C"
+                                           FontSize="12" Foreground="#50CC785C"
                                            VerticalAlignment="Center" />
                                 <TextBlock Text="{Binding ClaudeModelDisplay}"
-                                           FontSize="10" FontWeight="Medium"
+                                           FontSize="12" FontWeight="Medium"
                                            FontFamily="{StaticResource MonoFont}"
                                            Foreground="#80CC785C"
                                            VerticalAlignment="Center" />
@@ -487,18 +487,20 @@
                         </StackPanel>
 
                         <!-- Custo USD / BRL -->
-                        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                            <TextBlock Text="USD "
-                                       FontSize="10" Foreground="#50CC785C"
-                                       VerticalAlignment="Center" />
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                            <TextBlock Text="USD"
+                                       FontSize="12" Foreground="#50CC785C"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,10,0" />
                             <TextBlock Text="{Binding ClaudeCostUsdDisplay}"
                                        FontSize="13" FontWeight="SemiBold"
                                        FontFamily="{StaticResource MonoFont}"
                                        Foreground="#E8C4A0"
                                        Margin="0,0,10,0" />
-                            <TextBlock Text="BRL "
-                                       FontSize="10" Foreground="#50CC785C"
-                                       VerticalAlignment="Center" />
+                            <TextBlock Text="BRL"
+                                       FontSize="12" Foreground="#50CC785C"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,10,0" />
                             <TextBlock Text="{Binding ClaudeCostBrlDisplay}"
                                        FontSize="13" FontWeight="SemiBold"
                                        FontFamily="{StaticResource MonoFont}"
@@ -523,86 +525,6 @@
                      LEFT COLUMN
                      ═══════════════════════════════════════════════════════ -->
                 <StackPanel Grid.Column="0">
-
-                    <!-- GIT QUICK ACTIONS -->
-                    <Border Style="{StaticResource Card}" Margin="0,0,0,12"
-                            Visibility="{Binding HasGitInfo, Converter={StaticResource BoolToVis}}">
-                        <StackPanel>
-                            <TextBlock Text="Git"
-                                       Style="{StaticResource CaptionText}"
-                                       Margin="0,0,0,8" />
-                            <UniformGrid Rows="1" Columns="4">
-                                <!-- Pull -->
-                                <Button Style="{StaticResource GhostButton}"
-                                        Command="{Binding RunGitActionCommand}"
-                                        CommandParameter="pull"
-                                        Margin="0,0,4,0" Padding="8,7"
-                                        ToolTip="git pull">
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                        <Path Data="M12 3v14M12 17l-5-5M12 17l5-5"
-                                              Stroke="{DynamicResource AccentBlueBrush}"
-                                              StrokeThickness="1.5" StrokeLineJoin="Round"
-                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                              Fill="Transparent" Stretch="Uniform"
-                                              Width="11" Height="11" Margin="0,0,6,0" />
-                                        <TextBlock Text="Pull" FontSize="12"
-                                                   Foreground="{DynamicResource TextBrush}" />
-                                    </StackPanel>
-                                </Button>
-                                <!-- Push -->
-                                <Button Style="{StaticResource GhostButton}"
-                                        Command="{Binding RunGitActionCommand}"
-                                        CommandParameter="push"
-                                        Margin="0,0,4,0" Padding="8,7"
-                                        ToolTip="git push">
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                        <Path Data="M12 21V7M12 7l-5 5M12 7l5 5"
-                                              Stroke="{DynamicResource AccentGreenBrush}"
-                                              StrokeThickness="1.5" StrokeLineJoin="Round"
-                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                              Fill="Transparent" Stretch="Uniform"
-                                              Width="11" Height="11" Margin="0,0,6,0" />
-                                        <TextBlock Text="Push" FontSize="12"
-                                                   Foreground="{DynamicResource TextBrush}" />
-                                    </StackPanel>
-                                </Button>
-                                <!-- Fetch -->
-                                <Button Style="{StaticResource GhostButton}"
-                                        Command="{Binding RunGitActionCommand}"
-                                        CommandParameter="fetch"
-                                        Margin="0,0,4,0" Padding="8,7"
-                                        ToolTip="git fetch">
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                        <Path Data="{StaticResource RefreshIcon}"
-                                              Stroke="{DynamicResource AccentYellowBrush}"
-                                              StrokeThickness="1.5" StrokeLineJoin="Round"
-                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                              Fill="Transparent" Stretch="Uniform"
-                                              Width="11" Height="11" Margin="0,0,6,0" />
-                                        <TextBlock Text="Fetch" FontSize="12"
-                                                   Foreground="{DynamicResource TextBrush}" />
-                                    </StackPanel>
-                                </Button>
-                                <!-- Stash -->
-                                <Button Style="{StaticResource GhostButton}"
-                                        Command="{Binding RunGitActionCommand}"
-                                        CommandParameter="stash"
-                                        Padding="8,7"
-                                        ToolTip="git stash">
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                        <Path Data="M3 6h18M3 12h18M3 18h18"
-                                              Stroke="{DynamicResource SubtextBrush}"
-                                              StrokeThickness="1.5" StrokeLineJoin="Round"
-                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                              Fill="Transparent" Stretch="Uniform"
-                                              Width="11" Height="11" Margin="0,0,6,0" />
-                                        <TextBlock Text="Stash" FontSize="12"
-                                                   Foreground="{DynamicResource TextBrush}" />
-                                    </StackPanel>
-                                </Button>
-                            </UniformGrid>
-                        </StackPanel>
-                    </Border>
 
                     <!-- GIT REPO DETAILS -->
                     <Border Style="{StaticResource Card}" Margin="0,0,0,12"

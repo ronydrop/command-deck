@@ -55,4 +55,22 @@ public interface IDatabaseService
         string nodeId,
         string key,
         CancellationToken ct = default);
+
+    // ── Chat History ─────────────────────────────────────────────────────
+
+    /// <summary>Persists a chat message to a conversation.</summary>
+    Task SaveChatMessageAsync(
+        string conversationId, string role, string content,
+        string? model = null, string? provider = null,
+        CancellationToken ct = default);
+
+    /// <summary>Returns messages for a conversation, ordered by timestamp.</summary>
+    Task<IReadOnlyList<ChatMessageRecord>> GetChatMessagesAsync(
+        string conversationId, int limit = 200, CancellationToken ct = default);
+
+    /// <summary>Returns the most recent conversation ID, or null if none.</summary>
+    Task<string?> GetLastConversationIdAsync(CancellationToken ct = default);
+
+    /// <summary>Deletes all messages for a conversation.</summary>
+    Task DeleteConversationAsync(string conversationId, CancellationToken ct = default);
 }

@@ -136,6 +136,12 @@ public partial class AppSettings : ObservableObject
     private string _anthropicAuthMode = "apikey";
 
     /// <summary>
+    /// Custom system prompt injected at the start of every AI conversation.
+    /// </summary>
+    [ObservableProperty]
+    private string _aiSystemPrompt = "You are a helpful developer assistant integrated into CommandDeck, a terminal management application. Be concise, practical, and focus on development tasks.";
+
+    /// <summary>
     /// Whether the AI assistant panel is visible in the UI.
     /// </summary>
     [ObservableProperty]
@@ -187,6 +193,22 @@ public partial class AppSettings : ObservableObject
     /// <summary>Whether the Dynamic Island overlay widget is visible.</summary>
     [ObservableProperty]
     private bool _isDynamicIslandEnabled = true;
+
+    /// <summary>Play a short system sound when the island surfaces a critical action (approval / question).</summary>
+    [ObservableProperty]
+    private bool _dynamicIslandSoundEnabled;
+
+    /// <summary>Maximum events kept in the island feed (oldest/lowest priority dropped when exceeded).</summary>
+    [ObservableProperty]
+    private int _dynamicIslandMaxFeedEvents = 30;
+
+    /// <summary>How many queued items show in the expanded island list before the &quot;e mais N&quot; hint.</summary>
+    [ObservableProperty]
+    private int _dynamicIslandQueueVisibleLimit = 5;
+
+    /// <summary>Seconds within which duplicate promoted notifications (same fingerprint) replace the previous entry.</summary>
+    [ObservableProperty]
+    private int _dynamicIslandNotificationDedupeWindowSeconds = 30;
 
     // ─── AI Orb Settings ────────────────────────────────────────────────────
 

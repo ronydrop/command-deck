@@ -995,8 +995,10 @@ public partial class TerminalCanvasView : UserControl
 
         // Rebuild items every open so the checkmark and list are always fresh
         menu.Items.Clear();
-        foreach (var tool in _mainVm.AvailableAiTools)
+        var aiTools = _mainVm.AvailableAiTools;
+        for (int i = 0; i < aiTools.Count; i++)
         {
+            var tool = aiTools[i];
             var header = new StackPanel { Orientation = Orientation.Horizontal };
             header.Children.Add(new TextBlock
             {
@@ -1021,6 +1023,9 @@ public partial class TerminalCanvasView : UserControl
                 Command = _mainVm.LaunchAiToolCommand,
                 CommandParameter = tool.Id
             });
+
+            if (i < aiTools.Count - 1)
+                menu.Items.Add(new Separator());
         }
 
         if (menu.Items.Count == 0) return;

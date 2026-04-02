@@ -10,6 +10,7 @@
              KeyboardNavigation.TabNavigation="None"
              Background="Transparent"
              Loaded="OnLoaded"
+             Unloaded="OnUnloaded"
              SizeChanged="OnSizeChanged"
              MouseDown="OnMouseDown"
              GotFocus="OnGotFocus"

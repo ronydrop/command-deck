@@ -18,7 +18,9 @@ public class TerminalService : ITerminalService, IDisposable
     public event Action<string, string>? OutputReceived;
     public event Action<TerminalSession>? SessionCreated;
     public event Action<string>? SessionExited;
+#pragma warning disable CS0067
     public event Action<string, string>? TitleChanged;
+#pragma warning restore CS0067
 
     public async Task<TerminalSession> CreateSessionAsync(
         ShellType shellType,

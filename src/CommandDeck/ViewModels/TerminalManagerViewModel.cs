@@ -18,10 +18,8 @@ public partial class TerminalManagerViewModel : ObservableObject
     private readonly ISettingsService _settingsService;
     private readonly ICommandPaletteService _commandPaletteService;
     private readonly IWorkspaceService _workspaceService;
-    private readonly Lazy<WorkspaceTreeViewModel> _workspaceTree;
     private readonly INotificationService _notificationService;
     private readonly Func<TerminalViewModel> _terminalVmFactory;
-    private readonly Dictionary<TerminalViewModel, System.ComponentModel.PropertyChangedEventHandler> _terminalPropertyHandlers = new();
 
     // ─── Observable Properties ───────────────────────────────────────────────
 
@@ -61,7 +59,6 @@ public partial class TerminalManagerViewModel : ObservableObject
         ISettingsService settingsService,
         ICommandPaletteService commandPaletteService,
         IWorkspaceService workspaceService,
-        Lazy<WorkspaceTreeViewModel> workspaceTree,
         INotificationService notificationService)
     {
         _terminalService = terminalService;
@@ -69,7 +66,6 @@ public partial class TerminalManagerViewModel : ObservableObject
         _settingsService = settingsService;
         _commandPaletteService = commandPaletteService;
         _workspaceService = workspaceService;
-        _workspaceTree = workspaceTree;
         _notificationService = notificationService;
     }
 
@@ -93,26 +89,6 @@ public partial class TerminalManagerViewModel : ObservableObject
         // Register with workspace so it appears as a spatial canvas item
         _workspaceService.AddTerminalItem(terminalVm);
 
-        // Auto-register the new canvas item in the workspace tree sidebar
-        var canvasItems = _workspaceService.TerminalItems;
-        var addedItem = canvasItems.LastOrDefault();
-        if (addedItem is not null && !_workspaceTree.Value.HasNodeForCanvasItem(addedItem.Model.Id))
-        {
-            _ = _workspaceTree.Value.RegisterTerminalAsync(addedItem.Title, addedItem.Model.Id, CurrentProject?.Id)
-                .ContinueWith(t => System.Diagnostics.Debug.WriteLine($"[WorkspaceTree] RegisterTerminalAsync error: {t.Exception}"), TaskContinuationOptions.OnlyOnFaulted);
-
-            // Sync title changes to workspace tree when shell updates via OSC sequences
-            var capturedItem = addedItem;
-            System.ComponentModel.PropertyChangedEventHandler handler = async (_, args) =>
-            {
-                if (args.PropertyName == nameof(TerminalCanvasItemViewModel.Title))
-                    try { await _workspaceTree.Value.SyncTerminalTitleAsync(capturedItem.Model.Id, capturedItem.Title); }
-                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[WorkspaceTree] SyncTerminalTitleAsync error: {ex}"); }
-            };
-            terminalVm.PropertyChanged += handler;
-            _terminalPropertyHandlers[terminalVm] = handler;
-        }
-
         ShellTypeDisplay = shellType.GetDisplayName();
     }
 
@@ -122,22 +98,11 @@ public partial class TerminalManagerViewModel : ObservableObject
     {
         if (terminal == null) return;
 
-        // Remove from workspace canvas first
+        // Remove from workspace canvas
         var canvasItem = _workspaceService.TerminalItems
             .FirstOrDefault(i => i.Terminal == terminal);
         if (canvasItem is not null)
-        {
             _workspaceService.RemoveItem(canvasItem.Model.Id);
-            _ = _workspaceTree.Value.UnregisterCanvasItemAsync(canvasItem.Model.Id)
-                .ContinueWith(t => System.Diagnostics.Debug.WriteLine($"[WorkspaceTree] UnregisterCanvasItemAsync error: {t.Exception}"), TaskContinuationOptions.OnlyOnFaulted);
-        }
-
-        // Unsubscribe PropertyChanged handler to prevent memory leak
-        if (_terminalPropertyHandlers.TryGetValue(terminal, out var handler))
-        {
-            terminal.PropertyChanged -= handler;
-            _terminalPropertyHandlers.Remove(terminal);
-        }
 
         int index = Terminals.IndexOf(terminal);
         await terminal.DisposeAsync();
@@ -185,23 +150,6 @@ public partial class TerminalManagerViewModel : ObservableObject
     }
 
     // ─── Internal helpers (called by MainViewModel during project switch) ────
-
-    /// <summary>
-    /// Removes all property-change handlers without disposing terminals.
-    /// Called by <see cref="MainViewModel"/> before handing the list to
-    /// <see cref="IProjectSwitchService"/> for disposal.
-    /// </summary>
-    internal void DetachAllPropertyHandlers(IEnumerable<TerminalViewModel> terminals)
-    {
-        foreach (var t in terminals)
-        {
-            if (_terminalPropertyHandlers.TryGetValue(t, out var h))
-            {
-                t.PropertyChanged -= h;
-                _terminalPropertyHandlers.Remove(t);
-            }
-        }
-    }
 
     /// <summary>
     /// Resets collection state after a project switch completes.

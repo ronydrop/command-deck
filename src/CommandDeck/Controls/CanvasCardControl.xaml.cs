@@ -82,6 +82,28 @@ public partial class CanvasCardControl : UserControl
             handledEventsToo: true);
 
         Loaded += (_, _) => CacheCanvasView();
+
+        // Re-apply the rounded clip when IsTiledMode toggles (corners go 8→0 or 0→8)
+        DataContextChanged += OnDataContextChanged;
+    }
+
+    private CanvasItemViewModel? _trackedVm;
+
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (_trackedVm is not null)
+            _trackedVm.PropertyChanged -= OnVmPropertyChanged;
+
+        _trackedVm = e.NewValue as CanvasItemViewModel;
+
+        if (_trackedVm is not null)
+            _trackedVm.PropertyChanged += OnVmPropertyChanged;
+    }
+
+    private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CanvasItemViewModel.IsTiledMode))
+            RefreshContentGridClip();
     }
 
     private void CacheCanvasView()
@@ -289,7 +311,7 @@ public partial class CanvasCardControl : UserControl
     private void OnContentGridSizeChanged(object sender, SizeChangedEventArgs e)
     {
         var grid = (Grid)sender;
-        var radius = IsTiledMode() ? 0.0 : 6.0;
+        var radius = (_trackedVm?.IsTiledMode == true) ? 0.0 : 6.0;
         grid.Clip = new RectangleGeometry(
             new Rect(0, 0, e.NewSize.Width, e.NewSize.Height),
             radius, radius);
@@ -302,7 +324,7 @@ public partial class CanvasCardControl : UserControl
     internal void RefreshContentGridClip()
     {
         if (ContentGrid.ActualWidth <= 0) return;
-        var radius = IsTiledMode() ? 0.0 : 6.0;
+        var radius = (_trackedVm?.IsTiledMode == true) ? 0.0 : 6.0;
         ContentGrid.Clip = new RectangleGeometry(
             new Rect(0, 0, ContentGrid.ActualWidth, ContentGrid.ActualHeight),
             radius, radius);

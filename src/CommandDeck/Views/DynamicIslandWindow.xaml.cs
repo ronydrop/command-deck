@@ -29,10 +29,16 @@ public partial class DynamicIslandWindow : Window
     [DllImport("user32.dll")]
     private static extern bool GetMonitorInfo(nint hMonitor, ref MONITORINFO lpmi);
 
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_NOACTIVATE = 0x08000000;
     private const int WS_EX_TOOLWINDOW = 0x00000080;
     private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT { public int X, Y; }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
@@ -47,8 +53,9 @@ public partial class DynamicIslandWindow : Window
     }
 
     // ─── Animation constants ─────────────────────────────────────────────────
-    private const double PillWidth         = 200;
-    private const double ExpandedWidth     = 340;
+    private const double PillWidthCompact  = 200;
+    private const double PillWidthWithEvent = 300;
+    private const double ExpandedWidth     = 360;
     private const double ExpandedMaxHeight = 500;
     private const double ExpandDuration    = 0.35;  // seconds
     private const double CollapseDuration  = 0.28;
@@ -59,19 +66,36 @@ public partial class DynamicIslandWindow : Window
     private readonly DynamicIslandViewModel _viewModel;
     private readonly System.Windows.Threading.DispatcherTimer _collapseTimer;
     private readonly System.Windows.Threading.DispatcherTimer _hoverWatchTimer;
+    private readonly System.Windows.Threading.DispatcherTimer _proximityTimer;
     private bool _isAnimating;
     private bool _pendingShow;       // notification arrived while minimize anim was running
     private bool _isPersistent;      // true = locked open; hover ignored until clicked again
-    private bool _isMinimized;       // true while hidden via AnimateMinimize (stale off-screen state)
-    private double _restingTop = 8;  // persisted so slide-down can return to correct position
+    private bool _isMinimized;       // true while hidden off-screen via AnimateMinimize
+    private string? _lastPrimaryEventId;
+    private double _restingTop = 8;  // WPF DIPs — resting Y position of the island
+    private int _screenWorkTop = 0;  // physical pixels — top of monitor work area (for proximity)
 
-    // WS_EX_NOACTIVATE windows don't reliably receive WM_MOUSELEAVE from WPF — we poll instead.
+    // ─── Mouse helpers (Win32) ───────────────────────────────────────────────
+
+    // WS_EX_NOACTIVATE windows stop receiving WM_MOUSEMOVE when the mouse leaves —
+    // WPF's Mouse.GetPosition returns the last cached (stale) position. Use GetCursorPos.
     private bool IsMouseOverPill()
     {
-        var pos = System.Windows.Input.Mouse.GetPosition(PillBorder);
-        return pos.X >= 0 && pos.Y >= 0
-            && pos.X <= PillBorder.ActualWidth
-            && pos.Y <= PillBorder.ActualHeight;
+        if (!GetCursorPos(out var pt)) return true;
+        try
+        {
+            var tl = PillBorder.PointToScreen(new Point(0, 0));
+            var br = PillBorder.PointToScreen(new Point(PillBorder.ActualWidth, PillBorder.ActualHeight));
+            return pt.X >= tl.X && pt.X <= br.X && pt.Y >= tl.Y && pt.Y <= br.Y;
+        }
+        catch { return true; }
+    }
+
+    // Returns true when the cursor is within the proximity zone at the top of the screen.
+    private bool IsMouseNearTop()
+    {
+        if (!GetCursorPos(out var pt)) return false;
+        return pt.Y <= _screenWorkTop + 20; // 20 physical-pixel proximity zone
     }
 
     public DynamicIslandWindow(DynamicIslandViewModel viewModel)
@@ -106,6 +130,21 @@ public partial class DynamicIslandWindow : Window
             }
         };
 
+        // Polls cursor proximity to the top edge while minimized off-screen
+        _proximityTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(80)
+        };
+        _proximityTimer.Tick += (_, _) =>
+        {
+            if (!_isMinimized) { _proximityTimer.Stop(); return; }
+            if (IsMouseNearTop())
+            {
+                _proximityTimer.Stop();
+                OnRequestShowFromMinimized();
+            }
+        };
+
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.RequestShowFromMinimized += OnRequestShowFromMinimized;
 
@@ -115,6 +154,8 @@ public partial class DynamicIslandWindow : Window
         {
             _collapseTimer.Stop();
             _hoverWatchTimer.Stop();
+            _proximityTimer.Stop();
+            HeartbeatEllipse.IsVisibleChanged -= OnHeartbeatIsVisibleChanged;
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _viewModel.RequestShowFromMinimized -= OnRequestShowFromMinimized;
             _viewModel.Sessions.CollectionChanged -= OnSessionsCollectionChanged;
@@ -126,8 +167,10 @@ public partial class DynamicIslandWindow : Window
     {
         _collapseTimer.Stop();
         _hoverWatchTimer.Stop();
+        _proximityTimer.Stop();
         _isAnimating = false;
         _isPersistent = false;
+        _isMinimized = false;
 
         // Cancel any in-flight animations
         this.BeginAnimation(WidthProperty, null);
@@ -142,7 +185,7 @@ public partial class DynamicIslandWindow : Window
         ExpandedContent.Opacity    = 0;
         PillContent.Visibility     = Visibility.Visible;
         PillContent.Opacity        = 1;
-        this.Width   = PillWidth;
+        this.Width   = GetPillTargetWidth();
         this.Opacity = 1;
     }
 
@@ -157,16 +200,25 @@ public partial class DynamicIslandWindow : Window
                 else
                 {
                     ResetToPillState();
-                    CenterHorizontally(PillWidth);
+                    CenterHorizontally(GetPillTargetWidth());
                     Show();
                 }
             }
-            else Hide();
+            else
+            {
+                _proximityTimer.Stop();
+                Hide();
+            }
         }
         else if (e.PropertyName == nameof(DynamicIslandViewModel.ActiveSessionCount) ||
-                 e.PropertyName == nameof(DynamicIslandViewModel.HasBusySession))
+                 e.PropertyName == nameof(DynamicIslandViewModel.HasBusySession) ||
+                 e.PropertyName == nameof(DynamicIslandViewModel.PrimaryEvent) ||
+                 e.PropertyName == nameof(DynamicIslandViewModel.CurrentPreview) ||
+                 e.PropertyName == nameof(DynamicIslandViewModel.IsPrimaryAgentBusy))
         {
             UpdatePillDisplay();
+            if (e.PropertyName == nameof(DynamicIslandViewModel.PrimaryEvent))
+                AnimatePrimaryEventEmphasis();
         }
     }
 
@@ -184,6 +236,8 @@ public partial class DynamicIslandWindow : Window
         SessionList.ItemsSource = _viewModel.Sessions;
         _viewModel.Sessions.CollectionChanged += OnSessionsCollectionChanged;
 
+        HeartbeatEllipse.IsVisibleChanged += OnHeartbeatIsVisibleChanged;
+
         ResetToPillState();
         UpdatePosition();
         UpdatePillDisplay();
@@ -191,6 +245,18 @@ public partial class DynamicIslandWindow : Window
 
         if (!_viewModel.IsVisible)
             Hide();
+    }
+
+    private void OnHeartbeatIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (Resources["HeartbeatPulseStoryboard"] is not Storyboard sb) return;
+        if (HeartbeatEllipse.IsVisible)
+            sb.Begin(HeartbeatEllipse, true);
+        else
+        {
+            HeartbeatEllipse.BeginAnimation(UIElement.OpacityProperty, null);
+            HeartbeatEllipse.Opacity = 1;
+        }
     }
 
     private void OnSessionsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -228,11 +294,13 @@ public partial class DynamicIslandWindow : Window
             double workTop   = work.Top   / dpiY;
             Left = workLeft + (workRight - workLeft - ActualWidth) / 2;
             Top  = workTop + 8;
+            _screenWorkTop = info.rcWork.Top; // physical pixels for proximity detection
         }
         else
         {
             Left = (SystemParameters.PrimaryScreenWidth - ActualWidth) / 2;
             Top = 8;
+            _screenWorkTop = 0;
         }
 
         _restingTop = Top;
@@ -273,6 +341,10 @@ public partial class DynamicIslandWindow : Window
             : Visibility.Collapsed;
     }
 
+    /// <summary>Collapsed pill width: wider when a primary island event is shown.</summary>
+    private double GetPillTargetWidth() =>
+        _viewModel.PrimaryEvent is null ? PillWidthCompact : PillWidthWithEvent;
+
     private void UpdatePillDisplay()
     {
         var count = _viewModel.ActiveSessionCount;
@@ -287,6 +359,50 @@ public partial class DynamicIslandWindow : Window
                 : GetThemeColor("AccentGreen");
 
         StatusDotBrush.Color = dotColor;
+
+        // Resize pill when feed shows a primary event (only while collapsed)
+        if (!_isAnimating && ExpandedContent.Visibility == Visibility.Collapsed)
+        {
+            var target = GetPillTargetWidth();
+            this.BeginAnimation(WidthProperty, null);
+            this.Width = target;
+            CenterHorizontally(target);
+        }
+    }
+
+    private void AnimatePrimaryEventEmphasis()
+    {
+        var currentId = _viewModel.PrimaryEvent?.EventId;
+        if (string.IsNullOrWhiteSpace(currentId) || string.Equals(_lastPrimaryEventId, currentId, StringComparison.Ordinal))
+            return;
+
+        _lastPrimaryEventId = currentId;
+
+        var scale = new ScaleTransform(1, 1);
+        PillBorder.RenderTransformOrigin = new Point(0.5, 0.5);
+        PillBorder.RenderTransform = scale;
+
+        var storyboard = new Storyboard();
+        var duration = new Duration(TimeSpan.FromMilliseconds(260));
+        var scaleX = new DoubleAnimation(1, 1.025, duration)
+        {
+            AutoReverse = true,
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+        var scaleY = new DoubleAnimation(1, 1.02, duration)
+        {
+            AutoReverse = true,
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+
+        Storyboard.SetTarget(scaleX, PillBorder);
+        Storyboard.SetTarget(scaleY, PillBorder);
+        Storyboard.SetTargetProperty(scaleX, new PropertyPath("RenderTransform.ScaleX"));
+        Storyboard.SetTargetProperty(scaleY, new PropertyPath("RenderTransform.ScaleY"));
+
+        storyboard.Children.Add(scaleX);
+        storyboard.Children.Add(scaleY);
+        storyboard.Begin();
     }
 
     private static Color GetThemeColor(string key) =>
@@ -354,7 +470,8 @@ public partial class DynamicIslandWindow : Window
         var dur100  = new Duration(TimeSpan.FromSeconds(0.10));
 
         // 1. Window width pill → expanded
-        var widthAnim = new DoubleAnimation(PillWidth, ExpandedWidth, dur350) { EasingFunction = easeOut };
+        var fromW = this.Width;
+        var widthAnim = new DoubleAnimation(fromW, ExpandedWidth, dur350) { EasingFunction = easeOut };
         this.BeginAnimation(WidthProperty, widthAnim);
 
         // 2. Recenter horizontally (Left follows width change)
@@ -431,22 +548,23 @@ public partial class DynamicIslandWindow : Window
         ExpandedContent.BeginAnimation(MaxHeightProperty, heightAnim);
 
         // 3. Window width expanded → pill
-        var widthAnim = new DoubleAnimation(ExpandedWidth, PillWidth, dur280) { EasingFunction = easeIn };
+        var toPill = GetPillTargetWidth();
+        var widthAnim = new DoubleAnimation(ExpandedWidth, toPill, dur280) { EasingFunction = easeIn };
         widthAnim.Completed += (_, _) =>
         {
             this.BeginAnimation(WidthProperty, null);
-            this.Width = PillWidth;
-            CenterHorizontally(PillWidth);
+            this.Width = toPill;
+            CenterHorizontally(toPill);
             _isAnimating = false;
 
-            // Mouse re-entered while collapsing — expand again (check real state)
-            if (PillBorder.IsMouseOver && !_isPersistent)
+            // Mouse re-entered while collapsing — expand again
+            if (IsMouseOverPill() && !_isPersistent)
                 AnimateExpand();
         };
         this.BeginAnimation(WidthProperty, widthAnim);
 
         // 4. Recenter immediately (will follow as width animates)
-        CenterHorizontally(PillWidth);
+        CenterHorizontally(toPill);
 
         // 5. Pill content fade in
         PillContent.Visibility = Visibility.Visible;
@@ -469,10 +587,11 @@ public partial class DynamicIslandWindow : Window
     private void OnMinimizeClick(object sender, RoutedEventArgs e)
     {
         e.Handled = true; // prevent bubble-up to OnPillClick
-        if (_isAnimating) return;
-        _isPersistent = false;
+        // Reset state fully so minimize always works regardless of current animation
         _collapseTimer.Stop();
         _hoverWatchTimer.Stop();
+        _isPersistent = false;
+        _isAnimating = false;
         _viewModel.MinimizeCommand.Execute(null); // sets IslandState = Minimized on VM
         AnimateMinimize();
     }
@@ -492,8 +611,8 @@ public partial class DynamicIslandWindow : Window
         PillContent.Visibility = Visibility.Visible;
         PillContent.Opacity = 1;
         this.BeginAnimation(WidthProperty, null);
-        this.Width = PillWidth;
-        CenterHorizontally(PillWidth);
+        this.Width = GetPillTargetWidth();
+        CenterHorizontally(GetPillTargetWidth());
 
         var easeIn = new ExponentialEase { EasingMode = EasingMode.EaseIn, Exponent = 4 };
         var dur300 = new Duration(TimeSpan.FromSeconds(SlideDuration));
@@ -514,11 +633,15 @@ public partial class DynamicIslandWindow : Window
             _isAnimating = false;
             _isMinimized = true;
 
-            // If a notification arrived during animation, show immediately
             if (_pendingShow)
             {
                 _pendingShow = false;
                 OnRequestShowFromMinimized();
+            }
+            else
+            {
+                // Watch for mouse proximity to the top edge — slide back in when near
+                _proximityTimer.Start();
             }
         };
 
@@ -530,6 +653,8 @@ public partial class DynamicIslandWindow : Window
 
     private void OnRequestShowFromMinimized()
     {
+        _proximityTimer.Stop();
+
         // If currently animating minimize, flag and let Completed handle it
         if (_isAnimating)
         {
@@ -545,10 +670,11 @@ public partial class DynamicIslandWindow : Window
         ExpandedContent.Opacity = 0;
         PillContent.Visibility = Visibility.Visible;
         PillContent.Opacity = 1;
-        this.Width = PillWidth;
+        var pillW = GetPillTargetWidth();
+        this.Width = pillW;
 
         // Position off-screen above
-        CenterHorizontally(PillWidth);
+        CenterHorizontally(pillW);
         this.Opacity = 0.3;
         Top = -(_restingTop + ActualHeight + 20);
 
@@ -573,6 +699,10 @@ public partial class DynamicIslandWindow : Window
             this.Opacity = 1;
             _isAnimating = false;
             _isMinimized = false;
+
+            // If mouse is already over the pill (brought it up via proximity), expand
+            if (IsMouseOverPill() && !_isPersistent)
+                AnimateExpand();
         };
 
         this.BeginAnimation(TopProperty, topAnim);

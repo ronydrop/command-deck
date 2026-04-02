@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using CommandDeck.Models;
@@ -19,16 +18,6 @@ public class AiOrbService : IAiOrbService
     private readonly ITerminalService _terminalService;
     private readonly ISettingsService _settingsService;
 
-    // Provider display config
-    private static readonly Dictionary<string, OrbProviderInfo> ProviderInfoMap = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["anthropic"] = new OrbProviderInfo("anthropic", "Claude", "#CBA6F7"),   // Catppuccin mauve
-        ["openai"]    = new OrbProviderInfo("openai",    "GPT",    "#A6E3A1"),   // Catppuccin green
-        ["local"]     = new OrbProviderInfo("local",     "Ollama", "#FAB387"),   // Catppuccin peach
-        ["openrouter"]= new OrbProviderInfo("openrouter","OpenRouter","#89DCEB"),// Catppuccin sky
-        ["none"]      = new OrbProviderInfo("none",      "AI",     "#6C7086"),   // Catppuccin overlay0
-    };
-
     public AiOrbService(
         IAssistantService assistantService,
         IAiContextService contextService,
@@ -43,10 +32,21 @@ public class AiOrbService : IAiOrbService
 
     public OrbProviderInfo GetActiveProviderInfo()
     {
-        var providerName = _assistantService.ActiveProvider?.Name ?? "none";
-        if (ProviderInfoMap.TryGetValue(providerName, out var info))
-            return info;
-        return ProviderInfoMap["none"];
+        var provider = _assistantService.GetActiveProvider()
+                    ?? _assistantService.ActiveProvider;
+        if (provider is null)
+            return new OrbProviderInfo("none", "AI", "#6C7086");
+
+        return new OrbProviderInfo(
+            provider.Name ?? provider.ProviderName,
+            provider.DisplayName,
+            provider.DisplayColor);
+    }
+
+    public bool HasActiveProvider()
+    {
+        var provider = _assistantService.GetActiveProvider() ?? _assistantService.ActiveProvider;
+        return provider is not null && provider.IsConfigured && provider.IsAvailable;
     }
 
     public async Task<string> ImproveLastCommandAsync()
@@ -73,7 +73,7 @@ public class AiOrbService : IAiOrbService
             AssistantMessage.User(prompt)
         };
 
-        var response = await _assistantService.ActiveProvider.ChatAsync(messages);
+        var response = await _assistantService.ChatAsync(messages);
         return response.IsError ? string.Empty : (response.Content ?? string.Empty).Trim();
     }
 
@@ -82,7 +82,8 @@ public class AiOrbService : IAiOrbService
         var context = await _contextService.GetActiveTerminalContextAsync();
         if (context == null)
         {
-            Clipboard.SetText("No active terminal context.");
+            await Application.Current!.Dispatcher.InvokeAsync(() =>
+                Clipboard.SetText("No active terminal context."));
             return;
         }
 
@@ -99,7 +100,7 @@ public class AiOrbService : IAiOrbService
             {recentOutput}
             """;
 
-        Application.Current?.Dispatcher.Invoke(() =>
+        await Application.Current!.Dispatcher.InvokeAsync(() =>
             Clipboard.SetText(contextText));
     }
 
@@ -124,16 +125,13 @@ public class AiOrbService : IAiOrbService
 
     public async Task<string> SendMessageToAiAsync(string message)
     {
-        if (!_assistantService.IsAnyProviderAvailable)
-            return "Nenhum provider de AI configurado.";
-
         var messages = new List<AssistantMessage>
         {
             AssistantMessage.System("You are a helpful developer assistant. Be concise and practical."),
             AssistantMessage.User(message)
         };
 
-        var response = await _assistantService.ActiveProvider.ChatAsync(messages);
+        var response = await _assistantService.ChatAsync(messages);
         return response.IsError ? $"Erro: {response.Error}" : (response.Content ?? string.Empty);
     }
 
@@ -171,7 +169,7 @@ public class AiOrbService : IAiOrbService
         }
     }
 
-    private async Task PersistPositionAsync(Point position)
+    private async Task PersistPositionAsync(Point position)  // fire-and-forget wrapper
     {
         try
         {
@@ -185,4 +183,5 @@ public class AiOrbService : IAiOrbService
             System.Diagnostics.Debug.WriteLine($"[AiOrbService] SavePosition failed: {ex}");
         }
     }
+
 }

@@ -636,30 +636,35 @@
                     </Thumb.Style>
                     <Thumb.Template>
                         <ControlTemplate TargetType="Thumb">
-                            <!-- 3-line diagonal grip icon -->
-                            <Canvas Width="18" Height="18">
+                            <!-- 3-line diagonal grip icon — hidden by default, visible on hover -->
+                            <Canvas x:Name="GripCanvas" Width="18" Height="18" Opacity="0">
                                 <!-- Line 1 (shortest, top) -->
-                                <Line X1="7"  Y1="17" X2="17" Y2="7"
+                                <Line X1="5"  Y1="15" X2="15" Y2="5"
                                       Stroke="{DynamicResource Surface2Brush}"
                                       StrokeThickness="1.5"
                                       StrokeStartLineCap="Round"
                                       StrokeEndLineCap="Round"
                                       Opacity="0.5" />
                                 <!-- Line 2 (middle) -->
-                                <Line X1="11" Y1="17" X2="17" Y2="11"
+                                <Line X1="9" Y1="15" X2="15" Y2="9"
                                       Stroke="{DynamicResource Surface2Brush}"
                                       StrokeThickness="1.5"
                                       StrokeStartLineCap="Round"
                                       StrokeEndLineCap="Round"
                                       Opacity="0.75" />
                                 <!-- Line 3 (longest, bottom) -->
-                                <Line X1="15" Y1="17" X2="17" Y2="15"
+                                <Line X1="13" Y1="15" X2="15" Y2="13"
                                       Stroke="{DynamicResource Surface2Brush}"
                                       StrokeThickness="1.5"
                                       StrokeStartLineCap="Round"
                                       StrokeEndLineCap="Round"
                                       Opacity="1.0" />
                             </Canvas>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="GripCanvas" Property="Opacity" Value="1" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Thumb.Template>
                 </Thumb>

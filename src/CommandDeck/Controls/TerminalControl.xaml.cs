@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using CommandDeck.ViewModels;
 
 namespace CommandDeck.Controls;
@@ -18,6 +19,18 @@ public partial class TerminalControl : UserControl
 {
     private TerminalViewModel? _viewModel;
     private TextChangedEventHandler? _scrollHandler;
+
+    /// <summary>
+    /// ConPTY resize is debounced: each resize makes WSL/bash react (SIGWINCH) and redraw the prompt.
+    /// WPF fires many SizeChanged events during a drag; without debouncing the terminal floods with prompts.
+    /// </summary>
+    private DispatcherTimer? _resizeDebounceTimer;
+
+    /// <summary>Last (columns, rows) passed to <see cref="TerminalViewModel.StartSessionAsync"/> or <see cref="TerminalViewModel.ResizeTerminal"/>.</summary>
+    private int _lastAppliedCols = -1;
+    private int _lastAppliedRows = -1;
+
+    private const int ResizeDebounceMs = 75;
 
     public TerminalControl()
     {
@@ -87,6 +100,7 @@ public partial class TerminalControl : UserControl
                     var (cw, lh) = MeasureCharDimensions();
                     var (cols, rows) = CalculateTerminalSize(cw, lh);
                     await _viewModel.StartSessionAsync(cols, rows);
+                    RecordAppliedSize(cols, rows);
                 });
             }
         }
@@ -307,10 +321,58 @@ public partial class TerminalControl : UserControl
             var (charWidth, lineHeight) = MeasureCharDimensions();
             var (cols, rows) = CalculateTerminalSize(charWidth, lineHeight);
             await _viewModel.StartSessionAsync(cols, rows);
+            RecordAppliedSize(cols, rows);
         }
 
         // Auto-focus after layout stabilizes so keystrokes reach HiddenInput
         Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, FocusInput);
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        _resizeDebounceTimer?.Stop();
+    }
+
+    private void RecordAppliedSize(short columns, short rows)
+    {
+        _lastAppliedCols = columns;
+        _lastAppliedRows = rows;
+    }
+
+    /// <summary>
+    /// Coalesces rapid SizeChanged events into a single ConPTY resize after the user stops dragging.
+    /// </summary>
+    private void ScheduleDebouncedResize()
+    {
+        if (_resizeDebounceTimer == null)
+        {
+            _resizeDebounceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(ResizeDebounceMs)
+            };
+            _resizeDebounceTimer.Tick += (_, _) =>
+            {
+                _resizeDebounceTimer.Stop();
+                ApplyDebouncedResize();
+            };
+        }
+
+        _resizeDebounceTimer.Stop();
+        _resizeDebounceTimer.Start();
+    }
+
+    private void ApplyDebouncedResize()
+    {
+        if (_viewModel == null || _viewModel.Session == null) return;
+
+        var (cw, lh) = MeasureCharDimensions();
+        var (columns, rows) = CalculateTerminalSize(cw, lh);
+
+        if (columns == _lastAppliedCols && rows == _lastAppliedRows)
+            return;
+
+        RecordAppliedSize(columns, rows);
+        _viewModel.ResizeTerminal(columns, rows);
     }
 
     /// <summary>
@@ -329,12 +391,17 @@ public partial class TerminalControl : UserControl
         if (!_viewModel.IsSessionStarted && ActualWidth > 0 && ActualHeight > 0)
         {
             await _viewModel.StartSessionAsync(columns, rows);
+            RecordAppliedSize(columns, rows);
             return;
         }
 
         if (_viewModel.Session == null) return;
 
-        _viewModel.ResizeTerminal(columns, rows);
+        // Same grid size as last apply — skip (duplicate layout events).
+        if (columns == _lastAppliedCols && rows == _lastAppliedRows)
+            return;
+
+        ScheduleDebouncedResize();
     }
 
     /// <summary>

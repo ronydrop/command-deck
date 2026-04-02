@@ -8,6 +8,7 @@
     <UserControl.Resources>
         <conv:NotificationTypeToBrushConverter x:Key="TypeToBrush" />
         <conv:NotificationSourceToIconConverter x:Key="SourceToIcon" />
+        <conv:NullToVisibilityConverter x:Key="NullToVis" />
 
         <Storyboard x:Key="SlideIn">
             <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"

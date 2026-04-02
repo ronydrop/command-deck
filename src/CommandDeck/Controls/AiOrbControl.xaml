@@ -12,35 +12,8 @@
              mc:Ignorable="d">
 
     <UserControl.Resources>
-        <conv:HexColorToBrushConverter x:Key="HexToBrush" />
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:StringToVisibilityConverter x:Key="StringToVis" />
-
-        <!-- Glassmorphism tooltip — mesmo estilo do RadialMenuControl -->
-        <Style x:Key="OrbTooltipStyle" TargetType="ToolTip">
-            <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="Background" Value="#CC1E1E2E"/>
-            <Setter Property="BorderBrush" Value="#44CBA6F7"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Foreground" Value="#CDD6F4"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ToolTip">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"
-                                Padding="{TemplateBinding Padding}">
-                            <Border.Effect>
-                                <DropShadowEffect Color="#000000" BlurRadius="16" ShadowDepth="2" Opacity="0.55"/>
-                            </Border.Effect>
-                            <ContentPresenter/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
 
         <!-- Orb pulse animation storyboard -->
         <Storyboard x:Key="PulseAnimation" RepeatBehavior="Forever" AutoReverse="True">
@@ -61,6 +34,24 @@
                              From="0" To="360"
                              Duration="0:0:1.2" />
         </Storyboard>
+
+        <!-- Hover animation storyboard -->
+        <Storyboard x:Key="HoverOnAnimation">
+            <DoubleAnimation Storyboard.TargetName="OrbScale"
+                             Storyboard.TargetProperty="ScaleX"
+                             To="1.08" Duration="0:0:0.15" />
+            <DoubleAnimation Storyboard.TargetName="OrbScale"
+                             Storyboard.TargetProperty="ScaleY"
+                             To="1.08" Duration="0:0:0.15" />
+        </Storyboard>
+        <Storyboard x:Key="HoverOffAnimation">
+            <DoubleAnimation Storyboard.TargetName="OrbScale"
+                             Storyboard.TargetProperty="ScaleX"
+                             To="1.0" Duration="0:0:0.15" />
+            <DoubleAnimation Storyboard.TargetName="OrbScale"
+                             Storyboard.TargetProperty="ScaleY"
+                             To="1.0" Duration="0:0:0.15" />
+        </Storyboard>
     </UserControl.Resources>
 
     <!--
@@ -69,7 +60,7 @@
     -->
     <!-- Background="Transparent" garante hit-testing na área completa do UserControl
          mesmo onde não há elementos filhos visíveis, permitindo drag em qualquer ponto do orb. -->
-    <Grid ClipToBounds="False" Background="Transparent">
+    <Grid x:Name="LayoutRoot" ClipToBounds="False" Background="Transparent">
 
         <!-- ═══ Camada 1: visual do orb ══════════════════════════════════════
              BitmapCache removido: cortava o blur do DropShadowEffect nos
@@ -174,8 +165,18 @@
                 </Button.ToolTip>
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
-                        <Grid Background="Transparent">
+                        <Grid Background="Transparent"
+                              RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1"/>
+                            </Grid.RenderTransform>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="PressScale" Property="ScaleX" Value="0.9"/>
+                                    <Setter TargetName="PressScale" Property="ScaleY" Value="0.9"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
                         </Grid>
                     </ControlTemplate>
                 </Button.Template>
@@ -235,6 +236,7 @@
                 HorizontalAlignment="Left"
                 VerticalAlignment="Center"
                 Margin="60,0,0,0"
+                IsHitTestVisible="False"
                 Visibility="{Binding TranscriptionText, Converter={StaticResource StringToVis}}">
             <TextBlock Text="{Binding TranscriptionText}"
                        Foreground="#CDD6F4"
@@ -254,6 +256,7 @@
                 HorizontalAlignment="Left"
                 VerticalAlignment="Center"
                 Margin="60,0,0,0"
+                IsHitTestVisible="False"
                 Visibility="{Binding StatusMessage, Converter={StaticResource StringToVis}}">
             <TextBlock Text="{Binding StatusMessage}"
                        Foreground="#A6E3A1"
@@ -282,8 +285,8 @@
                IsOpen="{Binding IsRadialMenuOpen}"
                AllowsTransparency="True"
                PopupAnimation="None"
-               Placement="Center"
-               PlacementTarget="{Binding ElementName=OrbButton}"
+               Placement="Relative"
+               PlacementTarget="{Binding ElementName=LayoutRoot}"
                StaysOpen="False">
             <controls:RadialMenuControl DataContext="{Binding}" />
         </Popup>

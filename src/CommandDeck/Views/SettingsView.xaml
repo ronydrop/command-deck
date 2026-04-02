@@ -16,6 +16,7 @@
         <conv:NullToVisibilityConverter x:Key="NullToVis" />
         <conv:StringToVisibilityConverter x:Key="StringToVis" />
         <conv:StringToStretchConverter x:Key="StringToStretch" />
+        <conv:StringToImageSourceConverter x:Key="StringToImageSource" />
 
         <!-- Tab styling -->
         <Style x:Key="SettingsTabControl" TargetType="TabControl">
@@ -50,7 +51,7 @@
             <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="2"/>
-            <Setter Property="Width" Value="135"/>
+            <Setter Property="Width" Value="180"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
@@ -491,7 +492,7 @@
                                         Background="{DynamicResource Surface0Brush}"
                                         BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1.5">
                                     <Grid>
-                                        <Image Source="{Binding CanvasWallpaperPath}" Stretch="{Binding CanvasWallpaperStretch, Converter={StaticResource StringToStretch}}"
+                                        <Image Source="{Binding CanvasWallpaperPath, Converter={StaticResource StringToImageSource}}" Stretch="{Binding CanvasWallpaperStretch, Converter={StaticResource StringToStretch}}"
                                                Opacity="{Binding CanvasWallpaperOpacity}"
                                                Visibility="{Binding CanvasWallpaperPath, Converter={StaticResource StringToVis}}" />
                                         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
@@ -555,7 +556,7 @@
                                 <TextBlock Text="Personalize o fundo dentro de cada terminal" Style="{StaticResource CaptionText}" Margin="0,0,0,16" />
                                 <Border CornerRadius="10" ClipToBounds="True" Margin="0,0,0,16" MinHeight="180" MaxHeight="220" Background="{DynamicResource Surface0Brush}" BorderBrush="{DynamicResource GlassBorderBrush}" BorderThickness="1.5">
                                     <Grid>
-                                        <Image Source="{Binding TerminalWallpaperPath}" Stretch="{Binding TerminalWallpaperStretch, Converter={StaticResource StringToStretch}}" Opacity="{Binding TerminalWallpaperOpacity}" Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}" />
+                                        <Image Source="{Binding TerminalWallpaperPath, Converter={StaticResource StringToImageSource}}" Stretch="{Binding TerminalWallpaperStretch, Converter={StaticResource StringToStretch}}" Opacity="{Binding TerminalWallpaperOpacity}" Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}" />
                                         <Rectangle Opacity="{Binding TerminalWallpaperOverlayOpacity}" Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}">
                                             <Rectangle.Style>
                                                 <Style TargetType="Rectangle">
@@ -699,9 +700,30 @@
                             </Grid>
                         </Border>
 
+                        <!-- System Prompt -->
+                        <TextBlock Text="System Prompt"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   FontSize="12" FontWeight="Medium"
+                                   Margin="0,16,0,6"/>
+                        <TextBlock Text="Prompt de sistema enviado no início de cada conversa."
+                                   Foreground="{DynamicResource Overlay0Brush}"
+                                   FontSize="10.5" Margin="0,0,0,6"/>
+                        <Border Background="{DynamicResource Surface0Brush}"
+                                BorderBrush="{DynamicResource Surface1Brush}"
+                                BorderThickness="1" CornerRadius="6" Padding="2">
+                            <TextBox Text="{Binding AiSystemPrompt, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True" TextWrapping="Wrap"
+                                     Height="80" VerticalScrollBarVisibility="Auto"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="{DynamicResource TextBrush}"
+                                     CaretBrush="{DynamicResource TextBrush}"
+                                     FontFamily="Cascadia Code, Consolas, Courier New" FontSize="11.5"
+                                     Padding="8,6"/>
+                        </Border>
+
                         <!-- Ferramenta AI padrão do dropdown -->
                         <TextBlock Text="FERRAMENTA AI PADRÃO" Style="{StaticResource CaptionText}" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource SubtextBrush}" Opacity="0.7" FontSize="10" Margin="4,0,0,8"/>
+                                   Foreground="{DynamicResource SubtextBrush}" Opacity="0.7" FontSize="10" Margin="4,16,0,8"/>
                         <ComboBox Style="{StaticResource DarkComboBox}"
                                   ItemsSource="{Binding AiTools}"
                                   SelectedValuePath="Id"
@@ -970,7 +992,7 @@
                                     </Grid>
                                 </StackPanel>
                             </Border>
-                            <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8" Padding="16,12">
+                            <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8" Padding="16,12" Margin="0,0,0,8">
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
@@ -979,6 +1001,50 @@
                                     </StackPanel>
                                     <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding NotificationSoundEnabled}" IsEnabled="{Binding NotificationsEnabled}" />
                                 </Grid>
+                            </Border>
+                            <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8" Padding="16,12" Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="Som do Dynamic Island" Style="{StaticResource BodyText}" FontWeight="SemiBold" />
+                                        <TextBlock Text="Alerta sonoro ao exigir aprovação ou resposta no island" Style="{StaticResource CaptionText}" Opacity="0.6" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding DynamicIslandSoundEnabled}" />
+                                </Grid>
+                            </Border>
+                            <TextBlock Text="FILA E FEED DO ISLAND" Style="{StaticResource CaptionText}" FontWeight="SemiBold" Foreground="{DynamicResource SubtextBrush}" Opacity="0.7" FontSize="10" Margin="4,0,0,8" />
+                            <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8" Padding="0" Margin="0,0,0,0">
+                                <StackPanel>
+                                    <Grid Margin="16,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="120" /></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="Máximo de eventos no feed" Style="{StaticResource BodyText}" />
+                                            <TextBlock Text="Remove os de menor prioridade quando exceder" Style="{StaticResource CaptionText}" Opacity="0.55" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <controls:NumericUpDownControl Grid.Column="1" VerticalAlignment="Center"
+                                            Value="{Binding DynamicIslandMaxFeedEvents, UpdateSourceTrigger=PropertyChanged}"
+                                            Minimum="5" Maximum="200" Step="1" />
+                                    </Grid>
+                                    <Rectangle Height="1" Fill="{DynamicResource Surface1Brush}" Opacity="0.4" Margin="16,0" />
+                                    <Grid Margin="16,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="120" /></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="Itens visíveis na fila" Style="{StaticResource BodyText}" />
+                                            <TextBlock Text="Antes do texto &quot;e mais N&quot; no painel expandido" Style="{StaticResource CaptionText}" Opacity="0.55" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <controls:NumericUpDownControl Grid.Column="1" VerticalAlignment="Center"
+                                            Value="{Binding DynamicIslandQueueVisibleLimit, UpdateSourceTrigger=PropertyChanged}"
+                                            Minimum="1" Maximum="20" Step="1" />
+                                    </Grid>
+                                    <Rectangle Height="1" Fill="{DynamicResource Surface1Brush}" Opacity="0.4" Margin="16,0" />
+                                    <Grid Margin="16,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="120" /></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="Janela de deduplicação" Style="{StaticResource BodyText}" />
+                                            <TextBlock Text="Segundos para fundir notificações repetidas no feed" Style="{StaticResource CaptionText}" Opacity="0.55" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <controls:NumericUpDownControl Grid.Column="1" VerticalAlignment="Center"
+                                            Value="{Binding DynamicIslandNotificationDedupeWindowSeconds, UpdateSourceTrigger=PropertyChanged}"
+                                            Minimum="5" Maximum="300" Step="1" />
+                                    </Grid>
+                                </StackPanel>
                             </Border>
                         </StackPanel>
                     </Border>
