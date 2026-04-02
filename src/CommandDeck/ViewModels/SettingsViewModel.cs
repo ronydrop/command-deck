@@ -77,21 +77,40 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _newTerminalShortcut = "Ctrl+Shift+T";
+    partial void OnNewTerminalShortcutChanged(string value) =>
+        OnPropertyChanged(nameof(IsNewTerminalShortcutModified));
 
     [ObservableProperty]
     private string _closeTerminalShortcut = "Ctrl+Shift+W";
+    partial void OnCloseTerminalShortcutChanged(string value) =>
+        OnPropertyChanged(nameof(IsCloseTerminalShortcutModified));
 
     [ObservableProperty]
     private string _nextTerminalShortcut = "Ctrl+Tab";
+    partial void OnNextTerminalShortcutChanged(string value) =>
+        OnPropertyChanged(nameof(IsNextTerminalShortcutModified));
 
     [ObservableProperty]
     private string _previousTerminalShortcut = "Ctrl+Shift+Tab";
+    partial void OnPreviousTerminalShortcutChanged(string value) =>
+        OnPropertyChanged(nameof(IsPreviousTerminalShortcutModified));
 
     [ObservableProperty]
     private string _toggleSidebarShortcut = "Ctrl+B";
+    partial void OnToggleSidebarShortcutChanged(string value) =>
+        OnPropertyChanged(nameof(IsToggleSidebarShortcutModified));
 
     [ObservableProperty]
     private string _focusTerminalShortcut = "Ctrl+`";
+    partial void OnFocusTerminalShortcutChanged(string value) =>
+        OnPropertyChanged(nameof(IsFocusTerminalShortcutModified));
+
+    public bool IsNewTerminalShortcutModified      => NewTerminalShortcut      != "Ctrl+Shift+T";
+    public bool IsCloseTerminalShortcutModified    => CloseTerminalShortcut    != "Ctrl+Shift+W";
+    public bool IsNextTerminalShortcutModified     => NextTerminalShortcut     != "Ctrl+Tab";
+    public bool IsPreviousTerminalShortcutModified => PreviousTerminalShortcut != "Ctrl+Shift+Tab";
+    public bool IsToggleSidebarShortcutModified    => ToggleSidebarShortcut    != "Ctrl+B";
+    public bool IsFocusTerminalShortcutModified    => FocusTerminalShortcut    != "Ctrl+`";
 
     // ─── Ferramentas AI CLI (detecção automática) ────────────────────────────
 

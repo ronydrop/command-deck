@@ -194,7 +194,7 @@ internal sealed class TerminalLineBuffer
     public void MoveCursorDown(int n = 1)  { _pendingWrap = false; CursorRow = Math.Min(_rows - 1, CursorRow + n); }
     public void MoveCursorLeft(int n = 1)  { _pendingWrap = false; CursorCol = Math.Max(0, CursorCol - n); }
     public void MoveCursorRight(int n = 1) { _pendingWrap = false; CursorCol = Math.Min(_cols - 1, CursorCol + n); }
-    public void MoveCursorToColumn(int col) => CursorCol = Math.Clamp(col, 0, _cols - 1);
+    public void MoveCursorToColumn(int col) { _pendingWrap = false; CursorCol = Math.Clamp(col, 0, _cols - 1); }
 
     // ─── Cursor Save/Restore ─────────────────────────────────────────────────
 

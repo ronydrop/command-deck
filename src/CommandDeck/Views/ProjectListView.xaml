@@ -11,10 +11,11 @@
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:CountToVisibilityConverter x:Key="CountToVis" />
         <conv:HexColorToBrushConverter x:Key="HexToBrush" />
+        <conv:ProjectTerminalCountConverter x:Key="TerminalCountConv" />
 
         <!-- Shared item template used by both Active and Inactive lists -->
         <DataTemplate x:Key="ProjectItemTemplate">
-            <Grid>
+            <Grid x:Name="RootGrid">
                 <Grid.ColumnDefinitions>
                     <!-- Color indicator + icon -->
                     <ColumnDefinition Width="Auto" />
@@ -42,16 +43,59 @@
 
                 <!-- Name and Path -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Name}"
-                               Foreground="{DynamicResource TextBrush}"
-                               FontSize="13"
-                               FontWeight="Medium"
-                               TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding Path}"
-                               Style="{StaticResource CaptionText}"
-                               TextTrimming="CharacterEllipsis"
-                               MaxWidth="180"
-                               Margin="0,2,0,0" />
+
+                    <!-- Name row: text + terminal count badge -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding Name}"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   FontSize="13"
+                                   FontWeight="Medium"
+                                   TextTrimming="CharacterEllipsis" />
+                        <Border Grid.Column="1"
+                                CornerRadius="8"
+                                Background="{DynamicResource AccentBrush}"
+                                Padding="5,1"
+                                Margin="5,0,0,0"
+                                VerticalAlignment="Center">
+                            <Border.Visibility>
+                                <MultiBinding Converter="{StaticResource TerminalCountConv}" ConverterParameter="Visibility">
+                                    <Binding Path="Id" />
+                                    <Binding Path="DataContext.TerminalCountsByProjectId" RelativeSource="{RelativeSource AncestorType=ListBox}" />
+                                </MultiBinding>
+                            </Border.Visibility>
+                            <TextBlock FontSize="10"
+                                       Foreground="White"
+                                       FontWeight="SemiBold">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource TerminalCountConv}">
+                                        <Binding Path="Id" />
+                                        <Binding Path="DataContext.TerminalCountsByProjectId" RelativeSource="{RelativeSource AncestorType=ListBox}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </Border>
+                    </Grid>
+
+                    <!-- Path: clipped container for marquee effect on hover -->
+                    <Border ClipToBounds="True"
+                            MaxWidth="180"
+                            HorizontalAlignment="Left"
+                            Margin="0,2,0,0">
+                        <TextBlock x:Name="PathText"
+                                   Text="{Binding Path}"
+                                   Style="{StaticResource CaptionText}"
+                                   TextTrimming="None"
+                                   TextWrapping="NoWrap">
+                            <TextBlock.RenderTransform>
+                                <TranslateTransform x:Name="PathTranslate" X="0" />
+                            </TextBlock.RenderTransform>
+                        </TextBlock>
+                    </Border>
                 </StackPanel>
 
                 <!-- Action buttons -->
@@ -120,6 +164,34 @@
                                    Margin="0,-4,0,0" />
                     </Button>
                 </StackPanel>
+
+                <!-- Marquee animation triggers on hover -->
+                <Grid.Triggers>
+                    <EventTrigger RoutedEvent="Grid.MouseEnter">
+                        <BeginStoryboard Name="MarqueeSB">
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetName="PathTranslate"
+                                                 Storyboard.TargetProperty="X"
+                                                 From="0" To="-150"
+                                                 Duration="0:0:3.5"
+                                                 BeginTime="0:0:0.6"
+                                                 AutoReverse="True"
+                                                 RepeatBehavior="Forever" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                    <EventTrigger RoutedEvent="Grid.MouseLeave">
+                        <RemoveStoryboard BeginStoryboardName="MarqueeSB" />
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetName="PathTranslate"
+                                                 Storyboard.TargetProperty="X"
+                                                 To="0"
+                                                 Duration="0:0:0.2" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </Grid.Triggers>
             </Grid>
         </DataTemplate>
 
@@ -127,6 +199,7 @@
         <Style x:Key="ProjectListBoxItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource DarkListBoxItem}">
             <Setter Property="Padding" Value="8,8" />
             <Setter Property="Margin" Value="0,1" />
+            <Setter Property="Cursor" Value="Hand" />
         </Style>
     </UserControl.Resources>
 
@@ -184,7 +257,7 @@
             <ListBox x:Name="ActiveListBox"
                      Style="{StaticResource DarkListBox}"
                      ItemsSource="{Binding ActiveProjects}"
-                     SelectedItem="{Binding SelectedProject}"
+                     SelectedItem="{Binding SelectedProject, Mode=TwoWay}"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      VirtualizingPanel.IsVirtualizing="True"
                      AllowDrop="True"
@@ -223,7 +296,7 @@
                      x:Name="InactiveListBox"
                      Style="{StaticResource DarkListBox}"
                      ItemsSource="{Binding InactiveProjects}"
-                     SelectedItem="{Binding SelectedProject}"
+                     SelectedItem="{Binding SelectedProject, Mode=TwoWay}"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      VirtualizingPanel.IsVirtualizing="True"
                      AllowDrop="True"

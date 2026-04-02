@@ -79,15 +79,15 @@
     </UserControl.Resources>
 
     <!--
-        Layout: pentagon opening UPWARD, symmetric left-right.
-        Center of canvas = (110,110) = orb center.
+        Layout: pentágono uniforme, 5 botões equidistantes (72° entre cada um).
+        Center = (110,110), raio = 72px.
 
-        Positions (Canvas.Left, Canvas.Top):
-          Agent  (38px): (14, 34)   — top-left
-          Voice  (42px): (89,  8)   — top-center  [PRIMARY]
-          Improve(38px): (164, 34)  — top-right
-          Run    (42px): (14, 90)   — left-center  [PRIMARY]
-          Copy   (38px): (164, 90)  — right-center
+        Ângulos (sentido horário a partir do topo = 270°):
+          Voice  (42px): 270° → Left=89,  Top=17   [PRIMARY]
+          Improve(38px): 342° → Left=160, Top=69   [secondary]
+          Copy   (38px):  54° → Left=133, Top=149  [secondary]
+          Run    (42px): 126° → Left=47,  Top=147  [PRIMARY]
+          Agent  (38px): 198° → Left=23,  Top=69   [secondary]
     -->
     <Canvas Width="220" Height="220" Background="Transparent">
 
@@ -98,9 +98,9 @@
                  Stroke="#18FFFFFF"
                  StrokeThickness="1" />
 
-        <!-- ═══ VOICE — top-center, PRIMARY 42×42, rosa #F38BA8 ═══ -->
+        <!-- ═══ VOICE — topo (270°), PRIMARY 42×42, rosa #F38BA8 ═══ -->
         <Button x:Name="BtnVoice"
-                Canvas.Left="89" Canvas.Top="8"
+                Canvas.Left="89" Canvas.Top="17"
                 Style="{StaticResource RadialPrimaryStyle}"
                 Command="{Binding StartRecordingCommand}"
                 Opacity="0"
@@ -181,9 +181,9 @@
                   Fill="Transparent" Width="18" Height="18" Stretch="Uniform"/>
         </Button>
 
-        <!-- ═══ CHOOSE AGENT — top-left, SECONDARY 38×38, roxo #CBA6F7 ═══ -->
+        <!-- ═══ CHOOSE AGENT — esquerda-alta (198°), SECONDARY 38×38, roxo #CBA6F7 ═══ -->
         <Button x:Name="BtnChooseAgent"
-                Canvas.Left="14" Canvas.Top="34"
+                Canvas.Left="23" Canvas.Top="69"
                 Style="{StaticResource RadialItemStyle}"
                 Command="{Binding ToggleAgentSelectorCommand}"
                 Opacity="0"
@@ -264,9 +264,9 @@
                   Fill="Transparent" Width="16" Height="16" Stretch="Uniform"/>
         </Button>
 
-        <!-- ═══ IMPROVE PROMPT — top-right, SECONDARY 38×38, dourado #F9E2AF ═══ -->
+        <!-- ═══ IMPROVE PROMPT — direita-alta (342°), SECONDARY 38×38, dourado #F9E2AF ═══ -->
         <Button x:Name="BtnImprovePrompt"
-                Canvas.Left="164" Canvas.Top="34"
+                Canvas.Left="160" Canvas.Top="69"
                 Style="{StaticResource RadialItemStyle}"
                 Command="{Binding ImprovePromptCommand}"
                 Opacity="0"
@@ -350,9 +350,9 @@
                   Fill="Transparent" Width="16" Height="16" Stretch="Uniform"/>
         </Button>
 
-        <!-- ═══ RUN SUGGESTION — left-center, PRIMARY 42×42, verde #A6E3A1 ═══ -->
+        <!-- ═══ RUN SUGGESTION — esquerda-baixa (126°), PRIMARY 42×42, verde #A6E3A1 ═══ -->
         <Button x:Name="BtnRunSuggestion"
-                Canvas.Left="14" Canvas.Top="90"
+                Canvas.Left="47" Canvas.Top="147"
                 Style="{StaticResource RadialPrimaryStyle}"
                 Command="{Binding RunSuggestionCommand}"
                 Opacity="0"
@@ -433,9 +433,9 @@
                   Fill="Transparent" Width="18" Height="18" Stretch="Uniform"/>
         </Button>
 
-        <!-- ═══ COPY CONTEXT — right-center, SECONDARY 38×38, azul #89B4FA ═══ -->
+        <!-- ═══ COPY CONTEXT — direita-baixa (54°), SECONDARY 38×38, azul #89B4FA ═══ -->
         <Button x:Name="BtnCopyContext"
-                Canvas.Left="164" Canvas.Top="90"
+                Canvas.Left="133" Canvas.Top="149"
                 Style="{StaticResource RadialItemStyle}"
                 Command="{Binding CopyContextCommand}"
                 Opacity="0"
@@ -519,8 +519,8 @@
                   Fill="Transparent" Width="16" Height="16" Stretch="Uniform"/>
         </Button>
 
-        <!-- Agent selector popup -->
-        <Border Canvas.Left="50" Canvas.Top="58"
+        <!-- Agent selector popup — posicionado ao lado direito do BtnChooseAgent -->
+        <Border Canvas.Left="63" Canvas.Top="86"
                 Background="#F01E1E2E"
                 BorderBrush="#33CBA6F7"
                 BorderThickness="1"

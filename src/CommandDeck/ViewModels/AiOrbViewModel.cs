@@ -22,9 +22,10 @@ public partial class AiOrbViewModel : ObservableObject
     [ObservableProperty] private OrbState _state = OrbState.Idle;
     [ObservableProperty] private double _positionX = 32;
     [ObservableProperty] private double _positionY = 32;
-    [ObservableProperty] private bool _isVisible = true;
+    [ObservableProperty] private bool _isVisible = false;
     [ObservableProperty] private bool _isPositionLocked;
     [ObservableProperty] private bool _isRadialMenuOpen;
+    [ObservableProperty] private bool _isRadialMenuClosing;
     [ObservableProperty] private string _activeProvider = "Claude";
     [ObservableProperty] private string _activeProviderColor = "#CBA6F7";
     [ObservableProperty] private string _transcriptionText = string.Empty;
@@ -88,6 +89,19 @@ public partial class AiOrbViewModel : ObservableObject
     private bool CanRunSuggestion() => !string.IsNullOrEmpty(LastSuggestion) && State != OrbState.Processing;
 
     // Notifica todos os commands que dependem do State
+    // StaysOpen=False no Popup pode fechar o menu externamente (click-outside).
+    // Nesse caso, o binding TwoWay zera IsRadialMenuOpen sem passar por ToggleRadialMenu
+    // nem CloseRadialMenu — precisamos limpar State e IsRadialMenuClosing manualmente.
+    partial void OnIsRadialMenuOpenChanged(bool value)
+    {
+        if (!value && !IsRadialMenuClosing)
+        {
+            IsAgentSelectorOpen = false;
+            if (State == OrbState.Active)
+                State = OrbState.Idle;
+        }
+    }
+
     partial void OnStateChanged(OrbState value)
     {
         StartRecordingCommand.NotifyCanExecuteChanged();
@@ -118,8 +132,17 @@ public partial class AiOrbViewModel : ObservableObject
         }
         if (State == OrbState.Processing) return;
 
-        IsRadialMenuOpen = !IsRadialMenuOpen;
-        State = IsRadialMenuOpen ? OrbState.Active : OrbState.Idle;
+        if (IsRadialMenuOpen)
+        {
+            // Fechar com animação: sinaliza o RadialMenuControl para animar saída.
+            // O controle chama CloseRadialMenuCommand quando a animação terminar.
+            IsRadialMenuClosing = true;
+        }
+        else
+        {
+            IsRadialMenuOpen = true;
+            State = OrbState.Active;
+        }
     }
 
     /// <summary>
@@ -276,6 +299,7 @@ public partial class AiOrbViewModel : ObservableObject
     private void CloseRadialMenu()
     {
         IsRadialMenuOpen = false;
+        IsRadialMenuClosing = false;
         IsAgentSelectorOpen = false;
         if (State == OrbState.Active)
             State = OrbState.Idle;

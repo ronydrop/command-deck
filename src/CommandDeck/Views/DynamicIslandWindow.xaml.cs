@@ -58,10 +58,21 @@ public partial class DynamicIslandWindow : Window
     // ─── State ───────────────────────────────────────────────────────────────
     private readonly DynamicIslandViewModel _viewModel;
     private readonly System.Windows.Threading.DispatcherTimer _collapseTimer;
+    private readonly System.Windows.Threading.DispatcherTimer _hoverWatchTimer;
     private bool _isAnimating;
     private bool _pendingShow;       // notification arrived while minimize anim was running
     private bool _isPersistent;      // true = locked open; hover ignored until clicked again
+    private bool _isMinimized;       // true while hidden via AnimateMinimize (stale off-screen state)
     private double _restingTop = 8;  // persisted so slide-down can return to correct position
+
+    // WS_EX_NOACTIVATE windows don't reliably receive WM_MOUSELEAVE from WPF — we poll instead.
+    private bool IsMouseOverPill()
+    {
+        var pos = System.Windows.Input.Mouse.GetPosition(PillBorder);
+        return pos.X >= 0 && pos.Y >= 0
+            && pos.X <= PillBorder.ActualWidth
+            && pos.Y <= PillBorder.ActualHeight;
+    }
 
     public DynamicIslandWindow(DynamicIslandViewModel viewModel)
     {
@@ -71,9 +82,29 @@ public partial class DynamicIslandWindow : Window
 
         _collapseTimer = new System.Windows.Threading.DispatcherTimer
         {
-            Interval = TimeSpan.FromMilliseconds(600)
+            Interval = TimeSpan.FromMilliseconds(500)
         };
-        _collapseTimer.Tick += (_, _) => { _collapseTimer.Stop(); AnimateCollapse(); };
+        _collapseTimer.Tick += (_, _) =>
+        {
+            _collapseTimer.Stop();
+            if (!IsMouseOverPill() && !_isPersistent)
+                AnimateCollapse();
+        };
+
+        // Polls mouse position while expanded — WS_EX_NOACTIVATE windows don't reliably get MouseLeave
+        _hoverWatchTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(80)
+        };
+        _hoverWatchTimer.Tick += (_, _) =>
+        {
+            if (_isPersistent || _isAnimating) return;
+            if (!IsMouseOverPill())
+            {
+                _hoverWatchTimer.Stop();
+                _collapseTimer.Start();
+            }
+        };
 
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.RequestShowFromMinimized += OnRequestShowFromMinimized;
@@ -83,6 +114,7 @@ public partial class DynamicIslandWindow : Window
         Closed += (_, _) =>
         {
             _collapseTimer.Stop();
+            _hoverWatchTimer.Stop();
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _viewModel.RequestShowFromMinimized -= OnRequestShowFromMinimized;
             _viewModel.Sessions.CollectionChanged -= OnSessionsCollectionChanged;
@@ -90,11 +122,45 @@ public partial class DynamicIslandWindow : Window
         };
     }
 
+    private void ResetToPillState()
+    {
+        _collapseTimer.Stop();
+        _hoverWatchTimer.Stop();
+        _isAnimating = false;
+        _isPersistent = false;
+
+        // Cancel any in-flight animations
+        this.BeginAnimation(WidthProperty, null);
+        this.BeginAnimation(TopProperty, null);
+        this.BeginAnimation(OpacityProperty, null);
+        ExpandedContent.BeginAnimation(MaxHeightProperty, null);
+        ExpandedContent.BeginAnimation(OpacityProperty, null);
+        PillContent.BeginAnimation(OpacityProperty, null);
+
+        ExpandedContent.Visibility = Visibility.Collapsed;
+        ExpandedContent.MaxHeight  = 0;
+        ExpandedContent.Opacity    = 0;
+        PillContent.Visibility     = Visibility.Visible;
+        PillContent.Opacity        = 1;
+        this.Width   = PillWidth;
+        this.Opacity = 1;
+    }
+
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(DynamicIslandViewModel.IsVisible))
         {
-            if (_viewModel.IsVisible) Show();
+            if (_viewModel.IsVisible)
+            {
+                // If minimized (stale off-screen state), restore via the slide-in path
+                if (_isMinimized) OnRequestShowFromMinimized();
+                else
+                {
+                    ResetToPillState();
+                    CenterHorizontally(PillWidth);
+                    Show();
+                }
+            }
             else Hide();
         }
         else if (e.PropertyName == nameof(DynamicIslandViewModel.ActiveSessionCount) ||
@@ -118,6 +184,7 @@ public partial class DynamicIslandWindow : Window
         SessionList.ItemsSource = _viewModel.Sessions;
         _viewModel.Sessions.CollectionChanged += OnSessionsCollectionChanged;
 
+        ResetToPillState();
         UpdatePosition();
         UpdatePillDisplay();
         UpdateEmptyLabel();
@@ -137,6 +204,12 @@ public partial class DynamicIslandWindow : Window
     private void UpdatePosition()
     {
         var hwnd = new WindowInteropHelper(this).Handle;
+
+        // GetMonitorInfo returns physical pixels; WPF uses DIPs — must divide by DPI scale
+        var source = PresentationSource.FromVisual(this);
+        var dpiX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+        var dpiY = source?.CompositionTarget?.TransformToDevice.M22 ?? 1.0;
+
         if (hwnd == IntPtr.Zero)
         {
             Left = (SystemParameters.PrimaryScreenWidth - ActualWidth) / 2;
@@ -150,8 +223,11 @@ public partial class DynamicIslandWindow : Window
         if (GetMonitorInfo(monitor, ref info))
         {
             var work = info.rcWork;
-            Left = work.Left + (work.Right - work.Left - ActualWidth) / 2;
-            Top = work.Top + 8;
+            double workLeft  = work.Left  / dpiX;
+            double workRight = work.Right / dpiX;
+            double workTop   = work.Top   / dpiY;
+            Left = workLeft + (workRight - workLeft - ActualWidth) / 2;
+            Top  = workTop + 8;
         }
         else
         {
@@ -165,6 +241,10 @@ public partial class DynamicIslandWindow : Window
     private void CenterHorizontally(double windowWidth)
     {
         var hwnd = new WindowInteropHelper(this).Handle;
+
+        var source = PresentationSource.FromVisual(this);
+        var dpiX = source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+
         if (hwnd == IntPtr.Zero)
         {
             Left = (SystemParameters.PrimaryScreenWidth - windowWidth) / 2;
@@ -176,7 +256,9 @@ public partial class DynamicIslandWindow : Window
         if (GetMonitorInfo(monitor, ref info))
         {
             var work = info.rcWork;
-            Left = work.Left + (work.Right - work.Left - windowWidth) / 2;
+            double workLeft  = work.Left  / dpiX;
+            double workRight = work.Right / dpiX;
+            Left = workLeft + (workRight - workLeft - windowWidth) / 2;
         }
         else
         {
@@ -218,13 +300,16 @@ public partial class DynamicIslandWindow : Window
     {
         if (_isPersistent) return;
         _collapseTimer.Stop();
+        _hoverWatchTimer.Stop();
         if (!_isAnimating && ExpandedContent.Visibility == Visibility.Collapsed)
             AnimateExpand();
     }
 
     private void OnMouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
     {
+        // May not fire reliably for WS_EX_NOACTIVATE — _hoverWatchTimer is the primary mechanism
         if (_isPersistent) return;
+        _collapseTimer.Stop();
         if (!_isAnimating)
             _collapseTimer.Start();
     }
@@ -303,6 +388,14 @@ public partial class DynamicIslandWindow : Window
             this.BeginAnimation(WidthProperty, null);
             this.Width = ExpandedWidth;
             _isAnimating = false;
+
+            if (!_isPersistent)
+            {
+                if (!IsMouseOverPill())
+                    _collapseTimer.Start();   // mouse already left during animation
+                else
+                    _hoverWatchTimer.Start(); // start polling; collapses when mouse leaves
+            }
         };
     }
 
@@ -310,6 +403,7 @@ public partial class DynamicIslandWindow : Window
 
     private void AnimateCollapse()
     {
+        _hoverWatchTimer.Stop();
         _isAnimating = true;
 
         var easeIn  = new QuadraticEase { EasingMode = EasingMode.EaseIn };
@@ -344,6 +438,10 @@ public partial class DynamicIslandWindow : Window
             this.Width = PillWidth;
             CenterHorizontally(PillWidth);
             _isAnimating = false;
+
+            // Mouse re-entered while collapsing — expand again (check real state)
+            if (PillBorder.IsMouseOver && !_isPersistent)
+                AnimateExpand();
         };
         this.BeginAnimation(WidthProperty, widthAnim);
 
@@ -374,6 +472,7 @@ public partial class DynamicIslandWindow : Window
         if (_isAnimating) return;
         _isPersistent = false;
         _collapseTimer.Stop();
+        _hoverWatchTimer.Stop();
         _viewModel.MinimizeCommand.Execute(null); // sets IslandState = Minimized on VM
         AnimateMinimize();
     }
@@ -413,6 +512,7 @@ public partial class DynamicIslandWindow : Window
             this.BeginAnimation(OpacityProperty, null);
             Hide();
             _isAnimating = false;
+            _isMinimized = true;
 
             // If a notification arrived during animation, show immediately
             if (_pendingShow)
@@ -472,6 +572,7 @@ public partial class DynamicIslandWindow : Window
             this.BeginAnimation(OpacityProperty, null);
             this.Opacity = 1;
             _isAnimating = false;
+            _isMinimized = false;
         };
 
         this.BeginAnimation(TopProperty, topAnim);

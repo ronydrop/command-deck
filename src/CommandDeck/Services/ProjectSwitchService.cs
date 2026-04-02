@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Threading;
 using CommandDeck.Models;
 using CommandDeck.ViewModels;
 using Debug = System.Diagnostics.Trace;
@@ -168,6 +170,11 @@ public class ProjectSwitchService : IProjectSwitchService
 
                     var canvasItem = _canvasItemFactory.CreateTerminalItemFromModel(terminalVm, itemModel);
                     _workspaceService.AddRestoredItem(canvasItem);
+
+                    // Yield to the WPF dispatcher so it can process layout/render passes
+                    // for this card before we create the next one — keeps the spinner animating.
+                    await Application.Current.Dispatcher.InvokeAsync(
+                        static () => { }, DispatcherPriority.Render);
 
                     if (!_workspaceTreeVm.Value.HasNodeForCanvasItem(canvasItem.Model.Id))
                         _ = _workspaceTreeVm.Value.RegisterTerminalAsync(

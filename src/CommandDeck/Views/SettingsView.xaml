@@ -6,6 +6,7 @@
              xmlns:conv="clr-namespace:CommandDeck.Converters"
              xmlns:helpers="clr-namespace:CommandDeck.Helpers"
              xmlns:models="clr-namespace:CommandDeck.Models"
+             xmlns:controls="clr-namespace:CommandDeck.Controls"
              mc:Ignorable="d"
              d:DesignWidth="900" d:DesignHeight="900"
              Background="{DynamicResource BaseBgBrush}">
@@ -126,9 +127,70 @@
                 </Trigger>
             </ControlTemplate.Triggers>
         </ControlTemplate>
+
+        <!-- Shortcut capture button -->
+        <Style x:Key="ShortcutCaptureButton" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource Surface0Brush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Surface1Brush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Surface1Brush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Shortcut reset icon button -->
+        <Style x:Key="ShortcutResetButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="Opacity" Value="0.45"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Surface1Brush}"/>
+                                <Setter Property="Opacity" Value="1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
-    <Grid Margin="16,16" MaxWidth="1300" HorizontalAlignment="Center">
+    <Grid>
+    <Grid Margin="16,16" MaxWidth="1800" HorizontalAlignment="Center">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -161,9 +223,10 @@
                                          Text="{Binding ProjectScanDirectory, UpdateSourceTrigger=PropertyChanged}"
                                          Tag="C:\Users\..." Margin="0,0,0,12"/>
                                 <TextBlock Text="Profundidade máxima" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                <TextBox Style="{StaticResource DarkTextBox}"
-                                         Text="{Binding ProjectScanMaxDepth, UpdateSourceTrigger=PropertyChanged}"
-                                         Tag="3" Margin="0,0,0,12"/>
+                                <controls:NumericUpDownControl
+                                    Value="{Binding ProjectScanMaxDepth, UpdateSourceTrigger=PropertyChanged}"
+                                    Minimum="1" Maximum="20" Step="1"
+                                    Margin="0,0,0,12"/>
                                 <CheckBox IsChecked="{Binding StartWithLastProject}"
                                           Foreground="{DynamicResource TextBrush}" FontSize="13">
                                     <TextBlock Text="Abrir último projeto ao iniciar" Foreground="{DynamicResource TextBrush}"/>
@@ -188,9 +251,9 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Style="{StaticResource DarkTextBox}"
-                                                     Text="{Binding GitRefreshIntervalSeconds, UpdateSourceTrigger=PropertyChanged}"
-                                                     Tag="5"/>
+                                            <controls:NumericUpDownControl
+                                                Value="{Binding GitRefreshIntervalSeconds, UpdateSourceTrigger=PropertyChanged}"
+                                                Minimum="1" Maximum="300" Step="1"/>
                                             <TextBlock Grid.Column="1" Text="seg" Style="{StaticResource CaptionText}"
                                                        VerticalAlignment="Center" Margin="8,0,0,0" Opacity="0.5"/>
                                         </Grid>
@@ -202,9 +265,9 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Style="{StaticResource DarkTextBox}"
-                                                     Text="{Binding ProcessMonitorIntervalSeconds, UpdateSourceTrigger=PropertyChanged}"
-                                                     Tag="3"/>
+                                            <controls:NumericUpDownControl
+                                                Value="{Binding ProcessMonitorIntervalSeconds, UpdateSourceTrigger=PropertyChanged}"
+                                                Minimum="1" Maximum="300" Step="1"/>
                                             <TextBlock Grid.Column="1" Text="seg" Style="{StaticResource CaptionText}"
                                                        VerticalAlignment="Center" Margin="8,0,0,0" Opacity="0.5"/>
                                         </Grid>
@@ -240,9 +303,10 @@
                                          Tag="Cascadia Code, Consolas" Margin="0,0,0,12"/>
 
                                 <TextBlock Text="Tamanho da fonte" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                <TextBox Style="{StaticResource DarkTextBox}"
-                                         Text="{Binding TerminalFontSize, UpdateSourceTrigger=PropertyChanged}"
-                                         Tag="14" Margin="0,0,0,12"/>
+                                <controls:NumericUpDownControl
+                                    Value="{Binding TerminalFontSize, UpdateSourceTrigger=PropertyChanged}"
+                                    Minimum="8" Maximum="48" Step="1"
+                                    Margin="0,0,0,12"/>
 
                                 <TextBlock Text="Shell padrao" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
                                 <ComboBox Style="{StaticResource DarkComboBox}"
@@ -279,22 +343,82 @@
                                 <TextBlock Text="Atalhos de Teclado" Style="{StaticResource SubheadingText}" Margin="0,0,0,12"/>
 
                                 <TextBlock Text="Novo Terminal" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                <TextBox Style="{StaticResource DarkTextBox}" Text="{Binding NewTerminalShortcut, UpdateSourceTrigger=PropertyChanged}" Tag="Ctrl+Shift+T" Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Style="{StaticResource ShortcutCaptureButton}"
+                                            Content="{Binding NewTerminalShortcut}" Tag="NewTerminalShortcut" Click="OnEditShortcut"/>
+                                    <Button Grid.Column="1" Style="{StaticResource ShortcutResetButton}"
+                                            Tag="NewTerminalShortcut" ToolTip="Restaurar padrão (Ctrl+Shift+T)" Click="OnResetShortcut"
+                                            Visibility="{Binding IsNewTerminalShortcutModified, Converter={StaticResource BoolToVis}}">
+                                        <Path Data="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
+                                              Fill="{DynamicResource SubtextBrush}" Width="14" Height="14" Stretch="Uniform"/>
+                                    </Button>
+                                </Grid>
 
                                 <TextBlock Text="Fechar Terminal" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                <TextBox Style="{StaticResource DarkTextBox}" Text="{Binding CloseTerminalShortcut, UpdateSourceTrigger=PropertyChanged}" Tag="Ctrl+Shift+W" Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Style="{StaticResource ShortcutCaptureButton}"
+                                            Content="{Binding CloseTerminalShortcut}" Tag="CloseTerminalShortcut" Click="OnEditShortcut"/>
+                                    <Button Grid.Column="1" Style="{StaticResource ShortcutResetButton}"
+                                            Tag="CloseTerminalShortcut" ToolTip="Restaurar padrão (Ctrl+Shift+W)" Click="OnResetShortcut"
+                                            Visibility="{Binding IsCloseTerminalShortcutModified, Converter={StaticResource BoolToVis}}">
+                                        <Path Data="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
+                                              Fill="{DynamicResource SubtextBrush}" Width="14" Height="14" Stretch="Uniform"/>
+                                    </Button>
+                                </Grid>
 
                                 <TextBlock Text="Próximo Terminal" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                <TextBox Style="{StaticResource DarkTextBox}" Text="{Binding NextTerminalShortcut, UpdateSourceTrigger=PropertyChanged}" Tag="Ctrl+Tab" Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Style="{StaticResource ShortcutCaptureButton}"
+                                            Content="{Binding NextTerminalShortcut}" Tag="NextTerminalShortcut" Click="OnEditShortcut"/>
+                                    <Button Grid.Column="1" Style="{StaticResource ShortcutResetButton}"
+                                            Tag="NextTerminalShortcut" ToolTip="Restaurar padrão (Ctrl+Tab)" Click="OnResetShortcut"
+                                            Visibility="{Binding IsNextTerminalShortcutModified, Converter={StaticResource BoolToVis}}">
+                                        <Path Data="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
+                                              Fill="{DynamicResource SubtextBrush}" Width="14" Height="14" Stretch="Uniform"/>
+                                    </Button>
+                                </Grid>
 
                                 <TextBlock Text="Terminal Anterior" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                <TextBox Style="{StaticResource DarkTextBox}" Text="{Binding PreviousTerminalShortcut, UpdateSourceTrigger=PropertyChanged}" Tag="Ctrl+Shift+Tab" Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Style="{StaticResource ShortcutCaptureButton}"
+                                            Content="{Binding PreviousTerminalShortcut}" Tag="PreviousTerminalShortcut" Click="OnEditShortcut"/>
+                                    <Button Grid.Column="1" Style="{StaticResource ShortcutResetButton}"
+                                            Tag="PreviousTerminalShortcut" ToolTip="Restaurar padrão (Ctrl+Shift+Tab)" Click="OnResetShortcut"
+                                            Visibility="{Binding IsPreviousTerminalShortcutModified, Converter={StaticResource BoolToVis}}">
+                                        <Path Data="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
+                                              Fill="{DynamicResource SubtextBrush}" Width="14" Height="14" Stretch="Uniform"/>
+                                    </Button>
+                                </Grid>
 
                                 <TextBlock Text="Alternar Sidebar" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                <TextBox Style="{StaticResource DarkTextBox}" Text="{Binding ToggleSidebarShortcut, UpdateSourceTrigger=PropertyChanged}" Tag="Ctrl+B" Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Style="{StaticResource ShortcutCaptureButton}"
+                                            Content="{Binding ToggleSidebarShortcut}" Tag="ToggleSidebarShortcut" Click="OnEditShortcut"/>
+                                    <Button Grid.Column="1" Style="{StaticResource ShortcutResetButton}"
+                                            Tag="ToggleSidebarShortcut" ToolTip="Restaurar padrão (Ctrl+B)" Click="OnResetShortcut"
+                                            Visibility="{Binding IsToggleSidebarShortcutModified, Converter={StaticResource BoolToVis}}">
+                                        <Path Data="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
+                                              Fill="{DynamicResource SubtextBrush}" Width="14" Height="14" Stretch="Uniform"/>
+                                    </Button>
+                                </Grid>
 
                                 <TextBlock Text="Focar Terminal" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
-                                <TextBox Style="{StaticResource DarkTextBox}" Text="{Binding FocusTerminalShortcut, UpdateSourceTrigger=PropertyChanged}" Tag="Ctrl+`" Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Style="{StaticResource ShortcutCaptureButton}"
+                                            Content="{Binding FocusTerminalShortcut}" Tag="FocusTerminalShortcut" Click="OnEditShortcut"/>
+                                    <Button Grid.Column="1" Style="{StaticResource ShortcutResetButton}"
+                                            Tag="FocusTerminalShortcut" ToolTip="Restaurar padrão (Ctrl+`)" Click="OnResetShortcut"
+                                            Visibility="{Binding IsFocusTerminalShortcutModified, Converter={StaticResource BoolToVis}}">
+                                        <Path Data="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"
+                                              Fill="{DynamicResource SubtextBrush}" Width="14" Height="14" Stretch="Uniform"/>
+                                    </Button>
+                                </Grid>
 
                                 <TextBlock Text="Expandir/Fechar Painéis Laterais" Style="{StaticResource CaptionText}" Margin="0,0,0,4"/>
                                 <TextBox Style="{StaticResource DarkTextBox}" Text="Ctrl+\" IsReadOnly="True" Margin="0,0,0,10"/>
@@ -578,7 +702,8 @@
                         <!-- Ferramenta AI padrão do dropdown -->
                         <TextBlock Text="FERRAMENTA AI PADRÃO" Style="{StaticResource CaptionText}" FontWeight="SemiBold"
                                    Foreground="{DynamicResource SubtextBrush}" Opacity="0.7" FontSize="10" Margin="4,0,0,8"/>
-                        <ComboBox ItemsSource="{Binding AiTools}"
+                        <ComboBox Style="{StaticResource DarkComboBox}"
+                                  ItemsSource="{Binding AiTools}"
                                   SelectedValuePath="Id"
                                   SelectedValue="{Binding DefaultAiToolId}"
                                   DisplayMemberPath="DisplayName"
@@ -603,7 +728,7 @@
 
                                                 <!-- Ícone -->
                                                 <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8"
-                                                        Background="White" Margin="0,0,12,0"
+                                                        Background="{DynamicResource Surface1Brush}" Margin="0,0,12,0"
                                                         VerticalAlignment="Center">
                                                     <Image Width="22" Height="22" RenderOptions.BitmapScalingMode="HighQuality">
                                                         <Image.Style>
@@ -676,7 +801,8 @@
                                                     </Style>
                                                 </Border.Style>
                                                 <Grid>
-                                                    <TextBox Text="{Binding InstallCommand, Mode=OneWay}"
+                                                    <TextBox Style="{StaticResource DarkTextBox}"
+                                                             Text="{Binding InstallCommand, Mode=OneWay}"
                                                              FontFamily="Cascadia Code, Consolas, Courier New"
                                                              FontSize="12" Foreground="{DynamicResource AccentCyanBrush}"
                                                              TextWrapping="Wrap"
@@ -690,9 +816,38 @@
                                                             Command="{Binding CopyInstallCommandCommand}"
                                                             Style="{StaticResource GhostButton}"
                                                             Padding="5,4" ToolTip="Copiar comando">
-                                                        <Path Data="{StaticResource CopyIcon}"
-                                                              Width="13" Height="13" Stretch="Uniform"
-                                                              Fill="{DynamicResource SubtextBrush}"/>
+                                                        <Grid Width="13" Height="13">
+                                                            <Path Data="{StaticResource CopyIcon}"
+                                                                  Width="13" Height="13" Stretch="Uniform"
+                                                                  Fill="{DynamicResource SubtextBrush}">
+                                                                <Path.Style>
+                                                                    <Style TargetType="Path">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsCopied}" Value="True">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Path.Style>
+                                                            </Path>
+                                                            <Path Data="{StaticResource CheckIcon}"
+                                                                  Width="13" Height="13" Stretch="Uniform"
+                                                                  Fill="Transparent"
+                                                                  StrokeThickness="2.5" Stroke="{DynamicResource AccentGreenBrush}"
+                                                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                                                <Path.Style>
+                                                                    <Style TargetType="Path">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsCopied}" Value="True">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Path.Style>
+                                                            </Path>
+                                                        </Grid>
                                                     </Button>
                                                 </Grid>
                                             </Border>
@@ -926,5 +1081,77 @@
             <Button Style="{StaticResource GhostButton}" Content="Cancelar" Command="{Binding CancelCommand}" Padding="16,8" Margin="0,0,8,0" />
             <Button Style="{StaticResource AccentButton}" Content="Salvar" Command="{Binding SaveCommand}" Padding="24,8" />
         </StackPanel>
+    </Grid>
+
+    <!-- ─── Overlay de captura de atalho ─────────────────────────── -->
+    <Grid x:Name="ShortcutCaptureOverlay"
+          Visibility="Collapsed"
+          Background="#B0000000"
+          Panel.ZIndex="100"
+          Focusable="True"
+          PreviewKeyDown="OnCapturePreviewKeyDown">
+        <Border Background="{DynamicResource Surface1Brush}"
+                CornerRadius="16"
+                Padding="40,32"
+                Width="440"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000" BlurRadius="50" ShadowDepth="0" Opacity="0.55"/>
+            </Border.Effect>
+            <StackPanel HorizontalAlignment="Center">
+                <TextBlock Text="EDITAR ATALHO"
+                           FontSize="10" FontWeight="SemiBold"
+                           Foreground="{DynamicResource SubtextBrush}"
+                           HorizontalAlignment="Center" Opacity="0.6"
+                           Margin="0,0,0,8"/>
+                <TextBlock x:Name="CaptureActionLabel"
+                           Text="Atalho"
+                           FontSize="20" FontWeight="Bold"
+                           Foreground="{DynamicResource TextBrush}"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,28"/>
+
+                <!-- Área de exibição das teclas -->
+                <Border x:Name="CaptureKeyDisplay"
+                        Background="{DynamicResource Surface0Brush}"
+                        CornerRadius="10" Padding="24,18"
+                        MinWidth="300"
+                        HorizontalAlignment="Center"
+                        Margin="0,0,0,20">
+                    <Grid>
+                        <TextBlock x:Name="CaptureKeysText"
+                                   Text="Aguardando teclas..."
+                                   FontFamily="{StaticResource MonoFont}"
+                                   FontSize="18" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   HorizontalAlignment="Center"/>
+                        <!-- Badge de sucesso -->
+                        <Border x:Name="CaptureSuccessBadge"
+                                Background="{DynamicResource AccentGreenBrush}"
+                                CornerRadius="10" Padding="10,3"
+                                HorizontalAlignment="Right" VerticalAlignment="Top"
+                                Margin="0,-10,-10,0"
+                                Visibility="Collapsed">
+                            <TextBlock Text="✓" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <TextBlock Text="Pressione a combinação desejada  ·  ESC para cancelar"
+                           FontSize="12"
+                           Foreground="{DynamicResource SubtextBrush}"
+                           HorizontalAlignment="Center"
+                           Opacity="0.55"
+                           Margin="0,0,0,28"/>
+
+                <Button Content="Cancelar"
+                        Style="{StaticResource GhostButton}"
+                        HorizontalAlignment="Center"
+                        Padding="24,8"
+                        Click="OnCancelCapture"/>
+            </StackPanel>
+        </Border>
+    </Grid>
     </Grid>
 </UserControl>

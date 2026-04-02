@@ -24,6 +24,7 @@
         <Grid MaxWidth="1100">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
@@ -328,9 +329,189 @@
             </Border>
 
             <!-- ═══════════════════════════════════════════════════════════
+                 STATS ROW — 3 CARDS
+                 ═══════════════════════════════════════════════════════════ -->
+            <Grid Grid.Row="1" Margin="0,0,0,16"
+                  Visibility="{Binding CurrentProject, Converter={StaticResource NullToVis}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Terminais Ativos -->
+                <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0">
+                            <TextBlock Text="Terminais Ativos"
+                                       Style="{StaticResource CaptionText}"
+                                       Margin="0,0,0,6" />
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource TerminalIcon}"
+                                      Style="{StaticResource IconPath}"
+                                      Stroke="{DynamicResource AccentGreenBrush}"
+                                      Margin="0,0,8,0" />
+                                <TextBlock Text="{Binding ActiveTerminalCount}"
+                                           FontSize="28" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <Button Grid.Row="1"
+                                Style="{StaticResource GhostButton}"
+                                HorizontalAlignment="Right"
+                                Padding="6,3" Margin="0,6,0,0"
+                                Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{x:Static vm:ViewType.Terminal}"
+                                ToolTip="Abrir terminais">
+                            <TextBlock Text="Ver Terminais >"
+                                       Style="{StaticResource CaptionText}"
+                                       Foreground="{DynamicResource AccentGreenBrush}" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Processos -->
+                <Border Grid.Column="2" Style="{StaticResource Card}" Margin="0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0">
+                            <TextBlock Text="Processos"
+                                       Style="{StaticResource CaptionText}"
+                                       Margin="0,0,0,6" />
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource ProcessIcon}"
+                                      Style="{StaticResource IconPath}"
+                                      Stroke="{DynamicResource AccentBlueBrush}"
+                                      Margin="0,0,8,0" />
+                                <TextBlock Text="{Binding RunningProcessCount}"
+                                           FontSize="28" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <Button Grid.Row="1"
+                                Style="{StaticResource GhostButton}"
+                                HorizontalAlignment="Right"
+                                Padding="6,3" Margin="0,6,0,0"
+                                Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{x:Static vm:ViewType.ProcessMonitor}"
+                                ToolTip="Monitor de processos">
+                            <TextBlock Text="Ver Monitor >"
+                                       Style="{StaticResource CaptionText}"
+                                       Foreground="{DynamicResource AccentBlueBrush}" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Claude Usage (compacto) -->
+                <Border Grid.Column="4" CornerRadius="12" ClipToBounds="True"
+                        BorderThickness="1" BorderBrush="#30CC785C" Margin="0">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#1A1A1A" Offset="0"/>
+                            <GradientStop Color="#1C1512" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Grid Margin="14,12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Header: ícone + nome + reset -->
+                        <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                            <Button DockPanel.Dock="Right"
+                                    Style="{StaticResource GhostButton}"
+                                    Padding="4,2"
+                                    ToolTip="Resetar estatísticas da sessão"
+                                    Command="{Binding ResetClaudeUsageCommand}">
+                                <TextBlock Text="↺" FontSize="12" Foreground="#80CC785C" />
+                            </Button>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Width="28" Height="28" CornerRadius="7" Margin="0,0,8,0">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#CC785C" Offset="0"/>
+                                            <GradientStop Color="#A0522D" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <TextBlock Text="✦" FontSize="14" FontWeight="Bold"
+                                               Foreground="White"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="Claude Code"
+                                           FontSize="13" FontWeight="SemiBold"
+                                           Foreground="#E8C4A0"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DockPanel>
+
+                        <!-- Tokens + descrição -->
+                        <StackPanel Grid.Row="1" Margin="0,2,0,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding ClaudeTokensDisplay}"
+                                           FontSize="28" FontWeight="Bold"
+                                           FontFamily="{StaticResource MonoFont}"
+                                           Foreground="#E8C4A0"
+                                           VerticalAlignment="Center"
+                                           ToolTip="Total de tokens consumidos pelo Claude Code nesta sessão" />
+                                <TextBlock Text=" tokens"
+                                           FontSize="11" Foreground="#80CC785C"
+                                           VerticalAlignment="Bottom"
+                                           Margin="0,0,0,5" />
+                            </StackPanel>
+                            <TextBlock Text="consumidos na sessão"
+                                       FontSize="10" Foreground="#50CC785C"
+                                       Margin="0,1,0,0" />
+                            <!-- Modelo em uso -->
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBlock Text="Modelo: "
+                                           FontSize="10" Foreground="#50CC785C"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding ClaudeModelDisplay}"
+                                           FontSize="10" FontWeight="Medium"
+                                           FontFamily="{StaticResource MonoFont}"
+                                           Foreground="#80CC785C"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Custo USD / BRL -->
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                            <TextBlock Text="USD "
+                                       FontSize="10" Foreground="#50CC785C"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ClaudeCostUsdDisplay}"
+                                       FontSize="13" FontWeight="SemiBold"
+                                       FontFamily="{StaticResource MonoFont}"
+                                       Foreground="#E8C4A0"
+                                       Margin="0,0,10,0" />
+                            <TextBlock Text="BRL "
+                                       FontSize="10" Foreground="#50CC785C"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ClaudeCostBrlDisplay}"
+                                       FontSize="13" FontWeight="SemiBold"
+                                       FontFamily="{StaticResource MonoFont}"
+                                       Foreground="#CC9966" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- ═══════════════════════════════════════════════════════════
                  MAIN 2-COLUMN LAYOUT
                  ═══════════════════════════════════════════════════════════ -->
-            <Grid Grid.Row="1"
+            <Grid Grid.Row="2"
                   Visibility="{Binding CurrentProject, Converter={StaticResource NullToVis}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -343,87 +524,6 @@
                      ═══════════════════════════════════════════════════════ -->
                 <StackPanel Grid.Column="0">
 
-                    <!-- STATS ROW -->
-                    <Grid Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Active Terminals -->
-                        <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <StackPanel Grid.Row="0">
-                                    <TextBlock Text="Terminais Ativos"
-                                               Style="{StaticResource CaptionText}"
-                                               Margin="0,0,0,6" />
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource TerminalIcon}"
-                                              Style="{StaticResource IconPath}"
-                                              Stroke="{DynamicResource AccentGreenBrush}"
-                                              Margin="0,0,8,0" />
-                                        <TextBlock Text="{Binding ActiveTerminalCount}"
-                                                   FontSize="28" FontWeight="Bold"
-                                                   Foreground="{DynamicResource TextBrush}" />
-                                    </StackPanel>
-                                </StackPanel>
-                                <Button Grid.Row="1"
-                                        Style="{StaticResource GhostButton}"
-                                        HorizontalAlignment="Right"
-                                        Padding="6,3"
-                                        Margin="0,6,0,0"
-                                        Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                        CommandParameter="{x:Static vm:ViewType.Terminal}"
-                                        ToolTip="Abrir terminais">
-                                    <TextBlock Text="Ver Terminais >"
-                                               Style="{StaticResource CaptionText}"
-                                               Foreground="{DynamicResource AccentGreenBrush}" />
-                                </Button>
-                            </Grid>
-                        </Border>
-
-                        <!-- Running Processes -->
-                        <Border Grid.Column="2" Style="{StaticResource Card}" Margin="0">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <StackPanel Grid.Row="0">
-                                    <TextBlock Text="Processos"
-                                               Style="{StaticResource CaptionText}"
-                                               Margin="0,0,0,6" />
-                                    <StackPanel Orientation="Horizontal">
-                                        <Path Data="{StaticResource ProcessIcon}"
-                                              Style="{StaticResource IconPath}"
-                                              Stroke="{DynamicResource AccentBlueBrush}"
-                                              Margin="0,0,8,0" />
-                                        <TextBlock Text="{Binding RunningProcessCount}"
-                                                   FontSize="28" FontWeight="Bold"
-                                                   Foreground="{DynamicResource TextBrush}" />
-                                    </StackPanel>
-                                </StackPanel>
-                                <Button Grid.Row="1"
-                                        Style="{StaticResource GhostButton}"
-                                        HorizontalAlignment="Right"
-                                        Padding="6,3"
-                                        Margin="0,6,0,0"
-                                        Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                        CommandParameter="{x:Static vm:ViewType.ProcessMonitor}"
-                                        ToolTip="Monitor de processos">
-                                    <TextBlock Text="Ver Monitor >"
-                                               Style="{StaticResource CaptionText}"
-                                               Foreground="{DynamicResource AccentBlueBrush}" />
-                                </Button>
-                            </Grid>
-                        </Border>
-                    </Grid>
-
                     <!-- GIT QUICK ACTIONS -->
                     <Border Style="{StaticResource Card}" Margin="0,0,0,12"
                             Visibility="{Binding HasGitInfo, Converter={StaticResource BoolToVis}}">
@@ -431,44 +531,76 @@
                             <TextBlock Text="Git"
                                        Style="{StaticResource CaptionText}"
                                        Margin="0,0,0,8" />
-                            <WrapPanel>
+                            <UniformGrid Rows="1" Columns="4">
+                                <!-- Pull -->
                                 <Button Style="{StaticResource GhostButton}"
                                         Command="{Binding RunGitActionCommand}"
                                         CommandParameter="pull"
-                                        Margin="0,0,6,4" Padding="10,6">
-                                    <StackPanel Orientation="Horizontal">
+                                        Margin="0,0,4,0" Padding="8,7"
+                                        ToolTip="git pull">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <Path Data="M12 3v14M12 17l-5-5M12 17l5-5"
+                                              Stroke="{DynamicResource AccentBlueBrush}"
+                                              StrokeThickness="1.5" StrokeLineJoin="Round"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                              Fill="Transparent" Stretch="Uniform"
+                                              Width="11" Height="11" Margin="0,0,6,0" />
                                         <TextBlock Text="Pull" FontSize="12"
                                                    Foreground="{DynamicResource TextBrush}" />
                                     </StackPanel>
                                 </Button>
+                                <!-- Push -->
                                 <Button Style="{StaticResource GhostButton}"
                                         Command="{Binding RunGitActionCommand}"
                                         CommandParameter="push"
-                                        Margin="0,0,6,4" Padding="10,6">
-                                    <StackPanel Orientation="Horizontal">
+                                        Margin="0,0,4,0" Padding="8,7"
+                                        ToolTip="git push">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <Path Data="M12 21V7M12 7l-5 5M12 7l5 5"
+                                              Stroke="{DynamicResource AccentGreenBrush}"
+                                              StrokeThickness="1.5" StrokeLineJoin="Round"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                              Fill="Transparent" Stretch="Uniform"
+                                              Width="11" Height="11" Margin="0,0,6,0" />
                                         <TextBlock Text="Push" FontSize="12"
                                                    Foreground="{DynamicResource TextBrush}" />
                                     </StackPanel>
                                 </Button>
+                                <!-- Fetch -->
                                 <Button Style="{StaticResource GhostButton}"
                                         Command="{Binding RunGitActionCommand}"
                                         CommandParameter="fetch"
-                                        Margin="0,0,6,4" Padding="10,6">
-                                    <StackPanel Orientation="Horizontal">
+                                        Margin="0,0,4,0" Padding="8,7"
+                                        ToolTip="git fetch">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <Path Data="{StaticResource RefreshIcon}"
+                                              Stroke="{DynamicResource AccentYellowBrush}"
+                                              StrokeThickness="1.5" StrokeLineJoin="Round"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                              Fill="Transparent" Stretch="Uniform"
+                                              Width="11" Height="11" Margin="0,0,6,0" />
                                         <TextBlock Text="Fetch" FontSize="12"
                                                    Foreground="{DynamicResource TextBrush}" />
                                     </StackPanel>
                                 </Button>
+                                <!-- Stash -->
                                 <Button Style="{StaticResource GhostButton}"
                                         Command="{Binding RunGitActionCommand}"
                                         CommandParameter="stash"
-                                        Margin="0,0,6,4" Padding="10,6">
-                                    <StackPanel Orientation="Horizontal">
+                                        Padding="8,7"
+                                        ToolTip="git stash">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <Path Data="M3 6h18M3 12h18M3 18h18"
+                                              Stroke="{DynamicResource SubtextBrush}"
+                                              StrokeThickness="1.5" StrokeLineJoin="Round"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                              Fill="Transparent" Stretch="Uniform"
+                                              Width="11" Height="11" Margin="0,0,6,0" />
                                         <TextBlock Text="Stash" FontSize="12"
                                                    Foreground="{DynamicResource TextBrush}" />
                                     </StackPanel>
                                 </Button>
-                            </WrapPanel>
+                            </UniformGrid>
                         </StackPanel>
                     </Border>
 
@@ -520,7 +652,7 @@
                                                Foreground="{DynamicResource AccentGreenBrush}" FontWeight="SemiBold" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,4">
-                                    <TextBlock Text="Nao rastreados: " Style="{StaticResource CaptionText}" />
+                                    <TextBlock Text="Não rastreados: " Style="{StaticResource CaptionText}" />
                                     <TextBlock Text="{Binding GitInfo.UntrackedFiles}"
                                                Foreground="{DynamicResource SubtextBrush}" FontWeight="SemiBold" />
                                 </StackPanel>
@@ -576,154 +708,6 @@
                      RIGHT COLUMN
                      ═══════════════════════════════════════════════════════ -->
                 <StackPanel Grid.Column="2">
-
-                    <!-- ═══════════════════════════════════════════════════
-                         CLAUDE USAGE CARD
-                         ═══════════════════════════════════════════════════ -->
-                    <Border Margin="0,0,0,12" CornerRadius="12"
-                            ClipToBounds="True"
-                            BorderThickness="1"
-                            BorderBrush="#40CC785C">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#1A1A1A" Offset="0"/>
-                                <GradientStop Color="#1C1512" Offset="0.5"/>
-                                <GradientStop Color="#1A150E" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Grid Margin="16,14,16,14">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="8" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="10" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
-                            <!-- Header: Logo + Title -->
-                            <DockPanel Grid.Row="0">
-                                <!-- Reset button -->
-                                <Button DockPanel.Dock="Right"
-                                        Style="{StaticResource GhostButton}"
-                                        Padding="4,2"
-                                        ToolTip="Resetar estatísticas da sessão"
-                                        Command="{Binding ResetClaudeUsageCommand}">
-                                    <TextBlock Text="↺" FontSize="13"
-                                               Foreground="#80CC785C" />
-                                </Button>
-
-                                <!-- Model badge -->
-                                <Border DockPanel.Dock="Right"
-                                        Background="#20CC785C"
-                                        CornerRadius="4"
-                                        Padding="6,2"
-                                        Margin="0,0,6,0"
-                                        VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding ClaudeModelDisplay}"
-                                               FontSize="10"
-                                               FontFamily="{StaticResource MonoFont}"
-                                               Foreground="#CC785C"
-                                               MaxWidth="120"
-                                               TextTrimming="CharacterEllipsis" />
-                                </Border>
-
-                                <!-- Claude icon + label -->
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <!-- Anthropic ✦ symbol -->
-                                    <Border Width="22" Height="22"
-                                            CornerRadius="6"
-                                            Margin="0,0,8,0">
-                                        <Border.Background>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                <GradientStop Color="#CC785C" Offset="0"/>
-                                                <GradientStop Color="#A0522D" Offset="1"/>
-                                            </LinearGradientBrush>
-                                        </Border.Background>
-                                        <TextBlock Text="✦"
-                                                   FontSize="12"
-                                                   FontWeight="Bold"
-                                                   Foreground="White"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" />
-                                    </Border>
-                                    <StackPanel>
-                                        <TextBlock Text="Claude"
-                                                   FontSize="14"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="#E8C4A0" />
-                                        <TextBlock Text="uso desta sessão"
-                                                   FontSize="10"
-                                                   Foreground="#60CC785C" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </DockPanel>
-
-                            <!-- Divider -->
-                            <Rectangle Grid.Row="1"
-                                       Height="1"
-                                       Fill="#20CC785C"
-                                       HorizontalAlignment="Stretch"
-                                       Margin="0,4" />
-
-                            <!-- Tokens stat -->
-                            <Grid Grid.Row="2">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="TOKENS"
-                                               FontSize="9"
-                                               FontWeight="Bold"
-                                               Foreground="#60CC785C" />
-                                    <TextBlock Text="{Binding ClaudeTokensDisplay}"
-                                               FontSize="26"
-                                               FontWeight="Bold"
-                                               FontFamily="{StaticResource MonoFont}"
-                                               Foreground="#E8C4A0" />
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="1" HorizontalAlignment="Right"
-                                            VerticalAlignment="Bottom">
-                                    <!-- USD cost -->
-                                    <StackPanel Orientation="Horizontal"
-                                                HorizontalAlignment="Right"
-                                                Margin="0,0,0,2">
-                                        <TextBlock Text="USD  "
-                                                   FontSize="10"
-                                                   Foreground="#50CC785C"
-                                                   VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding ClaudeCostUsdDisplay}"
-                                                   FontSize="15"
-                                                   FontWeight="SemiBold"
-                                                   FontFamily="{StaticResource MonoFont}"
-                                                   Foreground="#E8C4A0" />
-                                    </StackPanel>
-                                    <!-- BRL cost -->
-                                    <StackPanel Orientation="Horizontal"
-                                                HorizontalAlignment="Right">
-                                        <TextBlock Text="BRL  "
-                                                   FontSize="10"
-                                                   Foreground="#50CC785C"
-                                                   VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding ClaudeCostBrlDisplay}"
-                                                   FontSize="15"
-                                                   FontWeight="SemiBold"
-                                                   FontFamily="{StaticResource MonoFont}"
-                                                   Foreground="#CC9966" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- Footer: exchange rate note -->
-                            <TextBlock Grid.Row="4"
-                                       Text="câmbio estimado R$ 5,70/USD · preços Anthropic API"
-                                       FontSize="9"
-                                       Foreground="#30CC785C"
-                                       HorizontalAlignment="Right" />
-                        </Grid>
-                    </Border>
 
                     <!-- RECENT COMMITS -->
                     <Border Style="{StaticResource Card}" Margin="0,0,0,12"
@@ -855,7 +839,7 @@
             <!-- ═══════════════════════════════════════════════════════════
                  NO PROJECT SELECTED
                  ═══════════════════════════════════════════════════════════ -->
-            <StackPanel Grid.Row="1"
+            <StackPanel Grid.Row="2"
                         VerticalAlignment="Center"
                         HorizontalAlignment="Center"
                         Margin="0,60,0,0"

@@ -641,10 +641,10 @@
         <!-- Canvas sem background (null) = transparente a cliques na área vazia.
              NÃO usar IsHitTestVisible="False" no Canvas: bloquearia TODOS os filhos também. -->
         <Canvas Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="0" Grid.RowSpan="3"
-                Panel.ZIndex="1000"
-                Visibility="{Binding AiOrb.IsVisible, Converter={StaticResource BoolToVis}}">
+                Panel.ZIndex="1000">
             <controls:AiOrbControl
                 DataContext="{Binding AiOrb}"
+                Visibility="{Binding IsVisible, Converter={StaticResource BoolToVis}, FallbackValue=Visible}"
                 Canvas.Left="{Binding PositionX, Mode=TwoWay}"
                 Canvas.Top="{Binding PositionY, Mode=TwoWay}" />
         </Canvas>

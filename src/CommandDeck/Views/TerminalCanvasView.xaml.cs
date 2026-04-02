@@ -280,6 +280,8 @@ public partial class TerminalCanvasView : UserControl
     private void OnViewportPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (_canvasVm is null || e.ChangedButton != MouseButton.Middle) return;
+        // Don't pan while the empty-canvas lock overlay is active
+        if (!_canvasVm.HasTerminals) return;
 
         _isPanning  = true;
         _panStart   = e.GetPosition(ViewportArea);
@@ -987,21 +989,52 @@ public partial class TerminalCanvasView : UserControl
 
     private void OnAiDropdownClick(object sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.ContextMenu != null)
+        if (sender is not Button button || button.ContextMenu == null || _mainVm == null) return;
+
+        var menu = button.ContextMenu;
+
+        // Rebuild items every open so the checkmark and list are always fresh
+        menu.Items.Clear();
+        foreach (var tool in _mainVm.AvailableAiTools)
         {
-            var menu = button.ContextMenu;
-            menu.PlacementTarget = button;
-            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-            // Align right edge of dropdown with right edge of button
-            void OnOpened(object? s, EventArgs _)
+            var header = new StackPanel { Orientation = Orientation.Horizontal };
+            header.Children.Add(new TextBlock
             {
-                menu.Opened -= OnOpened;
-                if (menu.RenderSize.Width > button.ActualWidth)
-                    menu.HorizontalOffset = -(menu.RenderSize.Width - button.ActualWidth);
-            }
-            menu.Opened += OnOpened;
-            menu.IsOpen = true;
+                Text = "✓",
+                FontSize = 10,
+                FontWeight = FontWeights.Bold,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xA6, 0xE3, 0xA1)),
+                Width = 14,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 4, 0),
+                Visibility = tool.IsDefault ? Visibility.Visible : Visibility.Collapsed
+            });
+            header.Children.Add(new TextBlock
+            {
+                Text = tool.DisplayName,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+
+            menu.Items.Add(new MenuItem
+            {
+                Header = header,
+                Command = _mainVm.LaunchAiToolCommand,
+                CommandParameter = tool.Id
+            });
         }
+
+        if (menu.Items.Count == 0) return;
+
+        menu.PlacementTarget = button;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        void OnOpened(object? s, EventArgs _)
+        {
+            menu.Opened -= OnOpened;
+            if (menu.RenderSize.Width > button.ActualWidth)
+                menu.HorizontalOffset = -(menu.RenderSize.Width - button.ActualWidth);
+        }
+        menu.Opened += OnOpened;
+        menu.IsOpen = true;
     }
 
     private void OnToolbarOpenDropdownClick(object sender, RoutedEventArgs e)

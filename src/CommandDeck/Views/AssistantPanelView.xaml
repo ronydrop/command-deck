@@ -14,6 +14,7 @@
     <UserControl.Resources>
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:NullToVisibilityConverter x:Key="NullToVis" />
+        <conv:StringToVisibilityConverter x:Key="StringToVis" />
         <BooleanToVisibilityConverter x:Key="BoolToVisWpf" />
 
         <!-- Chat message template -->
@@ -45,13 +46,29 @@
                                    FontSize="12.5"
                                    TextWrapping="Wrap"
                                    LineHeight="20" />
-                        <!-- Streaming dots -->
-                        <StackPanel Orientation="Horizontal"
+                        <!-- Streaming dots (animated) -->
+                        <StackPanel x:Name="StreamingDots"
+                                    Orientation="Horizontal"
                                     Margin="0,6,0,0"
                                     Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVis}}">
-                            <Ellipse Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,0" Opacity="0.9" />
-                            <Ellipse Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,0" Opacity="0.5" />
-                            <Ellipse Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Opacity="0.2" />
+                            <StackPanel.Resources>
+                                <Storyboard x:Key="DotPulse" RepeatBehavior="Forever">
+                                    <DoubleAnimation Storyboard.TargetName="Dot1" Storyboard.TargetProperty="Opacity"
+                                                     From="0.2" To="1" Duration="0:0:0.45" BeginTime="0:0:0" AutoReverse="True"/>
+                                    <DoubleAnimation Storyboard.TargetName="Dot2" Storyboard.TargetProperty="Opacity"
+                                                     From="0.2" To="1" Duration="0:0:0.45" BeginTime="0:0:0.15" AutoReverse="True"/>
+                                    <DoubleAnimation Storyboard.TargetName="Dot3" Storyboard.TargetProperty="Opacity"
+                                                     From="0.2" To="1" Duration="0:0:0.45" BeginTime="0:0:0.3" AutoReverse="True"/>
+                                </Storyboard>
+                            </StackPanel.Resources>
+                            <StackPanel.Triggers>
+                                <EventTrigger RoutedEvent="StackPanel.Loaded">
+                                    <BeginStoryboard Storyboard="{StaticResource DotPulse}" />
+                                </EventTrigger>
+                            </StackPanel.Triggers>
+                            <Ellipse x:Name="Dot1" Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,0" Opacity="0.2" />
+                            <Ellipse x:Name="Dot2" Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Margin="0,0,4,0" Opacity="0.2" />
+                            <Ellipse x:Name="Dot3" Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Opacity="0.2" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -180,6 +197,17 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
+                        <!-- Placeholder overlay (hidden when InputText has content) -->
+                        <TextBlock Grid.Row="0"
+                                   Text="Pergunte algo, / para comandos..."
+                                   IsHitTestVisible="False"
+                                   Foreground="{DynamicResource SubtextBrush}"
+                                   Opacity="0.45"
+                                   FontSize="13"
+                                   Padding="10,10,10,6"
+                                   VerticalAlignment="Top"
+                                   Visibility="{Binding InputText, Converter={StaticResource StringToVis}, ConverterParameter=Invert}" />
+
                         <!-- Text input -->
                         <TextBox Grid.Row="0"
                                  x:Name="ChatInput"
@@ -194,8 +222,7 @@
                                  MaxHeight="140"
                                  AcceptsReturn="True"
                                  TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto"
-                                 Tag="Pergunte algo, / para comandos...">
+                                 VerticalScrollBarVisibility="Auto">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Enter"
                                             Command="{Binding SendMessageCommand}" />

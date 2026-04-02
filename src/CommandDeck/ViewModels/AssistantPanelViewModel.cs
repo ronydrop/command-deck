@@ -120,9 +120,6 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
             _ => Array.Empty<string>()
         };
 
-        AvailableModels.Clear();
-        foreach (var m in models) AvailableModels.Add(m);
-
         var currentModel = _assistantSettings.ActiveProvider switch
         {
             AssistantProviderType.Anthropic  => _assistantSettings.AnthropicModel,
@@ -132,7 +129,15 @@ public partial class AssistantPanelViewModel : ObservableObject, IDisposable
             _                                => string.Empty
         };
 
-        SelectedModel = AvailableModels.Contains(currentModel) ? currentModel : (AvailableModels.FirstOrDefault() ?? string.Empty);
+        // ObservableCollection must be mutated on the UI thread (CollectionView constraint).
+        // RefreshProviderInfoAsync can resume on a thread-pool thread after awaiting
+        // GetSettingsAsync (which uses ConfigureAwait(false)), so we always dispatch here.
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            AvailableModels.Clear();
+            foreach (var m in models) AvailableModels.Add(m);
+            SelectedModel = AvailableModels.Contains(currentModel) ? currentModel : (AvailableModels.FirstOrDefault() ?? string.Empty);
+        });
     }
 
     // ─── Constructor ──────────────────────────────────────────────────────────

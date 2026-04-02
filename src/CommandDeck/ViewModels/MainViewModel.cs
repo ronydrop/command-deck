@@ -144,7 +144,11 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>AI tools detected on the system — drives the dynamic AI dropdown.</summary>
     [ObservableProperty]
-    private ObservableCollection<AiToolInfo> _availableAiTools = new();
+    private ObservableCollection<AiToolInfo> _availableAiTools = new(new[]
+    {
+        new AiToolInfo { Id = "claude",        DisplayName = "claude",          SessionType = AiSessionType.Claude       },
+        new AiToolInfo { Id = "claude-resume", DisplayName = "claude --resume", SessionType = AiSessionType.ClaudeResume },
+    });
 
     [ObservableProperty]
     private bool _isProjectEditVisible;
@@ -465,43 +469,58 @@ public partial class MainViewModel : ObservableObject
 
     private async Task LoadAvailableAiToolsAsync()
     {
-        // All possible tools with their session types and launch commands
-        var allTools = new List<(string Id, string DisplayName, AiSessionType SessionType, string CliCheck)>
+        try
         {
-            ("claude",        "claude",          AiSessionType.Claude,       "claude"),
-            ("claude-resume", "claude --resume", AiSessionType.ClaudeResume, "claude"),
-            ("codex",         "codex",           AiSessionType.Codex,        "codex"),
-            ("aider",         "aider",           AiSessionType.Aider,        "aider"),
-            ("gemini",        "gemini",          AiSessionType.Gemini,       "gemini"),
-            ("copilot",       "copilot",         AiSessionType.Copilot,      "gh"),
-        };
-
-        var settings = await _settingsService.GetSettingsAsync();
-        DefaultAiToolId = settings.DefaultAiToolId;
-
-        var detectedTools = await Task.Run(() =>
-        {
-            var result = new List<AiToolInfo>();
-            foreach (var (id, displayName, sessionType, cliCheck) in allTools)
+            // All possible tools with their session types and launch commands
+            var allTools = new List<(string Id, string DisplayName, AiSessionType SessionType, string CliCheck)>
             {
-                if (AiTerminalService.CheckCommandExists(cliCheck))
-                {
-                    result.Add(new AiToolInfo
-                    {
-                        Id = id,
-                        DisplayName = displayName,
-                        SessionType = sessionType
-                    });
-                }
-            }
-            return result;
-        });
+                ("claude",        "claude",          AiSessionType.Claude,       "claude"),
+                ("claude-resume", "claude --resume", AiSessionType.ClaudeResume, "claude"),
+                ("codex",         "codex",           AiSessionType.Codex,        "codex"),
+                ("aider",         "aider",           AiSessionType.Aider,        "aider"),
+                ("gemini",        "gemini",          AiSessionType.Gemini,       "gemini"),
+                ("copilot",       "copilot",         AiSessionType.Copilot,      "gh"),
+            };
 
-        Application.Current.Dispatcher.Invoke(() =>
+            var settings = await _settingsService.GetSettingsAsync();
+            DefaultAiToolId = settings.DefaultAiToolId;
+
+            var detectedTools = await Task.Run(() =>
+            {
+                var result = new List<AiToolInfo>();
+                foreach (var (id, displayName, sessionType, cliCheck) in allTools)
+                {
+                    if (AiTerminalService.CheckCommandExists(cliCheck))
+                    {
+                        result.Add(new AiToolInfo
+                        {
+                            Id = id,
+                            DisplayName = displayName,
+                            SessionType = sessionType
+                        });
+                    }
+                }
+                return result;
+            });
+
+            // Fallback: if detection fails entirely, keep default items so the dropdown isn't empty
+            if (detectedTools.Count == 0)
+            {
+                detectedTools.Add(new AiToolInfo { Id = "claude",        DisplayName = "claude",          SessionType = AiSessionType.Claude       });
+                detectedTools.Add(new AiToolInfo { Id = "claude-resume", DisplayName = "claude --resume", SessionType = AiSessionType.ClaudeResume });
+            }
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                AvailableAiTools = new ObservableCollection<AiToolInfo>(detectedTools);
+                UpdateDefaultToolMarker();
+            });
+        }
+        catch (Exception ex)
         {
-            AvailableAiTools = new ObservableCollection<AiToolInfo>(detectedTools);
-            UpdateDefaultToolMarker();
-        });
+            System.Diagnostics.Debug.WriteLine($"[MainViewModel] LoadAvailableAiToolsAsync failed: {ex.Message}");
+            // AvailableAiTools retains its default items — dropdown still works
+        }
     }
 
     private void UpdateDefaultToolMarker()
@@ -665,8 +684,13 @@ public partial class MainViewModel : ObservableObject
         }
         finally
         {
-            IsProjectSwitching = false;
-            ProjectSwitchMessage = string.Empty;
+            // Defer hiding the overlay until WPF has finished rendering the canvas cards.
+            // Using DispatcherPriority.Loaded ensures all layout/render passes complete first.
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                IsProjectSwitching = false;
+                ProjectSwitchMessage = string.Empty;
+            }, System.Windows.Threading.DispatcherPriority.Loaded);
             _projectSwitchLock.Release();
         }
     }

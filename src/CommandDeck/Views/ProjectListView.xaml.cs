@@ -19,30 +19,26 @@ public partial class ProjectListView : UserControl
     private void OnActiveProjectSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (e.AddedItems.Count == 0) return;
-        // Clear selection on the inactive list to keep a single selection across both
-        InactiveListBox.SelectedItem = null;
-        OnProjectSelectionChanged(sender, e);
+        if (e.AddedItems[0] is not Models.Project project) return;
+        InactiveListBox.UnselectAll();
+        ExecuteOpenProject(project);
     }
 
     private void OnInactiveProjectSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (e.AddedItems.Count == 0) return;
-        // Clear selection on the active list to keep a single selection across both
-        ActiveListBox.SelectedItem = null;
-        OnProjectSelectionChanged(sender, e);
+        if (e.AddedItems[0] is not Models.Project project) return;
+        ActiveListBox.UnselectAll();
+        ExecuteOpenProject(project);
     }
 
-    private void OnProjectSelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void ExecuteOpenProject(Models.Project project)
     {
-        if (e.AddedItems.Count == 0) return;
-        if (sender is ListBox listBox && listBox.SelectedItem is Models.Project project
-            && listBox.DataContext is ViewModels.ProjectListViewModel vm
-            && _lastOpenedProjectId != project.Id)
-        {
-            _lastOpenedProjectId = project.Id;
-            if (vm.OpenProjectCommand.CanExecute(project))
-                vm.OpenProjectCommand.Execute(project);
-        }
+        if (DataContext is not ViewModels.ProjectListViewModel vm) return;
+        if (_lastOpenedProjectId == project.Id) return;
+        _lastOpenedProjectId = project.Id;
+        if (vm.OpenProjectCommand.CanExecute(project))
+            vm.OpenProjectCommand.Execute(project);
     }
 
     private void OnContextMenuButtonClick(object sender, RoutedEventArgs e)

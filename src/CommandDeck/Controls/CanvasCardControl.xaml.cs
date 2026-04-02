@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using CommandDeck.Models;
 using CommandDeck.Services;
 using CommandDeck.ViewModels;
@@ -183,16 +184,52 @@ public partial class CanvasCardControl : UserControl
 
     // ─── Resize ──────────────────────────────────────────────────────────────
 
+    private void OnResizeDragStarted(object sender, DragStartedEventArgs e)
+    {
+        SizeIndicator.Visibility = Visibility.Visible;
+    }
+
+    private void OnResizeDragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        SizeIndicator.Visibility = Visibility.Collapsed;
+    }
+
+    private void UpdateSizeIndicator(double width, double height)
+    {
+        SizeIndicatorText.Text = $"{(int)width} × {(int)height}";
+    }
+
     private void OnResizeDragDelta(object sender, DragDeltaEventArgs e)
     {
         if (DataContext is not CanvasItemViewModel vm) return;
-
-        // No resize in tiled mode
         if (IsTiledMode()) return;
 
         double zoom = GetCanvasZoom();
         vm.Width = Math.Clamp(vm.Width + e.HorizontalChange / zoom, 320, SystemParameters.PrimaryScreenWidth);
         vm.Height = Math.Clamp(vm.Height + e.VerticalChange / zoom, 220, SystemParameters.PrimaryScreenHeight);
+        UpdateSizeIndicator(vm.Width, vm.Height);
+        e.Handled = true;
+    }
+
+    private void OnResizeRightDragDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (DataContext is not CanvasItemViewModel vm) return;
+        if (IsTiledMode()) return;
+
+        double zoom = GetCanvasZoom();
+        vm.Width = Math.Clamp(vm.Width + e.HorizontalChange / zoom, 320, SystemParameters.PrimaryScreenWidth);
+        UpdateSizeIndicator(vm.Width, vm.Height);
+        e.Handled = true;
+    }
+
+    private void OnResizeBottomDragDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (DataContext is not CanvasItemViewModel vm) return;
+        if (IsTiledMode()) return;
+
+        double zoom = GetCanvasZoom();
+        vm.Height = Math.Clamp(vm.Height + e.VerticalChange / zoom, 220, SystemParameters.PrimaryScreenHeight);
+        UpdateSizeIndicator(vm.Width, vm.Height);
         e.Handled = true;
     }
 
@@ -239,6 +276,36 @@ public partial class CanvasCardControl : UserControl
     {
         var mainVm = (Window.GetWindow(this)?.DataContext as ViewModels.MainViewModel);
         return mainVm?.CanvasViewModel?.IsTiledMode == true;
+    }
+
+    // ─── Content grid rounded clip ───────────────────────────────────────────
+
+    /// <summary>
+    /// Dynamically clips the inner content grid to the card's rounded corners.
+    /// A static RectangleGeometry can't work because the rounded clip corners must
+    /// be at the actual card edges — not at a hardcoded large coordinate.
+    /// Called on SizeChanged so the clip always matches the real card size.
+    /// </summary>
+    private void OnContentGridSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var grid = (Grid)sender;
+        var radius = IsTiledMode() ? 0.0 : 6.0;
+        grid.Clip = new RectangleGeometry(
+            new Rect(0, 0, e.NewSize.Width, e.NewSize.Height),
+            radius, radius);
+    }
+
+    /// <summary>
+    /// Re-applies the clip with the correct radius when tiled mode toggles,
+    /// even if the card size hasn't changed.
+    /// </summary>
+    internal void RefreshContentGridClip()
+    {
+        if (ContentGrid.ActualWidth <= 0) return;
+        var radius = IsTiledMode() ? 0.0 : 6.0;
+        ContentGrid.Clip = new RectangleGeometry(
+            new Rect(0, 0, ContentGrid.ActualWidth, ContentGrid.ActualHeight),
+            radius, radius);
     }
 
     // ─── AI context menu handlers ─────────────────────────────────────────

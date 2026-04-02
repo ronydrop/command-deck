@@ -16,6 +16,32 @@
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:StringToVisibilityConverter x:Key="StringToVis" />
 
+        <!-- Glassmorphism tooltip — mesmo estilo do RadialMenuControl -->
+        <Style x:Key="OrbTooltipStyle" TargetType="ToolTip">
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Background" Value="#CC1E1E2E"/>
+            <Setter Property="BorderBrush" Value="#44CBA6F7"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="#CDD6F4"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="16" ShadowDepth="2" Opacity="0.55"/>
+                            </Border.Effect>
+                            <ContentPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Orb pulse animation storyboard -->
         <Storyboard x:Key="PulseAnimation" RepeatBehavior="Forever" AutoReverse="True">
             <DoubleAnimation Storyboard.TargetName="OrbScale"
@@ -41,7 +67,9 @@
         Wrapper sem BitmapCache — apenas distribui as duas camadas.
         ClipToBounds="False" permite que bolhas e popup ultrapassem os 56px do orb.
     -->
-    <Grid ClipToBounds="False">
+    <!-- Background="Transparent" garante hit-testing na área completa do UserControl
+         mesmo onde não há elementos filhos visíveis, permitindo drag em qualquer ponto do orb. -->
+    <Grid ClipToBounds="False" Background="Transparent">
 
         <!-- ═══ Camada 1: visual do orb ══════════════════════════════════════
              BitmapCache removido: cortava o blur do DropShadowEffect nos
@@ -133,8 +161,17 @@
                     Cursor="Hand"
                     Focusable="False"
                     IsTabStop="False"
-                    ToolTip="AI Dev Assistant (Ctrl+Alt+A)"
-                    Panel.ZIndex="10">
+                    Panel.ZIndex="10"
+                    ToolTipService.InitialShowDelay="600"
+                    ToolTipService.ShowDuration="4000">
+                <Button.ToolTip>
+                    <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="AI Dev Assistant" VerticalAlignment="Center"/>
+                            <TextBlock Text="  Ctrl+Alt+A" Foreground="#88A6ADC8" FontSize="10" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </ToolTip>
+                </Button.ToolTip>
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Grid Background="Transparent">

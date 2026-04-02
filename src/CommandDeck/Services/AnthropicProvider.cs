@@ -192,7 +192,12 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
         try
         {
             response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                var detail = TryExtractErrorMessage(errorBody);
+                networkError = $"Erro {(int)response.StatusCode} da Anthropic: {detail}";
+            }
         }
         catch (HttpRequestException ex)
         {

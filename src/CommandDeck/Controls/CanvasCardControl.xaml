@@ -251,7 +251,8 @@
                     </Style>
                 </Border.Style>
 
-            <Grid>
+            <Grid x:Name="ContentGrid"
+                  SizeChanged="OnContentGridSizeChanged">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="32" />
                     <RowDefinition Height="*" />
@@ -526,6 +527,90 @@
                                 Focusable="False"
                                 ClipToBounds="True" />
 
+                <!-- ─── Resize handle: right edge (horizontal only) ──────────── -->
+                <Thumb Grid.Row="0" Grid.RowSpan="2"
+                       x:Name="ResizeThumbRight"
+                       Width="6"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Stretch"
+                       Margin="0,0,0,18"
+                       Cursor="SizeWE"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       DragStarted="OnResizeDragStarted"
+                       DragDelta="OnResizeRightDragDelta"
+                       DragCompleted="OnResizeDragCompleted"
+                       FocusVisualStyle="{x:Null}">
+                    <Thumb.Style>
+                        <Style TargetType="Thumb">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsTiledMode}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Thumb.Style>
+                    <Thumb.Template>
+                        <ControlTemplate TargetType="Thumb">
+                            <Border x:Name="edgeBg" Background="Transparent" Width="6">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="Opacity" Value="0.4" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                            </Border>
+                        </ControlTemplate>
+                    </Thumb.Template>
+                </Thumb>
+
+                <!-- ─── Resize handle: bottom edge (vertical only) ────────────── -->
+                <Thumb Grid.Row="1"
+                       x:Name="ResizeThumbBottom"
+                       Height="6"
+                       HorizontalAlignment="Stretch"
+                       VerticalAlignment="Bottom"
+                       Margin="0,0,18,0"
+                       Cursor="SizeNS"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       DragStarted="OnResizeDragStarted"
+                       DragDelta="OnResizeBottomDragDelta"
+                       DragCompleted="OnResizeDragCompleted"
+                       FocusVisualStyle="{x:Null}">
+                    <Thumb.Style>
+                        <Style TargetType="Thumb">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsTiledMode}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Thumb.Style>
+                    <Thumb.Template>
+                        <ControlTemplate TargetType="Thumb">
+                            <Border x:Name="edgeBg" Background="Transparent" Height="6">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="Opacity" Value="0.4" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                            </Border>
+                        </ControlTemplate>
+                    </Thumb.Template>
+                </Thumb>
+
                 <!-- ─── Resize handle (bottom-right) — 3 diagonal lines ───────── -->
                 <Thumb Grid.Row="1"
                        x:Name="ResizeThumb"
@@ -535,7 +620,9 @@
                        Cursor="SizeNWSE"
                        Background="Transparent"
                        BorderThickness="0"
+                       DragStarted="OnResizeDragStarted"
                        DragDelta="OnResizeDragDelta"
+                       DragCompleted="OnResizeDragCompleted"
                        FocusVisualStyle="{x:Null}">
                     <Thumb.Style>
                         <Style TargetType="Thumb">
@@ -576,6 +663,26 @@
                         </ControlTemplate>
                     </Thumb.Template>
                 </Thumb>
+
+                <!-- ─── Size indicator overlay (shown during resize) ──────────── -->
+                <Border Grid.Row="1"
+                        x:Name="SizeIndicator"
+                        Background="#CC1E1E2E"
+                        CornerRadius="4"
+                        Padding="8,4"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,24,24"
+                        Visibility="Collapsed"
+                        IsHitTestVisible="False"
+                        Panel.ZIndex="100">
+                    <TextBlock x:Name="SizeIndicatorText"
+                               Text="1200 × 680"
+                               Foreground="White"
+                               FontFamily="{StaticResource MonoFont}"
+                               FontSize="12"
+                               FontWeight="Medium" />
+                </Border>
 
             </Grid>
             </Border><!-- end glass highlight border -->

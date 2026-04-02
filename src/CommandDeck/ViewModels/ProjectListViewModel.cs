@@ -40,6 +40,9 @@ public partial class ProjectListViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<Project> _inactiveProjects = new();
 
+    [ObservableProperty]
+    private Dictionary<string, int> _terminalCountsByProjectId = new();
+
     /// <summary>
     /// Raised when a project is selected to open.
     /// </summary>
@@ -254,11 +257,15 @@ public partial class ProjectListViewModel : ObservableObject
 
     private void SplitByActiveState()
     {
-        var activeProjectIds = _terminalService.GetSessions()
-            .Where(s => s.Status is TerminalStatus.Running or TerminalStatus.Starting)
-            .Select(s => s.ProjectId)
-            .Where(id => id != null)
-            .ToHashSet();
+        var activeSessions = _terminalService.GetSessions()
+            .Where(s => s.Status is TerminalStatus.Running or TerminalStatus.Starting && s.ProjectId != null)
+            .ToList();
+
+        var activeProjectIds = activeSessions.Select(s => s.ProjectId!).ToHashSet();
+
+        TerminalCountsByProjectId = activeSessions
+            .GroupBy(s => s.ProjectId!)
+            .ToDictionary(g => g.Key, g => g.Count());
 
         ActiveProjects.Clear();
         InactiveProjects.Clear();

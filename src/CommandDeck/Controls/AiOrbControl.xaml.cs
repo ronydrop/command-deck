@@ -79,6 +79,13 @@ public partial class AiOrbControl : UserControl
         _isDragging = true;
         _wasDragged = false;
 
+        // O Button internamente chama Mouse.Capture(this, CaptureMode.SubTree) no
+        // OnMouseLeftButtonDown, o que redireciona todos os MouseMove para o Button
+        // e impede o OnMouseMove do UserControl de disparar.
+        // Liberamos o capture do Button para que nosso sistema de drag funcione.
+        if (OrbButton.IsMouseCaptured)
+            OrbButton.ReleaseMouseCapture();
+
         // Usar o Canvas pai como referência de coordenadas — mesmo espaço de Canvas.Left/Top.
         var canvas = VisualTreeHelper.GetParent(this) as IInputElement;
         _dragStart = e.GetPosition(canvas);

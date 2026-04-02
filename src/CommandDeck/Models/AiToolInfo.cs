@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Windows;
+using System.Threading.Tasks;
 
 namespace CommandDeck.Models;
 
@@ -36,6 +37,16 @@ public partial class AiToolInfo : ObservableObject
     [ObservableProperty]
     private bool _isDefault;
 
+    /// <summary>True briefly after copying the install command, for the check animation.</summary>
+    [ObservableProperty]
+    private bool _isCopied;
+
     [RelayCommand]
-    private void CopyInstallCommand() => Clipboard.SetText(InstallCommand);
+    private async Task CopyInstallCommand()
+    {
+        Clipboard.SetText(InstallCommand);
+        IsCopied = true;
+        await Task.Delay(2000);
+        IsCopied = false;
+    }
 }
