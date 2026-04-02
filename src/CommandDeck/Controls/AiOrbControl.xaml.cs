@@ -101,6 +101,7 @@ public partial class AiOrbControl : UserControl
     protected override void OnMouseMove(MouseEventArgs e)
     {
         if (!_isDragging) return;
+        if (DataContext is AiOrbViewModel { IsPositionLocked: true }) return;
 
         var canvas  = VisualTreeHelper.GetParent(this) as IInputElement;
         var current = e.GetPosition(canvas);
@@ -123,9 +124,7 @@ public partial class AiOrbControl : UserControl
         double newX = Math.Clamp(_orbXAtDragStart + dx, 0, maxX);
         double newY = Math.Clamp(_orbYAtDragStart + dy, 0, maxY);
 
-        Canvas.SetLeft(this, newX);
-        Canvas.SetTop(this, newY);
-
+        // TwoWay binding em Canvas.Left/Top propaga para o Canvas automaticamente.
         if (DataContext is AiOrbViewModel vm)
         {
             vm.PositionX = newX;
@@ -140,10 +139,13 @@ public partial class AiOrbControl : UserControl
 
         if (_wasDragged)
         {
-            // Foi um drag: liberar captura e salvar posição. NÃO abrir menu.
+            // Foi um drag: liberar captura, fazer snap-to-edge e salvar posição.
             ReleaseMouseCapture();
             if (DataContext is AiOrbViewModel vm)
+            {
+                SnapToEdge(vm);
                 vm.SavePosition();
+            }
         }
         else
         {
@@ -151,6 +153,53 @@ public partial class AiOrbControl : UserControl
             if (DataContext is AiOrbViewModel vm)
                 vm.ToggleRadialMenuCommand.Execute(null);
         }
+    }
+
+    /// <summary>
+    /// Se o orb estiver dentro de 48px de uma borda, anima suavemente até 16px da borda.
+    /// Evita que o orb fique parcialmente fora da tela.
+    /// </summary>
+    private void SnapToEdge(AiOrbViewModel vm)
+    {
+        var parent = VisualTreeHelper.GetParent(this) as FrameworkElement;
+        if (parent is null) return;
+
+        const double snapThreshold = 48;
+        const double snapMargin    = 16;
+
+        double maxX = parent.ActualWidth  - ActualWidth;
+        double maxY = parent.ActualHeight - ActualHeight;
+
+        double targetX = vm.PositionX;
+        double targetY = vm.PositionY;
+
+        // Horizontal snap
+        if (targetX < snapThreshold)
+            targetX = snapMargin;
+        else if (targetX > maxX - snapThreshold)
+            targetX = maxX - snapMargin;
+
+        // Vertical snap
+        if (targetY < snapThreshold)
+            targetY = snapMargin;
+        else if (targetY > maxY - snapThreshold)
+            targetY = maxY - snapMargin;
+
+        if (Math.Abs(targetX - vm.PositionX) < 1 && Math.Abs(targetY - vm.PositionY) < 1)
+            return; // Already in place — skip animation
+
+        // Animate via Canvas attached properties.
+        // Completed callbacks restore the ViewModel values after the animation finishes,
+        // ensuring the TwoWay binding reflects the snapped position.
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+        var left = new DoubleAnimation { To = targetX, Duration = TimeSpan.FromMilliseconds(280), EasingFunction = ease };
+        var top  = new DoubleAnimation { To = targetY, Duration = TimeSpan.FromMilliseconds(280), EasingFunction = ease };
+        left.Completed += (_, _) => vm.PositionX = targetX;
+        top.Completed  += (_, _) => vm.PositionY = targetY;
+
+        BeginAnimation(Canvas.LeftProperty, left);
+        BeginAnimation(Canvas.TopProperty, top);
     }
 
     // ─── State-driven animations ─────────────────────────────────────────────

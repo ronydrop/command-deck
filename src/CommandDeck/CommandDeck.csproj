@@ -33,9 +33,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Resources\Images\aider.png" />
     <Resource Include="Resources\Images\anthropic.png" />
+    <Resource Include="Resources\Images\copilot.png" />
     <Resource Include="Resources\Images\cursor.png" />
     <Resource Include="Resources\Images\explorer.png" />
+    <Resource Include="Resources\Images\gemini.png" />
     <Resource Include="Resources\Images\ollama.png" />
     <Resource Include="Resources\Images\openai.png" />
     <Resource Include="Resources\Images\openrouter.png" />

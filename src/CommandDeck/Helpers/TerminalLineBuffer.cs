@@ -60,6 +60,12 @@ internal sealed class TerminalLineBuffer
     private int _scrollTop;
     private int _scrollBottom;
 
+    // ─── Deferred wrap (VT100 pending-wrap state) ────────────────────────────
+    // True when cursor is at the last column and the NEXT printable character
+    // should wrap to the start of the next line before being written.
+    private bool _pendingWrap;
+    private bool _savedPendingWrap;
+
     // ─── Cursor Save/Restore (CSI s / CSI u) ────────────────────────────────
     private int _savedCursorRow;
     private int _savedCursorCol;
@@ -128,9 +134,11 @@ internal sealed class TerminalLineBuffer
     /// <summary>Writes a character at the cursor position and advances the cursor.</summary>
     public void Write(char c, Color fg, Color bg, bool bold, bool italic, bool underline)
     {
-        if (CursorCol >= _cols)
+        // Deferred wrap: if the previous write hit the last column, wrap NOW
+        // before writing the new character (VT100 pending-wrap behavior).
+        if (_pendingWrap)
         {
-            // Auto-wrap: move to next line
+            _pendingWrap = false;
             CursorCol = 0;
             LineFeedInternal();
         }
@@ -144,7 +152,11 @@ internal sealed class TerminalLineBuffer
             IsItalic = italic,
             IsUnderline = underline,
         };
-        CursorCol++;
+
+        if (CursorCol + 1 < _cols)
+            CursorCol++;
+        else
+            _pendingWrap = true; // at last column — defer wrap to keep cursor in-bounds
     }
 
     /// <summary>Writes a string starting at the cursor, expanding tabs to multiples of 8.</summary>
@@ -167,36 +179,39 @@ internal sealed class TerminalLineBuffer
 
     // ─── Cursor Movement ─────────────────────────────────────────────────────
 
-    public void CarriageReturn() => CursorCol = 0;
-    public void Backspace() => CursorCol = Math.Max(0, CursorCol - 1);
+    public void CarriageReturn() { _pendingWrap = false; CursorCol = 0; }
+    public void Backspace()      { _pendingWrap = false; CursorCol = Math.Max(0, CursorCol - 1); }
 
     /// <summary>Sets cursor to absolute position (0-based, clamped).</summary>
     public void SetCursor(int row, int col)
     {
+        _pendingWrap = false;
         CursorRow = Math.Clamp(row, 0, _rows - 1);
         CursorCol = Math.Clamp(col, 0, _cols - 1);
     }
 
-    public void MoveCursorUp(int n = 1)    => CursorRow = Math.Max(0, CursorRow - n);
-    public void MoveCursorDown(int n = 1)  => CursorRow = Math.Min(_rows - 1, CursorRow + n);
-    public void MoveCursorLeft(int n = 1)  => CursorCol = Math.Max(0, CursorCol - n);
-    public void MoveCursorRight(int n = 1) => CursorCol = Math.Min(_cols - 1, CursorCol + n);
+    public void MoveCursorUp(int n = 1)    { _pendingWrap = false; CursorRow = Math.Max(0, CursorRow - n); }
+    public void MoveCursorDown(int n = 1)  { _pendingWrap = false; CursorRow = Math.Min(_rows - 1, CursorRow + n); }
+    public void MoveCursorLeft(int n = 1)  { _pendingWrap = false; CursorCol = Math.Max(0, CursorCol - n); }
+    public void MoveCursorRight(int n = 1) { _pendingWrap = false; CursorCol = Math.Min(_cols - 1, CursorCol + n); }
     public void MoveCursorToColumn(int col) => CursorCol = Math.Clamp(col, 0, _cols - 1);
 
     // ─── Cursor Save/Restore ─────────────────────────────────────────────────
 
-    /// <summary>Saves current cursor position (CSI s / ESC 7).</summary>
+    /// <summary>Saves current cursor position and pending-wrap state (CSI s / ESC 7).</summary>
     public void SaveCursor()
     {
-        _savedCursorRow = CursorRow;
-        _savedCursorCol = CursorCol;
+        _savedCursorRow  = CursorRow;
+        _savedCursorCol  = CursorCol;
+        _savedPendingWrap = _pendingWrap;
     }
 
-    /// <summary>Restores previously saved cursor position (CSI u / ESC 8).</summary>
+    /// <summary>Restores previously saved cursor position and pending-wrap state (CSI u / ESC 8).</summary>
     public void RestoreCursor()
     {
-        CursorRow = Math.Clamp(_savedCursorRow, 0, _rows - 1);
-        CursorCol = Math.Clamp(_savedCursorCol, 0, _cols - 1);
+        CursorRow    = Math.Clamp(_savedCursorRow, 0, _rows - 1);
+        CursorCol    = Math.Clamp(_savedCursorCol, 0, _cols - 1);
+        _pendingWrap = _savedPendingWrap;
     }
 
     // ─── Alternate Screen Buffer ─────────────────────────────────────────────
@@ -210,6 +225,7 @@ internal sealed class TerminalLineBuffer
         if (_isAltScreen) return;
 
         _mainSavedCursor = (CursorRow, CursorCol);
+        _pendingWrap = false;
 
         // Allocate or reuse the alt buffer at current dimensions
         if (_altScreen == null || _altScreen.GetLength(0) != _rows || _altScreen.GetLength(1) != _cols)
@@ -238,9 +254,10 @@ internal sealed class TerminalLineBuffer
         _screen = _mainScreen;
         _isAltScreen = false;
 
-        CursorRow = Math.Clamp(_mainSavedCursor.Row, 0, _rows - 1);
-        CursorCol = Math.Clamp(_mainSavedCursor.Col, 0, _cols - 1);
-        _scrollTop = 0;
+        CursorRow    = Math.Clamp(_mainSavedCursor.Row, 0, _rows - 1);
+        CursorCol    = Math.Clamp(_mainSavedCursor.Col, 0, _cols - 1);
+        _pendingWrap = false;
+        _scrollTop   = 0;
         _scrollBottom = _rows - 1;
     }
 
@@ -437,8 +454,9 @@ internal sealed class TerminalLineBuffer
     public void Clear()
     {
         FillEmpty(0, _rows);
-        CursorRow = 0;
-        CursorCol = 0;
+        CursorRow    = 0;
+        CursorCol    = 0;
+        _pendingWrap = false;
         _scrolledOffLines.Clear();
     }
 
@@ -466,8 +484,9 @@ internal sealed class TerminalLineBuffer
         _scrollTop    = 0;
         _scrollBottom = rows - 1;
 
-        CursorRow = Math.Clamp(CursorRow, 0, rows - 1);
-        CursorCol = Math.Clamp(CursorCol, 0, cols - 1);
+        CursorRow    = Math.Clamp(CursorRow, 0, rows - 1);
+        CursorCol    = Math.Clamp(CursorCol, 0, cols - 1);
+        _pendingWrap = false;
     }
 
     private TerminalCell[,] ResizeBuffer(TerminalCell[,] old, int oldRows, int oldCols, int newRows, int newCols)

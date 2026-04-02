@@ -35,7 +35,26 @@
                 Background="{DynamicResource GlassToolbarBrush}"
                 BorderBrush="{DynamicResource GlassBorderBrush}"
                 BorderThickness="0,0,0,1">
-            <DockPanel Margin="10,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <!-- Mirror the sidebar column width so the right group aligns with the terminal panel edge -->
+                    <ColumnDefinition>
+                        <ColumnDefinition.Style>
+                            <Style TargetType="ColumnDefinition">
+                                <Setter Property="Width" Value="220" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DataContext.IsTerminalPanelVisible,
+                                                 RelativeSource={RelativeSource AncestorType=Window}}"
+                                                 Value="False">
+                                        <Setter Property="Width" Value="28" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ColumnDefinition.Style>
+                    </ColumnDefinition>
+                </Grid.ColumnDefinitions>
+            <DockPanel Grid.Column="0" Margin="10,0">
 
                 <!-- ── RIGHT GROUP: zoom badge + exit-focus + Open + Commit ── -->
                 <StackPanel DockPanel.Dock="Right"
@@ -349,12 +368,17 @@
                                   Width="14" Height="14"
                                   Stretch="Uniform"
                                   VerticalAlignment="Center"
-                                  Margin="0,0,5,0" />
-                            <TextBlock Text="AI"
-                                       Foreground="White"
-                                       FontSize="12"
-                                       FontWeight="Bold"
-                                       VerticalAlignment="Center" />
+                                  Margin="0,0,4,0" />
+                            <Path Data="{StaticResource BotIcon}"
+                                  Stroke="White"
+                                  StrokeThickness="1.6"
+                                  StrokeLineJoin="Round"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  Fill="Transparent"
+                                  Width="13" Height="13"
+                                  Stretch="Uniform"
+                                  VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -415,33 +439,36 @@
                                       Width="10" Height="10"
                                       Stretch="Uniform" />
                                 <Button.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="claude"
-                                                  Command="{Binding PlacementTarget.Tag.LaunchClaudeCommand,
-                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                        <MenuItem Header="claude --resume"
-                                                  Command="{Binding PlacementTarget.Tag.LaunchClaudeResumeCommand,
-                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                        <Separator />
-                                        <MenuItem Header="cc (Claude Code)"
-                                                  Command="{Binding PlacementTarget.Tag.LaunchCcCommand,
-                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                        <MenuItem Header="cc run sonnet"
-                                                  Command="{Binding PlacementTarget.Tag.LaunchCcSonnetCommand,
-                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                        <MenuItem Header="cc run opus"
-                                                  Command="{Binding PlacementTarget.Tag.LaunchCcOpusCommand,
-                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                        <MenuItem Header="cc run haiku"
-                                                  Command="{Binding PlacementTarget.Tag.LaunchCcHaikuCommand,
-                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                        <MenuItem Header="cc run agent"
-                                                  Command="{Binding PlacementTarget.Tag.LaunchCcAgentCommand,
-                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                        <Separator />
-                                        <MenuItem Header="cc or (OpenRouter)"
-                                                  Command="{Binding PlacementTarget.Tag.LaunchCcOpenRouterCommand,
-                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <ContextMenu ItemsSource="{Binding PlacementTarget.Tag.AvailableAiTools,
+                                                              RelativeSource={RelativeSource Self}}"
+                                                 Placement="Bottom">
+                                        <ContextMenu.ItemContainerStyle>
+                                            <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                                <Setter Property="Command"
+                                                        Value="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu},
+                                                               Path=PlacementTarget.Tag.LaunchAiToolCommand}" />
+                                                <Setter Property="CommandParameter" Value="{Binding Id}" />
+                                                <Setter Property="HeaderTemplate">
+                                                    <Setter.Value>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="✓"
+                                                                           FontSize="10"
+                                                                           FontWeight="Bold"
+                                                                           Foreground="#A6E3A1"
+                                                                           Visibility="{Binding IsDefault,
+                                                                                        Converter={StaticResource BoolToVis}}"
+                                                                           Width="14"
+                                                                           VerticalAlignment="Center"
+                                                                           Margin="0,0,4,0" />
+                                                                <TextBlock Text="{Binding DisplayName}"
+                                                                           VerticalAlignment="Center" />
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ContextMenu.ItemContainerStyle>
                                     </ContextMenu>
                                 </Button.ContextMenu>
                             </Button>
@@ -601,6 +628,7 @@
 
                 </StackPanel>
             </DockPanel>
+            </Grid>
         </Border>
 
         <!-- ═══════════════════════════════════════════════════════════════
@@ -632,6 +660,7 @@
                   x:Name="ViewportArea"
                   Background="{DynamicResource CanvasDepthBrush}"
                   ClipToBounds="True"
+                  PreviewMouseDown="OnViewportPreviewMouseDown"
                   MouseDown="OnViewportMouseDown"
                   MouseMove="OnViewportMouseMove"
                   MouseUp="OnViewportMouseUp"
@@ -787,31 +816,111 @@
                     Margin="0,0,16,16"
                     Panel.ZIndex="100"
                     DataContext="{Binding CanvasViewModel.MiniMap}"
-                    Visibility="{Binding CanvasViewModel.HasTerminals, Converter={StaticResource BoolToVis}}" />
+                    HasTerminals="{Binding CanvasViewModel.HasTerminals}" />
 
                 <!-- Lock overlay: covers canvas when no terminals exist, blocks interaction -->
                 <Border x:Name="CanvasLockOverlay"
-                        Background="#B21E1E2E"
-                        IsHitTestVisible="True"
-                        Visibility="{Binding CanvasViewModel.Items.Count,
-                                     Converter={StaticResource EmptyVisConverter},
-                                     ConverterParameter=Invert}">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Path Data="{StaticResource TerminalIcon}"
-                              Style="{StaticResource IconPathLarge}"
-                              Width="56" Height="56"
-                              Stroke="{DynamicResource Surface2Brush}"
-                              HorizontalAlignment="Center"
-                              Margin="0,0,0,20" />
-                        <TextBlock Text="Nenhum terminal aberto"
-                                   Style="{StaticResource SubheadingText}"
-                                   HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource Surface2Brush}" />
-                        <TextBlock Text="Clique em &quot;Novo Terminal&quot; ou pressione Ctrl+Shift+T"
-                                   Style="{StaticResource CaptionText}"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,8,0,0" />
-                    </StackPanel>
+                        IsHitTestVisible="False"
+                        Opacity="0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Opacity" Value="0" />
+                            <Setter Property="IsHitTestVisible" Value="False" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanvasViewModel.HasTerminals}" Value="False">
+                                    <Setter Property="IsHitTestVisible" Value="True" />
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 To="1" Duration="0:0:0.3">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <CubicEase EasingMode="EaseOut" />
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 To="0" Duration="0:0:0.25">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <CubicEase EasingMode="EaseInOut" />
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.ExitActions>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+
+                    <Grid>
+                        <!-- Overlay background -->
+                        <Rectangle>
+                            <Rectangle.Fill>
+                                <SolidColorBrush Color="{DynamicResource CrustBg}" Opacity="0.88" />
+                            </Rectangle.Fill>
+                        </Rectangle>
+
+                        <!-- Subtle diagonal stripe pattern: signals "restricted area" -->
+                        <Rectangle Opacity="0.04">
+                            <Rectangle.Fill>
+                                <DrawingBrush TileMode="Tile"
+                                              Viewport="0,0,20,20"
+                                              ViewportUnits="Absolute"
+                                              Viewbox="0,0,20,20"
+                                              ViewboxUnits="Absolute">
+                                    <DrawingBrush.Drawing>
+                                        <GeometryDrawing>
+                                            <GeometryDrawing.Pen>
+                                                <Pen Brush="White" Thickness="1" />
+                                            </GeometryDrawing.Pen>
+                                            <GeometryDrawing.Geometry>
+                                                <LineGeometry StartPoint="0,20" EndPoint="20,0" />
+                                            </GeometryDrawing.Geometry>
+                                        </GeometryDrawing>
+                                    </DrawingBrush.Drawing>
+                                </DrawingBrush>
+                            </Rectangle.Fill>
+                        </Rectangle>
+
+                        <!-- Centered content -->
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <!-- Lock icon: primary signal -->
+                            <Path Data="{StaticResource LockIcon}"
+                                  Width="48" Height="48"
+                                  Stroke="{DynamicResource Surface2Brush}"
+                                  StrokeThickness="1.5"
+                                  Fill="Transparent"
+                                  Stretch="Uniform"
+                                  HorizontalAlignment="Center"
+                                  Opacity="0.7"
+                                  Margin="0,0,0,12" />
+
+                            <!-- Terminal icon: secondary hint -->
+                            <Path Data="{StaticResource TerminalIcon}"
+                                  Style="{StaticResource IconPath}"
+                                  Width="24" Height="24"
+                                  Stroke="{DynamicResource Overlay0Brush}"
+                                  HorizontalAlignment="Center"
+                                  Opacity="0.5"
+                                  Margin="0,0,0,20" />
+
+                            <TextBlock Text="Nenhum terminal aberto"
+                                       Style="{StaticResource SubheadingText}"
+                                       HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource Overlay0Brush}" />
+
+                            <TextBlock Text="Clique em &quot;Novo Terminal&quot; ou pressione Ctrl+Shift+T"
+                                       Style="{StaticResource CaptionText}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Grid>
                 </Border>
 
                 <!-- Focus overlay (semi-transparent black, shown in focus mode) -->

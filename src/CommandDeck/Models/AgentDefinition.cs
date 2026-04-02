@@ -7,7 +7,7 @@ public sealed class AgentDefinition
     public string Description { get; init; } = string.Empty;
     public string Icon { get; init; } = string.Empty;
     public string Group { get; init; } = string.Empty;
-    public AiSessionType SessionType { get; init; } = AiSessionType.Cc;
+    public AiSessionType SessionType { get; init; } = AiSessionType.None;
     public string? ModelOrAlias { get; init; }
     public bool RequiresApiKey { get; init; }
 }

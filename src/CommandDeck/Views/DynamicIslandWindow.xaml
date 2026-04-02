@@ -11,7 +11,7 @@
         ShowActivated="False"
         ResizeMode="NoResize"
         SizeToContent="Height"
-        Width="320"
+        Width="200"
         SourceInitialized="OnSourceInitialized"
         Loaded="OnLoaded">
 
@@ -62,14 +62,17 @@
     </Window.Resources>
 
     <!-- Outer border: pill shape, always visible -->
+    <!-- Margin creates transparent space so the drop shadow isn't clipped by the window edge -->
     <Border x:Name="PillBorder"
             CornerRadius="20"
-            Margin="0"
+            Margin="12,8,12,20"
             Padding="12,8"
             SnapsToDevicePixels="True"
             UseLayoutRounding="True"
             MouseEnter="OnMouseEnter"
-            MouseLeave="OnMouseLeave">
+            MouseLeave="OnMouseLeave"
+            MouseLeftButtonUp="OnPillClick"
+            Cursor="Hand">
         <Border.Background>
             <SolidColorBrush Color="{DynamicResource Surface0}" Opacity="0.92" />
         </Border.Background>
@@ -104,7 +107,8 @@
             <Border x:Name="ExpandedContent"
                     Visibility="Collapsed"
                     MinWidth="280"
-                    MaxHeight="0">
+                    MaxHeight="0"
+                    Opacity="0">
                 <StackPanel>
                     <!-- Header -->
                     <Grid Margin="0,0,0,8">
@@ -119,14 +123,15 @@
                                    Foreground="{DynamicResource TextBrush}"
                                    VerticalAlignment="Center" />
                         <Button Grid.Column="1"
-                                Content="✕"
+                                Content="&#x2212;"
                                 Width="22" Height="22"
-                                FontSize="10"
+                                FontSize="14"
                                 Background="Transparent"
                                 Foreground="{DynamicResource SubtextBrush}"
                                 BorderThickness="0"
                                 Cursor="Hand"
-                                Click="OnCollapseClick" />
+                                ToolTip="Minimizar"
+                                Click="OnMinimizeClick" />
                     </Grid>
 
                     <!-- Session list -->

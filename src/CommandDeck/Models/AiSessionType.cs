@@ -3,9 +3,10 @@ namespace CommandDeck.Models;
 public enum AiSessionType
 {
     None,
-    Cc,
-    CcRun,
-    CcOpenRouter,
     Claude,
-    ClaudeResume
+    ClaudeResume,
+    Codex,
+    Aider,
+    Gemini,
+    Copilot
 }

@@ -58,6 +58,11 @@ public interface ITerminalService
     event Action<string, string>? OutputReceived;
 
     /// <summary>
+    /// Event raised when a new terminal session is created.
+    /// </summary>
+    event Action<TerminalSession>? SessionCreated;
+
+    /// <summary>
     /// Event raised when a terminal session exits.
     /// </summary>
     event Action<string>? SessionExited;

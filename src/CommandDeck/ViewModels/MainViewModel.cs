@@ -30,6 +30,8 @@ public partial class MainViewModel : ObservableObject
     private readonly Func<ProjectEditViewModel> _projectEditVmFactory;
     private readonly CanvasItemFactory _canvasItemFactory;
     private readonly IAiTerminalLauncher _aiLauncher;
+    private readonly IAgentSelectorService _agentSelectorService;
+    private readonly IAiTerminalService _aiTerminalService;
     private readonly IProjectSwitchService _projectSwitchService;
     private readonly SemaphoreSlim _projectSwitchLock = new(1, 1);
 
@@ -136,6 +138,14 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isNotificationHistoryOpen;
 
+    /// <summary>Default AI tool ID (persisted, drives dropdown checkmark).</summary>
+    [ObservableProperty]
+    private string _defaultAiToolId = "claude";
+
+    /// <summary>AI tools detected on the system — drives the dynamic AI dropdown.</summary>
+    [ObservableProperty]
+    private ObservableCollection<AiToolInfo> _availableAiTools = new();
+
     [ObservableProperty]
     private bool _isProjectEditVisible;
 
@@ -169,6 +179,8 @@ public partial class MainViewModel : ObservableObject
         BrowserViewModel browserViewModel,
         CanvasItemFactory canvasItemFactory,
         IAiTerminalLauncher aiLauncher,
+        IAgentSelectorService agentSelectorService,
+        IAiTerminalService aiTerminalService,
         BranchSelectorViewModel branchSelector,
         AiOrbViewModel aiOrb,
         DynamicIslandViewModel dynamicIsland,
@@ -188,6 +200,8 @@ public partial class MainViewModel : ObservableObject
         _projectEditVmFactory = projectEditVmFactory;
         _canvasItemFactory = canvasItemFactory;
         _aiLauncher = aiLauncher;
+        _agentSelectorService = agentSelectorService;
+        _aiTerminalService = aiTerminalService;
         _projectSwitchService = projectSwitchService;
 
         // Update ViewModel observable properties from the service result
@@ -375,6 +389,7 @@ public partial class MainViewModel : ObservableObject
         await ProjectList.LoadProjectsAsync();
         await WorkspaceTree.LoadAsync();
         await AiOrb.InitializeAsync();
+        _ = LoadAvailableAiToolsAsync();
         RegisterBaseCommands();
 
         var settings = await _settingsService.GetSettingsAsync();
@@ -433,23 +448,69 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private Task LaunchClaudeResume() => _aiLauncher.LaunchAsync(AiSessionType.ClaudeResume);
 
+    /// <summary>
+    /// Selects the given tool as default and immediately launches a terminal with it.
+    /// Called from the AI dropdown menu items.
+    /// </summary>
     [RelayCommand]
-    private Task LaunchCc() => _aiLauncher.LaunchAsync(AiSessionType.Cc);
+    private async Task LaunchAiTool(string toolId)
+    {
+        var agent = _agentSelectorService.Agents.FirstOrDefault(a => a.Id == toolId);
+        if (agent is null) return;
 
-    [RelayCommand]
-    private Task LaunchCcSonnet() => _aiLauncher.LaunchAsync(AiSessionType.CcRun, "sonnet");
+        DefaultAiToolId = toolId;
+        _agentSelectorService.SelectAgent(toolId);
+        await _aiLauncher.LaunchAsync(agent.SessionType);
+    }
 
-    [RelayCommand]
-    private Task LaunchCcOpus() => _aiLauncher.LaunchAsync(AiSessionType.CcRun, "opus");
+    private async Task LoadAvailableAiToolsAsync()
+    {
+        // All possible tools with their session types and launch commands
+        var allTools = new List<(string Id, string DisplayName, AiSessionType SessionType, string CliCheck)>
+        {
+            ("claude",        "claude",          AiSessionType.Claude,       "claude"),
+            ("claude-resume", "claude --resume", AiSessionType.ClaudeResume, "claude"),
+            ("codex",         "codex",           AiSessionType.Codex,        "codex"),
+            ("aider",         "aider",           AiSessionType.Aider,        "aider"),
+            ("gemini",        "gemini",          AiSessionType.Gemini,       "gemini"),
+            ("copilot",       "copilot",         AiSessionType.Copilot,      "gh"),
+        };
 
-    [RelayCommand]
-    private Task LaunchCcHaiku() => _aiLauncher.LaunchAsync(AiSessionType.CcRun, "haiku");
+        var settings = await _settingsService.GetSettingsAsync();
+        DefaultAiToolId = settings.DefaultAiToolId;
 
-    [RelayCommand]
-    private Task LaunchCcAgent() => _aiLauncher.LaunchAsync(AiSessionType.CcRun, "agent");
+        var detectedTools = await Task.Run(() =>
+        {
+            var result = new List<AiToolInfo>();
+            foreach (var (id, displayName, sessionType, cliCheck) in allTools)
+            {
+                if (AiTerminalService.CheckCommandExists(cliCheck))
+                {
+                    result.Add(new AiToolInfo
+                    {
+                        Id = id,
+                        DisplayName = displayName,
+                        SessionType = sessionType
+                    });
+                }
+            }
+            return result;
+        });
 
-    [RelayCommand]
-    private Task LaunchCcOpenRouter() => _aiLauncher.LaunchAsync(AiSessionType.CcOpenRouter);
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            AvailableAiTools = new ObservableCollection<AiToolInfo>(detectedTools);
+            UpdateDefaultToolMarker();
+        });
+    }
+
+    private void UpdateDefaultToolMarker()
+    {
+        foreach (var tool in AvailableAiTools)
+            tool.IsDefault = tool.Id == DefaultAiToolId;
+    }
+
+    partial void OnDefaultAiToolIdChanged(string value) => UpdateDefaultToolMarker();
 
     /// <summary>
     /// Closes a terminal tab (delegates to <see cref="TerminalManagerViewModel"/>).

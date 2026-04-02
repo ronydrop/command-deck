@@ -11,13 +11,132 @@
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:CountToVisibilityConverter x:Key="CountToVis" />
         <conv:HexColorToBrushConverter x:Key="HexToBrush" />
+
+        <!-- Shared item template used by both Active and Inactive lists -->
+        <DataTemplate x:Key="ProjectItemTemplate">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <!-- Color indicator + icon -->
+                    <ColumnDefinition Width="Auto" />
+                    <!-- Name and path -->
+                    <ColumnDefinition Width="*" />
+                    <!-- Actions -->
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Color dot -->
+                <Border Grid.Column="0"
+                        Width="32" Height="32"
+                        CornerRadius="6"
+                        Background="{Binding Color, Converter={StaticResource HexToBrush}}"
+                        Margin="0,0,10,0"
+                        VerticalAlignment="Center"
+                        Opacity="0.8">
+                    <TextBlock Text="{Binding Name, Converter={x:Static conv:FirstLetterConverter.Instance}}"
+                               Foreground="White"
+                               FontWeight="Bold"
+                               FontSize="14"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+                </Border>
+
+                <!-- Name and Path -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}"
+                               Foreground="{DynamicResource TextBrush}"
+                               FontSize="13"
+                               FontWeight="Medium"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Path}"
+                               Style="{StaticResource CaptionText}"
+                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="180"
+                               Margin="0,2,0,0" />
+                </StackPanel>
+
+                <!-- Action buttons -->
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <!-- Favorite toggle -->
+                    <Button Style="{StaticResource IconButton}"
+                            Width="24" Height="24"
+                            Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                            CommandParameter="{Binding}"
+                            ToolTip="Favoritar">
+                        <Path x:Name="FavStar"
+                              Data="{StaticResource StarIcon}"
+                              Width="10" Height="10"
+                              Stretch="Uniform"
+                              StrokeThickness="1.5"
+                              StrokeLineJoin="Round">
+                            <Path.Style>
+                                <Style TargetType="Path">
+                                    <Setter Property="Stroke" Value="{DynamicResource SubtextBrush}" />
+                                    <Setter Property="Fill" Value="Transparent" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                            <Setter Property="Stroke" Value="{DynamicResource AccentYellowBrush}" />
+                                            <Setter Property="Fill" Value="{DynamicResource AccentYellowBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Path.Style>
+                        </Path>
+                    </Button>
+
+                    <!-- Context menu button -->
+                    <!-- Tag carries the list ViewModel so PlacementTarget.Tag resolves commands inside the ContextMenu -->
+                    <Button Style="{StaticResource IconButton}"
+                            Width="24" Height="24"
+                            ToolTip="Mais opções"
+                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                            Click="OnContextMenuButtonClick">
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Abrir"
+                                          Command="{Binding PlacementTarget.Tag.OpenProjectCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <MenuItem Header="Editar"
+                                          Command="{Binding PlacementTarget.Tag.EditProjectCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <Separator />
+                                <MenuItem Header="Mover para cima"
+                                          Command="{Binding PlacementTarget.Tag.MoveProjectUpCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <MenuItem Header="Mover para baixo"
+                                          Command="{Binding PlacementTarget.Tag.MoveProjectDownCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <Separator />
+                                <MenuItem Header="Excluir"
+                                          Command="{Binding PlacementTarget.Tag.DeleteProjectCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <TextBlock Text="..." FontSize="14"
+                                   Foreground="{DynamicResource SubtextBrush}"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"
+                                   Margin="0,-4,0,0" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
+        <!-- Shared ListBox item container style -->
+        <Style x:Key="ProjectListBoxItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource DarkListBoxItem}">
+            <Setter Property="Padding" Value="8,8" />
+            <Setter Property="Margin" Value="0,1" />
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="8,0,8,0">
         <Grid.RowDefinitions>
             <!-- Section header -->
             <RowDefinition Height="Auto" />
-            <!-- Project list -->
+            <!-- Active projects section -->
+            <RowDefinition Height="Auto" />
+            <!-- Inactive projects section -->
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -41,157 +160,100 @@
         </Grid>
 
         <!-- ═══════════════════════════════════════════════════════════════
-             PROJECT LIST
+             ACTIVE PROJECTS (com terminal aberto)
              ═══════════════════════════════════════════════════════════════ -->
-        <ListBox Grid.Row="1"
-                 Style="{StaticResource DarkListBox}"
-                 ItemsSource="{Binding FilteredProjects}"
-                 SelectedItem="{Binding SelectedProject}"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 VirtualizingPanel.IsVirtualizing="True"
-                 AllowDrop="True"
-                 SelectionChanged="OnProjectSelectionChanged"
-                 PreviewMouseLeftButtonDown="OnListPreviewMouseLeftButtonDown"
-                 PreviewMouseMove="OnListPreviewMouseMove"
-                 Drop="OnListDrop">
-            <ListBox.ItemContainerStyle>
-                <Style TargetType="ListBoxItem" BasedOn="{StaticResource DarkListBoxItem}">
-                    <Setter Property="Padding" Value="8,8" />
-                    <Setter Property="Margin" Value="0,1" />
-                </Style>
-            </ListBox.ItemContainerStyle>
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <!-- Color indicator + icon -->
-                            <ColumnDefinition Width="Auto" />
-                            <!-- Name and path -->
-                            <ColumnDefinition Width="*" />
-                            <!-- Actions -->
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Color dot -->
-                        <Border Grid.Column="0"
-                                Width="32" Height="32"
-                                CornerRadius="6"
-                                Background="{Binding Color, Converter={StaticResource HexToBrush}}"
-                                Margin="0,0,10,0"
-                                VerticalAlignment="Center"
-                                Opacity="0.8">
-                            <TextBlock Text="{Binding Name, Converter={x:Static conv:FirstLetterConverter.Instance}}"
-                                       Foreground="White"
-                                       FontWeight="Bold"
-                                       FontSize="14"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" />
-                        </Border>
-
-                        <!-- Name and Path -->
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Name}"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       FontSize="13"
-                                       FontWeight="Medium"
-                                       TextTrimming="CharacterEllipsis" />
-                            <TextBlock Text="{Binding Path}"
-                                       Style="{StaticResource CaptionText}"
-                                       TextTrimming="CharacterEllipsis"
-                                       MaxWidth="180"
-                                       Margin="0,2,0,0" />
-                        </StackPanel>
-
-                        <!-- Action buttons -->
-                        <StackPanel Grid.Column="2"
-                                    Orientation="Horizontal"
-                                    VerticalAlignment="Center">
-                            <!-- Favorite toggle -->
-                            <Button Style="{StaticResource IconButton}"
-                                    Width="24" Height="24"
-                                    Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                    CommandParameter="{Binding}"
-                                    ToolTip="Favoritar">
-                                <Path x:Name="FavStar"
-                                      Data="{StaticResource StarIcon}"
-                                      Width="10" Height="10"
-                                      Stretch="Uniform"
-                                      StrokeThickness="1.5"
-                                      StrokeLineJoin="Round">
-                                    <Path.Style>
-                                        <Style TargetType="Path">
-                                            <Setter Property="Stroke" Value="{DynamicResource SubtextBrush}" />
-                                            <Setter Property="Fill" Value="Transparent" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsFavorite}" Value="True">
-                                                    <Setter Property="Stroke" Value="{DynamicResource AccentYellowBrush}" />
-                                                    <Setter Property="Fill" Value="{DynamicResource AccentYellowBrush}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Path.Style>
-                                </Path>
-                            </Button>
-
-                            <!-- Context menu button -->
-                        <!-- Tag carries the list ViewModel so PlacementTarget.Tag resolves commands inside the ContextMenu -->
-                            <Button Style="{StaticResource IconButton}"
-                                    Width="24" Height="24"
-                                    ToolTip="Mais opções"
-                                    Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                    Click="OnContextMenuButtonClick">
-                                <Button.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="Abrir"
-                                                  Command="{Binding PlacementTarget.Tag.OpenProjectCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                        <MenuItem Header="Editar"
-                                                  Command="{Binding PlacementTarget.Tag.EditProjectCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                        <Separator />
-                                        <MenuItem Header="Mover para cima"
-                                                  Command="{Binding PlacementTarget.Tag.MoveProjectUpCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                        <MenuItem Header="Mover para baixo"
-                                                  Command="{Binding PlacementTarget.Tag.MoveProjectDownCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                        <Separator />
-                                        <MenuItem Header="Excluir"
-                                                  Command="{Binding PlacementTarget.Tag.DeleteProjectCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                    </ContextMenu>
-                                </Button.ContextMenu>
-                                <TextBlock Text="..." FontSize="14"
-                                           Foreground="{DynamicResource SubtextBrush}"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Center"
-                                           Margin="0,-4,0,0" />
-                            </Button>
-                        </StackPanel>
-                    </Grid>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
-
-        <!-- Empty state -->
         <StackPanel Grid.Row="1"
-                    VerticalAlignment="Center"
-                    HorizontalAlignment="Center"
-                    Visibility="{Binding FilteredProjects.Count, Converter={StaticResource CountToVis}, ConverterParameter=Invert}">
-            <Path Data="{StaticResource FolderIcon}"
-                  Style="{StaticResource IconPathLarge}"
-                  Stroke="{DynamicResource Surface2Brush}"
-                  Width="32" Height="32"
-                  HorizontalAlignment="Center"
-                  Margin="0,0,0,12" />
-            <TextBlock Text="Nenhum projeto"
-                       Foreground="{DynamicResource Surface2Brush}"
-                       FontSize="13"
-                       HorizontalAlignment="Center" />
-            <TextBlock Text="Adicione um projeto para começar"
-                       Style="{StaticResource CaptionText}"
-                       HorizontalAlignment="Center"
-                       Margin="0,4,0,0" />
+                    Visibility="{Binding ActiveProjects.Count, Converter={StaticResource CountToVis}}">
+
+            <!-- Sub-header "Ativos" -->
+            <Grid Margin="4,4,4,2">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Indicador verde -->
+                    <Ellipse Width="6" Height="6"
+                             Fill="#A6E3A1"
+                             VerticalAlignment="Center"
+                             Margin="0,0,5,0" />
+                    <TextBlock Text="Ativos"
+                               Foreground="{DynamicResource SubtextBrush}"
+                               FontSize="11"
+                               FontWeight="Medium"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+
+            <ListBox x:Name="ActiveListBox"
+                     Style="{StaticResource DarkListBox}"
+                     ItemsSource="{Binding ActiveProjects}"
+                     SelectedItem="{Binding SelectedProject}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     AllowDrop="True"
+                     SelectionChanged="OnActiveProjectSelectionChanged"
+                     PreviewMouseLeftButtonDown="OnListPreviewMouseLeftButtonDown"
+                     PreviewMouseMove="OnListPreviewMouseMove"
+                     Drop="OnListDrop"
+                     ItemTemplate="{StaticResource ProjectItemTemplate}"
+                     ItemContainerStyle="{StaticResource ProjectListBoxItemStyle}" />
+
+            <!-- Separador -->
+            <Separator Margin="4,6,4,2"
+                       Background="{DynamicResource Surface1Brush}"
+                       Opacity="0.5" />
         </StackPanel>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             INACTIVE PROJECTS (sem terminal)
+             ═══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Sub-header "Outros" — só aparece quando há projetos ativos (para dar contexto) -->
+            <TextBlock Grid.Row="0"
+                       Text="Outros"
+                       Foreground="{DynamicResource SubtextBrush}"
+                       FontSize="11"
+                       FontWeight="Medium"
+                       Margin="4,4,4,2"
+                       Visibility="{Binding ActiveProjects.Count, Converter={StaticResource CountToVis}}" />
+
+            <ListBox Grid.Row="1"
+                     x:Name="InactiveListBox"
+                     Style="{StaticResource DarkListBox}"
+                     ItemsSource="{Binding InactiveProjects}"
+                     SelectedItem="{Binding SelectedProject}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     AllowDrop="True"
+                     SelectionChanged="OnInactiveProjectSelectionChanged"
+                     PreviewMouseLeftButtonDown="OnListPreviewMouseLeftButtonDown"
+                     PreviewMouseMove="OnListPreviewMouseMove"
+                     Drop="OnListDrop"
+                     ItemTemplate="{StaticResource ProjectItemTemplate}"
+                     ItemContainerStyle="{StaticResource ProjectListBoxItemStyle}" />
+
+            <!-- Empty state — só aparece quando não há nenhum projeto de nenhum tipo -->
+            <StackPanel Grid.Row="1"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Visibility="{Binding FilteredProjects.Count, Converter={StaticResource CountToVis}, ConverterParameter=Invert}">
+                <Path Data="{StaticResource FolderIcon}"
+                      Style="{StaticResource IconPathLarge}"
+                      Stroke="{DynamicResource Surface2Brush}"
+                      Width="32" Height="32"
+                      HorizontalAlignment="Center"
+                      Margin="0,0,0,12" />
+                <TextBlock Text="Nenhum projeto"
+                           Foreground="{DynamicResource Surface2Brush}"
+                           FontSize="13"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="Adicione um projeto para começar"
+                           Style="{StaticResource CaptionText}"
+                           HorizontalAlignment="Center"
+                           Margin="0,4,0,0" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>

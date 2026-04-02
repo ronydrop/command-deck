@@ -19,6 +19,21 @@ namespace CommandDeck.Controls;
 /// </summary>
 public partial class MiniMapControl : UserControl
 {
+    // ─── Dependency Properties ────────────────────────────────────────────────
+
+    public static readonly DependencyProperty HasTerminalsProperty =
+        DependencyProperty.Register(
+            nameof(HasTerminals),
+            typeof(bool),
+            typeof(MiniMapControl),
+            new PropertyMetadata(true));
+
+    public bool HasTerminals
+    {
+        get => (bool)GetValue(HasTerminalsProperty);
+        set => SetValue(HasTerminalsProperty, value);
+    }
+
     // ─── Drag state for viewport-rect panning ────────────────────────────────
 
     private bool   _isDragging;

@@ -17,10 +17,13 @@ public partial class AiOrbViewModel : ObservableObject
 {
     private readonly IAiOrbService _orbService;
     private readonly IVoiceInputService _voiceService;
+    private readonly ISettingsService _settingsService;
 
     [ObservableProperty] private OrbState _state = OrbState.Idle;
-    [ObservableProperty] private double _positionX = 1316; // canto inferior direito (1400 - 56 - 28)
-    [ObservableProperty] private double _positionY = 816;  // acima da barra de status (900 - 56 - 28)
+    [ObservableProperty] private double _positionX = 32;
+    [ObservableProperty] private double _positionY = 32;
+    [ObservableProperty] private bool _isVisible = true;
+    [ObservableProperty] private bool _isPositionLocked;
     [ObservableProperty] private bool _isRadialMenuOpen;
     [ObservableProperty] private string _activeProvider = "Claude";
     [ObservableProperty] private string _activeProviderColor = "#CBA6F7";
@@ -31,10 +34,14 @@ public partial class AiOrbViewModel : ObservableObject
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isAgentSelectorOpen;
 
-    public AiOrbViewModel(IAiOrbService orbService, IVoiceInputService voiceService)
+    public AiOrbViewModel(IAiOrbService orbService, IVoiceInputService voiceService, ISettingsService settingsService)
     {
         _orbService = orbService;
         _voiceService = voiceService;
+        _settingsService = settingsService;
+
+        // Recarregar configurações do orb quando o usuário salvar Settings
+        _settingsService.SettingsChanged += OnSettingsChanged;
 
         // BeginInvoke (assíncrono) em vez de Invoke (síncrono) para evitar deadlock:
         // SpeechRecognitionEngine dispara eventos de background threads — Invoke síncrono
@@ -73,6 +80,32 @@ public partial class AiOrbViewModel : ObservableObject
         RefreshProvider();
     }
 
+    // ─── CanExecute helpers ──────────────────────────────────────────────────
+
+    private bool CanStartRecording() => !IsRecording && State != OrbState.Processing && State != OrbState.Recording;
+    private bool CanImprovePrompt() => State != OrbState.Processing && State != OrbState.Recording;
+    private bool CanCopyContext() => State != OrbState.Processing && State != OrbState.Recording;
+    private bool CanRunSuggestion() => !string.IsNullOrEmpty(LastSuggestion) && State != OrbState.Processing;
+
+    // Notifica todos os commands que dependem do State
+    partial void OnStateChanged(OrbState value)
+    {
+        StartRecordingCommand.NotifyCanExecuteChanged();
+        ImprovePromptCommand.NotifyCanExecuteChanged();
+        CopyContextCommand.NotifyCanExecuteChanged();
+        RunSuggestionCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnIsRecordingChanged(bool value)
+    {
+        StartRecordingCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnLastSuggestionChanged(string value)
+    {
+        RunSuggestionCommand.NotifyCanExecuteChanged();
+    }
+
     [RelayCommand]
     private void ToggleRadialMenu()
     {
@@ -103,7 +136,7 @@ public partial class AiOrbViewModel : ObservableObject
         StatusMessage = string.Empty;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanStartRecording))]
     private async Task StartRecordingAsync()
     {
         if (_voiceService.IsRecording) return;
@@ -154,7 +187,7 @@ public partial class AiOrbViewModel : ObservableObject
         await _voiceService.StopAndTranscribeAsync();
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanImprovePrompt))]
     private async Task ImprovePromptAsync()
     {
         IsRadialMenuOpen = false;
@@ -177,7 +210,7 @@ public partial class AiOrbViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanCopyContext))]
     private async Task CopyContextAsync()
     {
         IsRadialMenuOpen = false;
@@ -200,10 +233,9 @@ public partial class AiOrbViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanRunSuggestion))]
     private async Task RunSuggestionAsync()
     {
-        if (string.IsNullOrEmpty(LastSuggestion)) return;
         IsRadialMenuOpen = false;
         State = OrbState.Processing;
         try
@@ -265,12 +297,26 @@ public partial class AiOrbViewModel : ObservableObject
             var pos = await _orbService.LoadSavedPositionAsync();
             PositionX = pos.X;
             PositionY = pos.Y;
+
+            var (isEnabled, isLocked) = await _orbService.LoadOrbDisplaySettingsAsync();
+            IsVisible = isEnabled;
+            IsPositionLocked = isLocked;
+
             RefreshProvider();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[AiOrb] InitializeAsync failed: {ex}");
         }
+    }
+
+    private void OnSettingsChanged(AppSettings settings)
+    {
+        Application.Current?.Dispatcher.Invoke(() =>
+        {
+            IsVisible = settings.IsAiOrbEnabled;
+            IsPositionLocked = settings.IsAiOrbPositionLocked;
+        });
     }
 
     private void RefreshProvider()

@@ -156,15 +156,15 @@ public partial class App : Application
             return;
         }
 
-        // Show Dynamic Island overlay (non-activating, always-on-top)
+        // Resolve Dynamic Island window so it is constructed and event-subscribed.
+        // Visibility is controlled by DynamicIslandViewModel.InitializeAsync (loaded from settings).
         try
         {
-            var island = _serviceProvider!.GetRequiredService<DynamicIslandWindow>();
-            island.Show();
+            _serviceProvider!.GetRequiredService<DynamicIslandWindow>();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[DynamicIsland] Window show failed: {ex}");
+            System.Diagnostics.Debug.WriteLine($"[DynamicIsland] Window resolve failed: {ex}");
         }
 
         // Post-window initialization runs asynchronously to avoid blocking UI thread (deadlock).

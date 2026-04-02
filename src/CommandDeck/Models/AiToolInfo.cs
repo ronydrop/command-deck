@@ -1,4 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System.Windows;
 
 namespace CommandDeck.Models;
 
@@ -20,6 +22,8 @@ public partial class AiToolInfo : ObservableObject
     public string IconPath { get; init; } = string.Empty;
     public string InstallCommand { get; init; } = string.Empty;
     public bool RequiresApiKey { get; init; }
+    public AiSessionType SessionType { get; init; } = AiSessionType.None;
+    public string LaunchCommand { get; init; } = string.Empty;
 
     // Estado observável (mutável durante detecção)
     [ObservableProperty]
@@ -27,4 +31,11 @@ public partial class AiToolInfo : ObservableObject
 
     [ObservableProperty]
     private string _statusText = "Verificando...";
+
+    /// <summary>True quando esta ferramenta é o default selecionado no dropdown.</summary>
+    [ObservableProperty]
+    private bool _isDefault;
+
+    [RelayCommand]
+    private void CopyInstallCommand() => Clipboard.SetText(InstallCommand);
 }

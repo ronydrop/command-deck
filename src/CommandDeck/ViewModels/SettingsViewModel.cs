@@ -96,6 +96,9 @@ public partial class SettingsViewModel : ObservableObject
     // ─── Ferramentas AI CLI (detecção automática) ────────────────────────────
 
     [ObservableProperty]
+    private string _defaultAiToolId = "claude";
+
+    [ObservableProperty]
     private ObservableCollection<AiToolInfo> _aiTools = new();
 
     [RelayCommand]
@@ -125,7 +128,7 @@ public partial class SettingsViewModel : ObservableObject
             }
             else if (tool.Id == "claude")
             {
-                detected = AiTerminalService.CheckCommandExists("claude") || AiTerminalService.CheckCommandExists("cc");
+                detected = AiTerminalService.CheckCommandExists("claude");
             }
             else
             {
@@ -194,6 +197,14 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private string _ollamaBaseUrl = "http://localhost:11434";
+
+    // ─── AI Orb ──────────────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    private bool _isAiOrbEnabled = true;
+
+    [ObservableProperty]
+    private bool _isAiOrbPositionLocked;
 
     // ─── Notificações ────────────────────────────────────────────────────────
 
@@ -543,6 +554,9 @@ public partial class SettingsViewModel : ObservableObject
         ToggleSidebarShortcut = settings.ToggleSidebarShortcut;
         FocusTerminalShortcut = settings.FocusTerminalShortcut;
 
+        // Ferramenta AI padrão do dropdown
+        DefaultAiToolId = settings.DefaultAiToolId;
+
         // Assistente IA
         AiProvider = settings.AiProvider;
         AiModel = settings.AiModel;
@@ -566,6 +580,10 @@ public partial class SettingsViewModel : ObservableObject
             : "http://localhost:11434";
         AiAssistantVisible = settings.AiAssistantVisible;
         AnthropicAuthMode = settings.AnthropicAuthMode;
+
+        // AI Orb
+        IsAiOrbEnabled = settings.IsAiOrbEnabled;
+        IsAiOrbPositionLocked = settings.IsAiOrbPositionLocked;
 
         // Notificações
         NotificationsEnabled = settings.NotificationsEnabled;
@@ -684,6 +702,10 @@ public partial class SettingsViewModel : ObservableObject
         settings.AiAssistantVisible = AiAssistantVisible;
         settings.AnthropicAuthMode = AnthropicAuthMode;
 
+        // AI Orb
+        settings.IsAiOrbEnabled = IsAiOrbEnabled;
+        settings.IsAiOrbPositionLocked = IsAiOrbPositionLocked;
+
         // Per-provider model persistence — each provider keeps its model independently
         settings.AnthropicProviderModel = AnthropicModel;
         settings.OpenAiProviderModel = OpenAiModel;
@@ -699,6 +721,9 @@ public partial class SettingsViewModel : ObservableObject
         settings.NotifyAiEvents = NotifyAiEvents;
         settings.NotifySystemEvents = NotifySystemEvents;
         settings.NotificationSoundEnabled = NotificationSoundEnabled;
+
+        // Ferramenta AI padrão do dropdown
+        settings.DefaultAiToolId = DefaultAiToolId;
 
         // Canvas Wallpaper
         settings.CanvasWallpaperPath = CanvasWallpaperPath;

@@ -37,8 +37,8 @@ public class CanvasItemModel
     public CanvasItemType Type { get; set; }
     public double X { get; set; } = 0;
     public double Y { get; set; } = 0;
-    public double Width { get; set; } = 620;
-    public double Height { get; set; } = 420;
+    public double Width { get; set; } = 700;
+    public double Height { get; set; } = 480;
     public int ZIndex { get; set; } = 0;
 
     /// <summary>Position index when displayed in tiled layout mode (-1 = unset).</summary>

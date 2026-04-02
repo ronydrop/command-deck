@@ -144,59 +144,6 @@
                 </Button>
 
 
-                <!-- AI Assistant toggle -->
-                <Button Grid.Column="4"
-                        Padding="10,5"
-                        Height="30"
-                        Command="{Binding ToggleAIPanelCommand}"
-                        ToolTip="Assistente IA (Ctrl+I)"
-                        Cursor="Hand">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
-                            <Setter Property="BorderThickness" Value="0" />
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="bg"
-                                                Background="{TemplateBinding Background}"
-                                                CornerRadius="6"
-                                                Padding="{TemplateBinding Padding}">
-                                            <ContentPresenter HorizontalAlignment="Center"
-                                                              VerticalAlignment="Center" />
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bg" Property="Background" Value="#44FFFFFF" />
-                                            </Trigger>
-                                            <Trigger Property="IsPressed" Value="True">
-                                                <Setter TargetName="bg" Property="Background" Value="#22FFFFFF" />
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </Button.Style>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Path Data="{StaticResource ChatIcon}"
-                              Stroke="White"
-                              StrokeThickness="1.6"
-                              StrokeLineJoin="Round"
-                              StrokeStartLineCap="Round"
-                              StrokeEndLineCap="Round"
-                              Fill="Transparent"
-                              Width="14" Height="14"
-                              Stretch="Uniform"
-                              VerticalAlignment="Center"
-                              Margin="0,0,5,0" />
-                        <TextBlock Text="AI"
-                                   Foreground="White"
-                                   FontSize="12"
-                                   FontWeight="Bold"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
             </Grid>
         </Border>
 
@@ -694,11 +641,12 @@
         <!-- Canvas sem background (null) = transparente a cliques na área vazia.
              NÃO usar IsHitTestVisible="False" no Canvas: bloquearia TODOS os filhos também. -->
         <Canvas Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="0" Grid.RowSpan="3"
-                Panel.ZIndex="1000">
+                Panel.ZIndex="1000"
+                Visibility="{Binding AiOrb.IsVisible, Converter={StaticResource BoolToVis}}">
             <controls:AiOrbControl
                 DataContext="{Binding AiOrb}"
-                Canvas.Left="{Binding PositionX}"
-                Canvas.Top="{Binding PositionY}" />
+                Canvas.Left="{Binding PositionX, Mode=TwoWay}"
+                Canvas.Top="{Binding PositionY, Mode=TwoWay}" />
         </Canvas>
 
         <!-- ═══════════════════════════════════════════════════════════════

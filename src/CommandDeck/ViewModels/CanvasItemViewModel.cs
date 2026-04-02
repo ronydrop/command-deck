@@ -27,6 +27,7 @@ public abstract partial class CanvasItemViewModel : ObservableObject
     [ObservableProperty] private int _zIndex;
     [ObservableProperty] private bool _isFocused;
     [ObservableProperty] private bool _isSelected;
+    [ObservableProperty] private bool _isTiledMode;
 
     // ─── Free-canvas position stash (used to restore when leaving tiled mode) ──
 

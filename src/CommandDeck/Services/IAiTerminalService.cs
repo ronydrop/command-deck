@@ -4,7 +4,7 @@ namespace CommandDeck.Services;
 
 public interface IAiTerminalService
 {
-    Task<bool> IsCliAvailableAsync(string cliName = "cc");
+    Task<bool> IsCliAvailableAsync(string cliName = "claude");
 
     Task<AiCliInfo> DetectCliAsync();
 

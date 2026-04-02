@@ -40,4 +40,7 @@ public interface IAiOrbService
 
     /// <summary>Persists the orb position to settings.</summary>
     void SavePosition(Point position);
+
+    /// <summary>Loads orb display settings (visibility, lock state) from persisted settings.</summary>
+    Task<(bool IsEnabled, bool IsPositionLocked)> LoadOrbDisplaySettingsAsync();
 }

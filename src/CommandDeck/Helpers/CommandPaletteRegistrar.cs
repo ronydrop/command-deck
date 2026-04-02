@@ -223,69 +223,19 @@ public static class CommandPaletteRegistrar
 
         commandService.RegisterCommand(new CommandDefinition
         {
-            Id = "ai.launch.cc",
-            Title = "AI: Open cc",
+            Id = "ai.launch.claude",
+            Title = "AI: Open Claude",
             Category = "AI",
             Shortcut = "Ctrl+Shift+A",
             Icon = "\uE945",
-            Action = () => aiLauncher.LaunchAsync(AiSessionType.Cc),
-            Keywords = "ai cc claude terminal agent"
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.Claude),
+            Keywords = "ai claude terminal agent"
         });
 
         commandService.RegisterCommand(new CommandDefinition
         {
-            Id = "ai.launch.sonnet",
-            Title = "AI: Run Sonnet",
-            Category = "AI",
-            Icon = "\uE945",
-            Action = () => aiLauncher.LaunchAsync(AiSessionType.CcRun, "sonnet"),
-            Keywords = "ai sonnet modelo model"
-        });
-
-        commandService.RegisterCommand(new CommandDefinition
-        {
-            Id = "ai.launch.opus",
-            Title = "AI: Run Opus",
-            Category = "AI",
-            Icon = "\uE945",
-            Action = () => aiLauncher.LaunchAsync(AiSessionType.CcRun, "opus"),
-            Keywords = "ai opus modelo model"
-        });
-
-        commandService.RegisterCommand(new CommandDefinition
-        {
-            Id = "ai.launch.haiku",
-            Title = "AI: Run Haiku",
-            Category = "AI",
-            Icon = "\uE945",
-            Action = () => aiLauncher.LaunchAsync(AiSessionType.CcRun, "haiku"),
-            Keywords = "ai haiku rapido fast"
-        });
-
-        commandService.RegisterCommand(new CommandDefinition
-        {
-            Id = "ai.launch.agent",
-            Title = "AI: Run Agent",
-            Category = "AI",
-            Icon = "\uE945",
-            Action = () => aiLauncher.LaunchAsync(AiSessionType.CcRun, "agent"),
-            Keywords = "ai agent autonomo autonomous"
-        });
-
-        commandService.RegisterCommand(new CommandDefinition
-        {
-            Id = "ai.launch.openrouter",
-            Title = "AI: OpenRouter",
-            Category = "AI",
-            Icon = "\uE945",
-            Action = () => aiLauncher.LaunchAsync(AiSessionType.CcOpenRouter),
-            Keywords = "ai openrouter or modelos picker"
-        });
-
-        commandService.RegisterCommand(new CommandDefinition
-        {
-            Id = "ai.launch.claude",
-            Title = "AI: Open Claude",
+            Id = "ai.launch.claude.shortcut",
+            Title = "AI: Open Claude (Alt shortcut)",
             Category = "AI",
             Shortcut = "Ctrl+Shift+C",
             Icon = "\uE945",
@@ -301,6 +251,46 @@ public static class CommandPaletteRegistrar
             Icon = "\uE945",
             Action = () => aiLauncher.LaunchAsync(AiSessionType.ClaudeResume),
             Keywords = "ai claude resume retomar continuar session"
+        });
+
+        commandService.RegisterCommand(new CommandDefinition
+        {
+            Id = "ai.launch.codex",
+            Title = "AI: Open Codex",
+            Category = "AI",
+            Icon = "\uE945",
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.Codex),
+            Keywords = "ai codex openai agent"
+        });
+
+        commandService.RegisterCommand(new CommandDefinition
+        {
+            Id = "ai.launch.aider",
+            Title = "AI: Open Aider",
+            Category = "AI",
+            Icon = "\uE945",
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.Aider),
+            Keywords = "ai aider pair programming"
+        });
+
+        commandService.RegisterCommand(new CommandDefinition
+        {
+            Id = "ai.launch.gemini",
+            Title = "AI: Open Gemini",
+            Category = "AI",
+            Icon = "\uE945",
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.Gemini),
+            Keywords = "ai gemini google"
+        });
+
+        commandService.RegisterCommand(new CommandDefinition
+        {
+            Id = "ai.launch.copilot",
+            Title = "AI: Open Copilot",
+            Category = "AI",
+            Icon = "\uE945",
+            Action = () => aiLauncher.LaunchAsync(AiSessionType.Copilot),
+            Keywords = "ai copilot github"
         });
 
         commandService.RegisterCommand(new CommandDefinition

@@ -290,6 +290,13 @@ public partial class TerminalCanvasViewModel : ObservableObject
         HasTerminals = Items.Count > 0;
         ScheduleTiledLayoutRecalculation();
 
+        // Propagate tiled mode flag to newly added items
+        if (IsTiledMode && e.Action == NotifyCollectionChangedAction.Add && e.NewItems is not null)
+        {
+            foreach (CanvasItemViewModel added in e.NewItems)
+                added.IsTiledMode = true;
+        }
+
         // Remove any deleted items from the selection set to avoid stale references
         if (e.Action == NotifyCollectionChangedAction.Remove && e.OldItems is not null)
         {
@@ -318,7 +325,10 @@ public partial class TerminalCanvasViewModel : ObservableObject
 
             // Stash free-canvas positions so they can be restored later
             foreach (var item in Items)
+            {
                 item.StashFreePosition();
+                item.IsTiledMode = true;
+            }
 
             // Calculate and apply tiled positions
             RecalculateTiledLayout();
@@ -327,7 +337,10 @@ public partial class TerminalCanvasViewModel : ObservableObject
         {
             // Restore the positions the user had before switching to tiled
             foreach (var item in Items)
+            {
+                item.IsTiledMode = false;
                 item.RestoreFreePosition();
+            }
 
             // Restore widgets that were hidden in tiled mode
             foreach (var widget in _workspaceService.Items.OfType<WidgetCanvasItemViewModel>())

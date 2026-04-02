@@ -7,26 +7,19 @@ namespace CommandDeck.Models;
 /// </summary>
 public partial class DynamicIslandSessionItem : ObservableObject
 {
-    [ObservableProperty]
-    private string _sessionId = string.Empty;
+    // Immutable identity — set once at construction, never change
+    public string SessionId { get; init; } = string.Empty;
+    public ShellType ShellType { get; init; } = ShellType.WSL;
+    public bool IsAiSession { get; init; }
+    public string AiModelUsed { get; init; } = string.Empty;
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
 
+    // Mutable — may update after creation
     [ObservableProperty]
     private string _title = "Terminal";
 
     [ObservableProperty]
-    private ShellType _shellType = ShellType.WSL;
-
-    [ObservableProperty]
     private SessionState _sessionState = SessionState.Idle;
-
-    [ObservableProperty]
-    private bool _isAiSession;
-
-    [ObservableProperty]
-    private string _aiModelUsed = string.Empty;
-
-    [ObservableProperty]
-    private DateTime _createdAt = DateTime.UtcNow;
 
     /// <summary>Human-readable duration string updated by DynamicIslandViewModel timer.</summary>
     [ObservableProperty]

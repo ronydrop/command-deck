@@ -4,20 +4,35 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:CommandDeck.ViewModels"
+             xmlns:conv="clr-namespace:CommandDeck.Converters"
              mc:Ignorable="d"
              d:DesignWidth="200" d:DesignHeight="140"
              d:DataContext="{d:DesignInstance Type={x:Type vm:MiniMapViewModel}}"
+             x:Name="MiniMapRoot"
              Width="{Binding MiniMapWidth}"
              IsHitTestVisible="True"
              Focusable="False">
 
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
     <!-- Outer border: glass surface with visible shadow and frosted border -->
     <Border CornerRadius="10"
-            Opacity="0.96"
             Background="{DynamicResource GlassBgBrush}"
             BorderBrush="{DynamicResource GlassBorderBrush}"
             BorderThickness="1.5"
             ClipToBounds="True">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="Opacity" Value="0.96" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding HasTerminals, ElementName=MiniMapRoot}" Value="False">
+                        <Setter Property="Opacity" Value="0.55" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
 
         <Border.Effect>
             <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.20" Color="#000000" />
@@ -176,6 +191,30 @@
                 </Border>
 
             </Canvas>
+
+            <!-- Disabled overlay: shown when no terminals exist -->
+            <Border Grid.Row="1"
+                    Background="{DynamicResource CrustBgBrush}"
+                    Opacity="0.75"
+                    IsHitTestVisible="True"
+                    Visibility="{Binding HasTerminals, ElementName=MiniMapRoot,
+                                 Converter={StaticResource BoolToVis},
+                                 ConverterParameter=Invert}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Path Data="{StaticResource LockIcon}"
+                          Width="14" Height="14"
+                          Stroke="{DynamicResource Surface2Brush}"
+                          StrokeThickness="1.5"
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          HorizontalAlignment="Center"
+                          Margin="0,0,0,4" />
+                    <TextBlock Text="Sem terminais"
+                               FontSize="9"
+                               Foreground="{DynamicResource Surface2Brush}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
 
         </Grid>
     </Border>

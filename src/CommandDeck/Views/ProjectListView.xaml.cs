@@ -16,6 +16,22 @@ public partial class ProjectListView : UserControl
         InitializeComponent();
     }
 
+    private void OnActiveProjectSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.AddedItems.Count == 0) return;
+        // Clear selection on the inactive list to keep a single selection across both
+        InactiveListBox.SelectedItem = null;
+        OnProjectSelectionChanged(sender, e);
+    }
+
+    private void OnInactiveProjectSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.AddedItems.Count == 0) return;
+        // Clear selection on the active list to keep a single selection across both
+        ActiveListBox.SelectedItem = null;
+        OnProjectSelectionChanged(sender, e);
+    }
+
     private void OnProjectSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (e.AddedItems.Count == 0) return;

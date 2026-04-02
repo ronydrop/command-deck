@@ -119,4 +119,9 @@ public interface ITerminalSessionService : IDisposable
     /// Raised when a session's state changes (Idle -> Busy, etc.).
     /// </summary>
     event Action<string, SessionState>? SessionStateChanged;
+
+    /// <summary>
+    /// Raised when a session's title changes (via OSC terminal escape sequence).
+    /// </summary>
+    event Action<string, string>? SessionTitleChanged;
 }

@@ -14,6 +14,7 @@ public partial class ProjectListViewModel : ObservableObject
     private readonly IProjectService _projectService;
     private readonly ISettingsService _settingsService;
     private readonly INotificationService _notificationService;
+    private readonly ITerminalService _terminalService;
 
     [ObservableProperty]
     private ObservableCollection<Project> _projects = new();
@@ -33,6 +34,12 @@ public partial class ProjectListViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<Project> _filteredProjects = new();
 
+    [ObservableProperty]
+    private ObservableCollection<Project> _activeProjects = new();
+
+    [ObservableProperty]
+    private ObservableCollection<Project> _inactiveProjects = new();
+
     /// <summary>
     /// Raised when a project is selected to open.
     /// </summary>
@@ -48,17 +55,21 @@ public partial class ProjectListViewModel : ObservableObject
     /// </summary>
     public event Action? AddProjectRequested;
 
-    public ProjectListViewModel(IProjectService projectService, ISettingsService settingsService, INotificationService notificationService)
+    public ProjectListViewModel(IProjectService projectService, ISettingsService settingsService, INotificationService notificationService, ITerminalService terminalService)
     {
         _projectService = projectService;
         _settingsService = settingsService;
         _notificationService = notificationService;
+        _terminalService = terminalService;
 
         _projectService.ProjectsChanged += async () =>
         {
             try { await LoadProjectsAsync(); }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[ProjectsChanged] {ex}"); }
         };
+
+        _terminalService.SessionCreated += _ => RefreshActiveState();
+        _terminalService.SessionExited += _ => RefreshActiveState();
     }
 
     /// <summary>
@@ -207,6 +218,20 @@ public partial class ProjectListViewModel : ObservableObject
         await _projectService.ReorderProjectsAsync(orderedIds);
     }
 
+    /// <summary>
+    /// Recalculates which projects are active (have terminal sessions) vs inactive.
+    /// Safe to call from any thread — marshals to UI thread if needed.
+    /// </summary>
+    public void RefreshActiveState()
+    {
+        if (!System.Windows.Application.Current.Dispatcher.CheckAccess())
+        {
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(SplitByActiveState);
+            return;
+        }
+        SplitByActiveState();
+    }
+
     partial void OnSearchTextChanged(string value)
     {
         ApplyFilter();
@@ -223,5 +248,26 @@ public partial class ProjectListViewModel : ObservableObject
         // Repopulate in-place to preserve existing bindings
         FilteredProjects.Clear();
         foreach (var p in source) FilteredProjects.Add(p);
+
+        SplitByActiveState();
+    }
+
+    private void SplitByActiveState()
+    {
+        var activeProjectIds = _terminalService.GetSessions()
+            .Where(s => s.Status is TerminalStatus.Running or TerminalStatus.Starting)
+            .Select(s => s.ProjectId)
+            .Where(id => id != null)
+            .ToHashSet();
+
+        ActiveProjects.Clear();
+        InactiveProjects.Clear();
+        foreach (var p in FilteredProjects)
+        {
+            if (activeProjectIds.Contains(p.Id))
+                ActiveProjects.Add(p);
+            else
+                InactiveProjects.Add(p);
+        }
     }
 }

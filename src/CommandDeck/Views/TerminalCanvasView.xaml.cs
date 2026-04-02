@@ -275,32 +275,37 @@ public partial class TerminalCanvasView : UserControl
         // Handled at window level
     }
 
+    // ─── Canvas pan — Preview handler fires before HwndHost terminals steal the event ──
+
+    private void OnViewportPreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_canvasVm is null || e.ChangedButton != MouseButton.Middle) return;
+
+        _isPanning  = true;
+        _panStart   = e.GetPosition(ViewportArea);
+        _panOriginX = CanvasTranslate.X;
+        _panOriginY = CanvasTranslate.Y;
+
+        _momentumTimer?.Stop();
+        _momentumVelX = 0;
+        _momentumVelY = 0;
+        _lastPanPos  = _panStart;
+        _lastPanTime = DateTime.UtcNow;
+
+        StopZoomLerp();
+        Mouse.Capture(ViewportArea);
+        ViewportArea.Cursor = Cursors.SizeAll;
+        e.Handled = true;
+    }
+
     // ─── Canvas pan (mouse down on empty background) ──────────────────────
 
     private void OnViewportMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (_canvasVm is null) return;
 
-        // Middle mouse → pan canvas (works in all modes)
-        if (e.ChangedButton == MouseButton.Middle)
-        {
-            _isPanning  = true;
-            _panStart   = e.GetPosition(ViewportArea);
-            _panOriginX = CanvasTranslate.X;
-            _panOriginY = CanvasTranslate.Y;
-
-            _momentumTimer?.Stop();
-            _momentumVelX = 0;
-            _momentumVelY = 0;
-            _lastPanPos  = _panStart;
-            _lastPanTime = DateTime.UtcNow;
-
-            StopZoomLerp();
-            Mouse.Capture(ViewportArea);
-            ViewportArea.Cursor = Cursors.SizeAll;
-            e.Handled = false;
-            return;
-        }
+        // Middle mouse is handled by PreviewMouseDown (fires before HwndHost terminals)
+        if (e.ChangedButton == MouseButton.Middle) return;
 
         // Left click on empty background → rubber-band selection (FreeCanvas only)
         if (e.ChangedButton == MouseButton.Left && IsCanvasBackground(e.Source)
@@ -984,8 +989,18 @@ public partial class TerminalCanvasView : UserControl
     {
         if (sender is Button button && button.ContextMenu != null)
         {
-            button.ContextMenu.PlacementTarget = button;
-            button.ContextMenu.IsOpen = true;
+            var menu = button.ContextMenu;
+            menu.PlacementTarget = button;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            // Align right edge of dropdown with right edge of button
+            void OnOpened(object? s, EventArgs _)
+            {
+                menu.Opened -= OnOpened;
+                if (menu.RenderSize.Width > button.ActualWidth)
+                    menu.HorizontalOffset = -(menu.RenderSize.Width - button.ActualWidth);
+            }
+            menu.Opened += OnOpened;
+            menu.IsOpen = true;
         }
     }
 
@@ -1195,7 +1210,7 @@ public partial class TerminalCanvasView : UserControl
             AiCardAction.ExplainOutput  => "ai.explain.output",
             AiCardAction.SuggestCommand => "ai.suggest.command",
             AiCardAction.SendContext    => "ai.send.output",
-            AiCardAction.LaunchModel    => $"ai.launch.{args.ModelOrAlias ?? "cc"}",
+            AiCardAction.LaunchModel    => $"ai.launch.{args.ModelOrAlias ?? "claude"}",
             AiCardAction.RunAgain       => null,
             _ => null
         };

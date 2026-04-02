@@ -59,9 +59,9 @@ public sealed class AiCommandExecutor : IAiCommandExecutor
         try
         {
             var cli = await _aiTerminalService.DetectCliAsync();
-            if (cli.CcAvailable)
+            if (cli.ClaudeAvailable)
             {
-                await _aiTerminalLauncher.LaunchAsync(AiSessionType.CcRun);
+                await _aiTerminalLauncher.LaunchAsync(AiSessionType.Claude);
                 await Task.Delay(TerminalSettleDurationMs, ct);
                 var activeSession = _mainViewModel.Value.ActiveTerminal?.Session;
                 if (activeSession is not null)
@@ -102,7 +102,7 @@ public sealed class AiCommandExecutor : IAiCommandExecutor
 
         try
         {
-            await _aiTerminalLauncher.LaunchAsync(AiSessionType.Cc);
+            await _aiTerminalLauncher.LaunchAsync(AiSessionType.Claude);
             await Task.Delay(TerminalSettleDurationMs, ct);
             var activeSession = _mainViewModel.Value.ActiveTerminal?.Session;
             if (activeSession is not null)

@@ -16,6 +16,7 @@ public class TerminalService : ITerminalService, IDisposable
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _closeLocks = new();
 
     public event Action<string, string>? OutputReceived;
+    public event Action<TerminalSession>? SessionCreated;
     public event Action<string>? SessionExited;
     public event Action<string, string>? TitleChanged;
 
@@ -55,6 +56,7 @@ public class TerminalService : ITerminalService, IDisposable
 
             _sessions[session.Id] = session;
             _conPtySessions[session.Id] = conPtySession;
+            SessionCreated?.Invoke(session);
 
             // Start reading output asynchronously
             var cts = new CancellationTokenSource();

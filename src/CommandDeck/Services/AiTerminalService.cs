@@ -24,14 +24,17 @@ public sealed class AiTerminalService : IAiTerminalService
         _terminalService = terminalService;
     }
 
-    public async Task<bool> IsCliAvailableAsync(string cliName = "cc")
+    public async Task<bool> IsCliAvailableAsync(string cliName = "claude")
     {
         var info = await DetectCliAsync();
         return cliName switch
         {
-            "cc" => info.CcAvailable,
-            "claude" => info.ClaudeAvailable,
-            _ => false
+            "claude"  => info.ClaudeAvailable,
+            "codex"   => info.CodexAvailable,
+            "aider"   => info.AiderAvailable,
+            "gemini"  => info.GeminiAvailable,
+            "copilot" => info.CopilotAvailable,
+            _         => false
         };
     }
 
@@ -40,18 +43,21 @@ public sealed class AiTerminalService : IAiTerminalService
         if (_cachedCliInfo is not null)
             return Task.FromResult(_cachedCliInfo);
 
-        var ccAvailable = CheckCommandExists("cc");
-        var claudeAvailable = CheckCommandExists("claude");
+        var claudeAvailable  = CheckCommandExists("claude");
+        var codexAvailable   = CheckCommandExists("codex");
+        var aiderAvailable   = CheckCommandExists("aider");
+        var geminiAvailable  = CheckCommandExists("gemini");
+        var copilotAvailable = CheckCommandExists("gh"); // copilot is a gh extension
 
-        string? ccVersion = ccAvailable ? GetCommandVersion("cc --version") : null;
         string? claudeVersion = claudeAvailable ? GetCommandVersion("claude --version") : null;
 
         _cachedCliInfo = new AiCliInfo(
-            CcAvailable: ccAvailable,
-            ClaudeAvailable: claudeAvailable,
-            CcVersion: ccVersion,
-            ClaudeVersion: claudeVersion,
-            OpenRouterConfigured: ccAvailable);
+            ClaudeAvailable:  claudeAvailable,
+            ClaudeVersion:    claudeVersion,
+            CodexAvailable:   codexAvailable,
+            AiderAvailable:   aiderAvailable,
+            GeminiAvailable:  geminiAvailable,
+            CopilotAvailable: copilotAvailable);
 
         return Task.FromResult(_cachedCliInfo);
     }
@@ -60,12 +66,13 @@ public sealed class AiTerminalService : IAiTerminalService
     {
         return sessionType switch
         {
-            AiSessionType.Cc => "cc",
-            AiSessionType.CcRun => $"cc run {modelOrAlias ?? "sonnet"}",
-            AiSessionType.CcOpenRouter => "cc or",
-            AiSessionType.Claude => "claude",
+            AiSessionType.Claude       => "claude",
             AiSessionType.ClaudeResume => "claude --resume",
-            _ => string.Empty
+            AiSessionType.Codex        => "codex",
+            AiSessionType.Aider        => "aider",
+            AiSessionType.Gemini       => "gemini",
+            AiSessionType.Copilot      => "gh copilot",
+            _                          => string.Empty
         };
     }
 
@@ -76,8 +83,6 @@ public sealed class AiTerminalService : IAiTerminalService
             return;
 
         // Wait for the shell to print its prompt before injecting the command.
-        // This replaces the old fixed Task.Delay(400) which was unreliable
-        // (too short for cold WSL starts, too long for warm shells).
         var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         void OnOutput(string sid, string output)
@@ -115,21 +120,23 @@ public sealed class AiTerminalService : IAiTerminalService
         session.AiSessionType = sessionType;
         session.AiModelUsed = sessionType switch
         {
-            AiSessionType.Cc => "default",
-            AiSessionType.CcRun => modelOrAlias ?? "sonnet",
-            AiSessionType.CcOpenRouter => "openrouter",
-            AiSessionType.Claude => "claude",
+            AiSessionType.Claude       => "claude",
             AiSessionType.ClaudeResume => "claude-resume",
-            _ => string.Empty
+            AiSessionType.Codex        => "codex",
+            AiSessionType.Aider        => "aider",
+            AiSessionType.Gemini       => "gemini",
+            AiSessionType.Copilot      => "copilot",
+            _                          => string.Empty
         };
         session.Title = sessionType switch
         {
-            AiSessionType.Cc => "AI • cc",
-            AiSessionType.CcRun => $"AI • {modelOrAlias ?? "sonnet"}",
-            AiSessionType.CcOpenRouter => "AI • OpenRouter",
-            AiSessionType.Claude => "AI • claude",
+            AiSessionType.Claude       => "AI • claude",
             AiSessionType.ClaudeResume => "AI • claude --resume",
-            _ => session.Title
+            AiSessionType.Codex        => "AI • codex",
+            AiSessionType.Aider        => "AI • aider",
+            AiSessionType.Gemini       => "AI • gemini",
+            AiSessionType.Copilot      => "AI • copilot",
+            _                          => session.Title
         };
     }
 

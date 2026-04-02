@@ -137,7 +137,7 @@ public class AiOrbService : IAiOrbService
         return response.IsError ? $"Erro: {response.Error}" : (response.Content ?? string.Empty);
     }
 
-    public Point GetSavedPosition() => new Point(1316, 816); // canto inferior direito (padrão antes de settings carregarem)
+    public Point GetSavedPosition() => new Point(32, 32); // canto superior esquerdo (consistente com AppSettings)
 
     public async Task<Point> LoadSavedPositionAsync()
     {
@@ -156,6 +156,19 @@ public class AiOrbService : IAiOrbService
     {
         // Position is persisted via AppSettings in a fire-and-forget manner
         _ = PersistPositionAsync(position);
+    }
+
+    public async Task<(bool IsEnabled, bool IsPositionLocked)> LoadOrbDisplaySettingsAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            return (settings.IsAiOrbEnabled, settings.IsAiOrbPositionLocked);
+        }
+        catch
+        {
+            return (true, false);
+        }
     }
 
     private async Task PersistPositionAsync(Point position)

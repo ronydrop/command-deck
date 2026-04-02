@@ -51,19 +51,20 @@
                 <ScaleTransform x:Name="OrbScale" ScaleX="1" ScaleY="1" CenterX="28" CenterY="28" />
             </Grid.RenderTransform>
 
-            <!-- Glow aura — maior que o orb para criar halo visível ao redor -->
+            <!-- Glow aura — halo suave ao redor do orb (fill quase transparente para DropShadow funcionar) -->
             <Ellipse x:Name="GlowAura"
-                     Width="64" Height="64"
-                     Opacity="0.85">
+                     Width="48" Height="48"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center">
                 <Ellipse.Fill>
-                    <SolidColorBrush x:Name="GlowBrush" Color="#CBA6F7" />
+                    <SolidColorBrush x:Name="GlowBrush" Color="#CBA6F7" Opacity="0.08" />
                 </Ellipse.Fill>
                 <Ellipse.Effect>
                     <DropShadowEffect x:Name="GlowAuraEffect"
                                       Color="#CBA6F7"
-                                      BlurRadius="32"
+                                      BlurRadius="24"
                                       ShadowDepth="0"
-                                      Opacity="1.0" />
+                                      Opacity="0.8" />
                 </Ellipse.Effect>
             </Ellipse>
 
@@ -80,9 +81,9 @@
                 <Ellipse.Effect>
                     <DropShadowEffect x:Name="OrbGlow"
                                       Color="#CBA6F7"
-                                      BlurRadius="24"
+                                      BlurRadius="16"
                                       ShadowDepth="0"
-                                      Opacity="0.9" />
+                                      Opacity="0.6" />
                 </Ellipse.Effect>
             </Ellipse>
 
@@ -221,6 +222,23 @@
                        Foreground="#A6E3A1"
                        FontSize="11" />
         </Border>
+
+        <!-- Suggestion badge — green dot top-right, visible when HasSuggestion=true -->
+        <Ellipse x:Name="SuggestionBadge"
+                 Width="10" Height="10"
+                 Fill="#A6E3A1"
+                 HorizontalAlignment="Right"
+                 VerticalAlignment="Top"
+                 Margin="0,4,4,0"
+                 IsHitTestVisible="False"
+                 Visibility="{Binding HasSuggestion, Converter={StaticResource BoolToVis}}">
+            <Ellipse.Effect>
+                <DropShadowEffect Color="#A6E3A1"
+                                  BlurRadius="6"
+                                  ShadowDepth="0"
+                                  Opacity="0.9" />
+            </Ellipse.Effect>
+        </Ellipse>
 
         <!-- Radial menu popup — fora do BitmapCache para não disparar re-cache ao abrir/fechar -->
         <Popup x:Name="RadialPopup"

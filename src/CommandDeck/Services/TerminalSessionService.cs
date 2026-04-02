@@ -43,6 +43,7 @@ public sealed partial class TerminalSessionService : ITerminalSessionService
     public event Action<TerminalSessionModel>? SessionCreated;
     public event Action<string>? SessionClosed;
     public event Action<string, SessionState>? SessionStateChanged;
+    public event Action<string, string>? SessionTitleChanged;
 
     public TerminalSessionService(ITerminalService terminalService)
     {
@@ -359,6 +360,7 @@ public sealed partial class TerminalSessionService : ITerminalSessionService
         if (_models.TryGetValue(sessionId, out var model))
         {
             model.Title = newTitle;
+            SessionTitleChanged?.Invoke(sessionId, newTitle);
         }
     }
 

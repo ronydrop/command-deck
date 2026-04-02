@@ -16,6 +16,7 @@ public partial class DynamicIslandViewModel : ObservableObject, IDisposable
 {
     private readonly ITerminalSessionService _sessionService;
     private readonly ISettingsService _settingsService;
+    private readonly INotificationService _notificationService;
     private readonly Lazy<MainViewModel> _mainViewModel;
     private DispatcherTimer? _durationTimer;
     private bool _disposed;
@@ -24,7 +25,7 @@ public partial class DynamicIslandViewModel : ObservableObject, IDisposable
     public ObservableCollection<DynamicIslandSessionItem> Sessions { get; } = new();
 
     [ObservableProperty]
-    private bool _isVisible = true;
+    private bool _isVisible = false; // start hidden; InitializeAsync sets the persisted value
 
     [ObservableProperty]
     private int _activeSessionCount;
@@ -32,18 +33,31 @@ public partial class DynamicIslandViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _hasBusySession;
 
+    [ObservableProperty]
+    private DynamicIslandState _islandState = DynamicIslandState.Pill;
+
+    /// <summary>
+    /// Fired when the island should slide down from minimized state.
+    /// The code-behind subscribes to run the slide-down animation.
+    /// </summary>
+    public event Action? RequestShowFromMinimized;
+
     public DynamicIslandViewModel(
         ITerminalSessionService sessionService,
         ISettingsService settingsService,
+        INotificationService notificationService,
         Lazy<MainViewModel> mainViewModel)
     {
         _sessionService = sessionService;
         _settingsService = settingsService;
+        _notificationService = notificationService;
         _mainViewModel = mainViewModel;
 
         _sessionService.SessionCreated += OnSessionCreated;
         _sessionService.SessionClosed += OnSessionClosed;
         _sessionService.SessionStateChanged += OnSessionStateChanged;
+        _sessionService.SessionTitleChanged += OnSessionTitleChanged;
+        _notificationService.NotificationAdded += OnNotificationAdded;
     }
 
     /// <summary>
@@ -73,6 +87,7 @@ public partial class DynamicIslandViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[DynamicIsland] InitializeAsync failed: {ex}");
+            IsVisible = true; // fallback: show the island if settings can't be loaded
         }
     }
 
@@ -127,12 +142,31 @@ public partial class DynamicIslandViewModel : ObservableObject, IDisposable
         }
     }
 
+    [RelayCommand]
+    private void Minimize()
+    {
+        // The code-behind handles the slide-up animation via IslandState PropertyChanged
+        IslandState = DynamicIslandState.Minimized;
+    }
+
     private void OnSessionCreated(TerminalSessionModel model)
     {
         Application.Current.Dispatcher.BeginInvoke(() =>
         {
+            if (Sessions.Any(s => s.SessionId == model.Id)) return;
             AddSessionItem(model);
             RefreshCounts();
+            TriggerShowIfMinimized();
+        });
+    }
+
+    private void OnSessionTitleChanged(string sessionId, string newTitle)
+    {
+        Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            var item = Sessions.FirstOrDefault(s => s.SessionId == sessionId);
+            if (item != null)
+                item.Title = newTitle;
         });
     }
 
@@ -158,6 +192,18 @@ public partial class DynamicIslandViewModel : ObservableObject, IDisposable
 
             RefreshCounts();
         });
+    }
+
+    private void OnNotificationAdded(NotificationItem item)
+    {
+        Application.Current.Dispatcher.BeginInvoke(() => TriggerShowIfMinimized());
+    }
+
+    private void TriggerShowIfMinimized()
+    {
+        if (IslandState != DynamicIslandState.Minimized) return;
+        IslandState = DynamicIslandState.Pill;
+        RequestShowFromMinimized?.Invoke();
     }
 
     private void AddSessionItem(TerminalSessionModel model)
@@ -196,7 +242,10 @@ public partial class DynamicIslandViewModel : ObservableObject, IDisposable
         _sessionService.SessionCreated -= OnSessionCreated;
         _sessionService.SessionClosed -= OnSessionClosed;
         _sessionService.SessionStateChanged -= OnSessionStateChanged;
+        _sessionService.SessionTitleChanged -= OnSessionTitleChanged;
+        _notificationService.NotificationAdded -= OnNotificationAdded;
 
         _durationTimer?.Stop();
+        GC.SuppressFinalize(this);
     }
 }

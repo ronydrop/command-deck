@@ -168,7 +168,10 @@ public partial class AppSettings : ObservableObject
     // ─── Canvas Wallpaper Settings ──────────────────────────────────────
 
     [ObservableProperty]
-    private string _defaultAgentId = "cc";
+    private string _defaultAgentId = "claude";
+
+    [ObservableProperty]
+    private string _defaultAiToolId = "claude";
 
     [ObservableProperty]
     private string _canvasWallpaperPath = string.Empty;
@@ -192,6 +195,14 @@ public partial class AppSettings : ObservableObject
 
     [ObservableProperty]
     private double _aiOrbPositionY = 32;
+
+    /// <summary>Whether the AI Orb floating widget is visible.</summary>
+    [ObservableProperty]
+    private bool _isAiOrbEnabled = true;
+
+    /// <summary>Whether the AI Orb position is locked (prevents dragging).</summary>
+    [ObservableProperty]
+    private bool _isAiOrbPositionLocked;
 
     // ─── Canvas Zoom Settings ──────────────────────────────────────────
 

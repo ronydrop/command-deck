@@ -49,7 +49,7 @@
             <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="2"/>
-            <Setter Property="Width" Value="118"/>
+            <Setter Property="Width" Value="135"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
@@ -128,7 +128,7 @@
         </ControlTemplate>
     </UserControl.Resources>
 
-    <Grid Margin="24,24" MaxWidth="1100" HorizontalAlignment="Center">
+    <Grid Margin="16,16" MaxWidth="1300" HorizontalAlignment="Center">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -575,6 +575,15 @@
                             </Grid>
                         </Border>
 
+                        <!-- Ferramenta AI padrão do dropdown -->
+                        <TextBlock Text="FERRAMENTA AI PADRÃO" Style="{StaticResource CaptionText}" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource SubtextBrush}" Opacity="0.7" FontSize="10" Margin="4,0,0,8"/>
+                        <ComboBox ItemsSource="{Binding AiTools}"
+                                  SelectedValuePath="Id"
+                                  SelectedValue="{Binding DefaultAiToolId}"
+                                  DisplayMemberPath="DisplayName"
+                                  Margin="0,0,0,20" />
+
                         <!-- Lista de ferramentas AI CLI -->
                         <TextBlock Text="FERRAMENTAS DETECTADAS" Style="{StaticResource CaptionText}" FontWeight="SemiBold"
                                    Foreground="{DynamicResource SubtextBrush}" Opacity="0.7" FontSize="10" Margin="4,0,0,10"/>
@@ -594,7 +603,7 @@
 
                                                 <!-- Ícone -->
                                                 <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8"
-                                                        Background="{DynamicResource Surface1Brush}" Margin="0,0,12,0"
+                                                        Background="White" Margin="0,0,12,0"
                                                         VerticalAlignment="Center">
                                                     <Image Width="22" Height="22" RenderOptions.BitmapScalingMode="HighQuality">
                                                         <Image.Style>
@@ -649,23 +658,43 @@
                                                 </Border>
                                             </Grid>
 
-                                            <!-- Comando de instalação (só quando não encontrado) -->
+                                            <!-- Comando de instalação (só quando não encontrado e tem comando) -->
                                             <Border Margin="0,10,0,0" Background="{DynamicResource Surface0Brush}"
                                                     CornerRadius="6" Padding="10,8">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Status}" Value="{x:Static models:AiToolDetectionStatus.NotFound}">
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
+                                                                    <Condition Binding="{Binding Status}" Value="{x:Static models:AiToolDetectionStatus.NotFound}"/>
+                                                                    <Condition Binding="{Binding InstallCommand, Converter={StaticResource StringToVis}}" Value="Visible"/>
+                                                                </MultiDataTrigger.Conditions>
                                                                 <Setter Property="Visibility" Value="Visible"/>
-                                                            </DataTrigger>
+                                                            </MultiDataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
-                                                <TextBlock Text="{Binding InstallCommand}"
-                                                           FontFamily="Cascadia Code, Consolas, Courier New"
-                                                           FontSize="12" Foreground="{DynamicResource AccentCyanBrush}"
-                                                           TextWrapping="Wrap"/>
+                                                <Grid>
+                                                    <TextBox Text="{Binding InstallCommand, Mode=OneWay}"
+                                                             FontFamily="Cascadia Code, Consolas, Courier New"
+                                                             FontSize="12" Foreground="{DynamicResource AccentCyanBrush}"
+                                                             TextWrapping="Wrap"
+                                                             IsReadOnly="True"
+                                                             Background="Transparent"
+                                                             BorderThickness="0"
+                                                             Padding="0,0,28,0"
+                                                             VerticalAlignment="Center"
+                                                             Cursor="IBeam"/>
+                                                    <Button HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                            Command="{Binding CopyInstallCommandCommand}"
+                                                            Style="{StaticResource GhostButton}"
+                                                            Padding="5,4" ToolTip="Copiar comando">
+                                                        <Path Data="{StaticResource CopyIcon}"
+                                                              Width="13" Height="13" Stretch="Uniform"
+                                                              Fill="{DynamicResource SubtextBrush}"/>
+                                                    </Button>
+                                                </Grid>
                                             </Border>
 
                                             <!-- Campo API Key (só para OpenRouter) -->
@@ -700,6 +729,40 @@
                                 <TextBlock Text="Verificar Novamente" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+
+                        <!-- ─── AI Orb Widget ──────────────────────────────── -->
+                        <TextBlock Text="AI Orb" Style="{StaticResource SubheadingText}"
+                                   Margin="0,24,0,8" FontSize="13" />
+
+                        <!-- Toggle: Exibir AI Orb -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Exibir AI Orb" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Widget flutuante com ações rápidas de IA" Style="{StaticResource CaptionText}" Opacity="0.6" Margin="0,2,0,0"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding IsAiOrbEnabled}"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Toggle: Travar posição -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Travar posição" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Impede arrastar o orb para outra posição" Style="{StaticResource CaptionText}" Opacity="0.6" Margin="0,2,0,0"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding IsAiOrbPositionLocked}"/>
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

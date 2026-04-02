@@ -14,108 +14,513 @@
         <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
         <conv:HexColorToBrushConverter x:Key="HexToBrush" />
 
+        <!-- Base style — secondary buttons 38×38 -->
         <Style x:Key="RadialItemStyle" TargetType="Button">
-            <Setter Property="Width" Value="44" />
-            <Setter Property="Height" Value="44" />
+            <Setter Property="Width" Value="38" />
+            <Setter Property="Height" Value="38" />
             <Setter Property="Background" Value="#CC1E1E2E" />
-            <Setter Property="BorderBrush" Value="#33FFFFFF" />
+            <Setter Property="BorderBrush" Value="#44FFFFFF" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Foreground" Value="#CDD6F4" />
-            <Setter Property="FontSize" Value="18" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Grid>
-                            <Ellipse Fill="{TemplateBinding Background}"
+                            <Ellipse x:Name="BgEllipse"
+                                     Fill="{TemplateBinding Background}"
                                      Stroke="{TemplateBinding BorderBrush}"
                                      StrokeThickness="{TemplateBinding BorderThickness}" />
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center" />
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Grid>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#CC313244" />
-                                <Setter Property="BorderBrush" Value="#88CBA6F7" />
-                            </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#CC45475A" />
+                                <Setter TargetName="BgEllipse" Property="Fill" Value="#CC45475A" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Effect">
-                        <Setter.Value>
-                            <DropShadowEffect Color="#CBA6F7" BlurRadius="12" ShadowDepth="0" Opacity="0.6" />
-                        </Setter.Value>
-                    </Setter>
-                </Trigger>
-            </Style.Triggers>
+        </Style>
+
+        <!-- Primary style — Voice and Run 42×42, slightly brighter border -->
+        <Style x:Key="RadialPrimaryStyle" TargetType="Button" BasedOn="{StaticResource RadialItemStyle}">
+            <Setter Property="Width" Value="42" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="BorderBrush" Value="#66FFFFFF" />
+        </Style>
+
+        <!-- Glassmorphism tooltip -->
+        <Style x:Key="OrbTooltipStyle" TargetType="ToolTip">
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Background" Value="#CC1E1E2E"/>
+            <Setter Property="BorderBrush" Value="#44CBA6F7"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="#CDD6F4"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="16" ShadowDepth="2" Opacity="0.55"/>
+                            </Border.Effect>
+                            <ContentPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </UserControl.Resources>
 
-    <!-- Canvas centered at (110,110) — the orb center -->
+    <!--
+        Layout: pentagon opening UPWARD, symmetric left-right.
+        Center of canvas = (110,110) = orb center.
+
+        Positions (Canvas.Left, Canvas.Top):
+          Agent  (38px): (14, 34)   — top-left
+          Voice  (42px): (89,  8)   — top-center  [PRIMARY]
+          Improve(38px): (164, 34)  — top-right
+          Run    (42px): (14, 90)   — left-center  [PRIMARY]
+          Copy   (38px): (164, 90)  — right-center
+    -->
     <Canvas Width="220" Height="220" Background="Transparent">
 
-        <!-- Decorative inner ring at center -->
-        <Ellipse Canvas.Left="95" Canvas.Top="95"
-                 Width="30" Height="30"
+        <!-- Subtle decorative ring at orb center -->
+        <Ellipse Canvas.Left="99" Canvas.Top="99"
+                 Width="22" Height="22"
                  Fill="Transparent"
-                 Stroke="#11FFFFFF"
+                 Stroke="#18FFFFFF"
                  StrokeThickness="1" />
 
-        <!-- Item 1: Voice (top, 270°) -->
-        <Button x:Name="VoiceButton"
-                Canvas.Left="88" Canvas.Top="14"
-                Style="{StaticResource RadialItemStyle}"
+        <!-- ═══ VOICE — top-center, PRIMARY 42×42, rosa #F38BA8 ═══ -->
+        <Button x:Name="BtnVoice"
+                Canvas.Left="89" Canvas.Top="8"
+                Style="{StaticResource RadialPrimaryStyle}"
                 Command="{Binding StartRecordingCommand}"
-                ToolTip="Voice Input — segurar para gravar">
+                Opacity="0"
+                ToolTipService.InitialShowDelay="500"
+                ToolTipService.ShowDuration="3000">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <TextBlock Text="Falar para o AI"/>
+                </ToolTip>
+            </Button.ToolTip>
+            <Button.RenderTransform>
+                <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
+            </Button.RenderTransform>
             <Button.Effect>
-                <DropShadowEffect Color="#F38BA8" BlurRadius="8" ShadowDepth="0" Opacity="0.4" />
+                <DropShadowEffect Color="#F38BA8" BlurRadius="6" ShadowDepth="0" Opacity="0.35"/>
             </Button.Effect>
-            <TextBlock Text="&#127908;" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" />
+            <Button.Triggers>
+                <EventTrigger RoutedEvent="Button.MouseEnter">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.18" Duration="0:0:0.12">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.4"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.18" Duration="0:0:0.12">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.4"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
+                                             To="20" Duration="0:0:0.15"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
+                                             To="0.9" Duration="0:0:0.15"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.MouseLeave">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.0" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.0" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
+                                             To="6" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
+                                             To="0.35" Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.PreviewMouseLeftButtonDown">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="0.88" Duration="0:0:0.06"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="0.88" Duration="0:0:0.06"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.PreviewMouseLeftButtonUp">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.18" Duration="0:0:0.14">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.3"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.18" Duration="0:0:0.14">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.3"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Button.Triggers>
+            <Path Data="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z M19 10v2a7 7 0 0 1-14 0v-2 M12 19v3"
+                  Stroke="#F38BA8" StrokeThickness="1.5" StrokeLineJoin="Round"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                  Fill="Transparent" Width="18" Height="18" Stretch="Uniform"/>
         </Button>
 
-        <!-- Item 2: Improve Prompt (top-right, ~342°) -->
-        <Button Canvas.Left="162" Canvas.Top="42"
-                Style="{StaticResource RadialItemStyle}"
-                Command="{Binding ImprovePromptCommand}"
-                ToolTip="Melhorar último comando (Ctrl+Shift+I)">
-            <TextBlock Text="&#129504;" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" />
-        </Button>
-
-        <!-- Item 3: Copy Context (right, ~54°) -->
-        <Button Canvas.Left="162" Canvas.Top="134"
-                Style="{StaticResource RadialItemStyle}"
-                Command="{Binding CopyContextCommand}"
-                ToolTip="Copiar contexto do terminal (Ctrl+Shift+X)">
-            <TextBlock Text="&#128203;" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" />
-        </Button>
-
-        <!-- Item 4: Run Suggestion (bottom-left, ~126°) -->
-        <Button Canvas.Left="14" Canvas.Top="134"
-                Style="{StaticResource RadialItemStyle}"
-                Command="{Binding RunSuggestionCommand}"
-                ToolTip="Executar sugestão AI no terminal">
-            <Button.Effect>
-                <DropShadowEffect Color="#A6E3A1" BlurRadius="8" ShadowDepth="0" Opacity="0.4" />
-            </Button.Effect>
-            <TextBlock Text="&#9889;" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" />
-        </Button>
-
-        <!-- Item 5: Choose Agent (left, ~198°) -->
-        <Button Canvas.Left="14" Canvas.Top="42"
+        <!-- ═══ CHOOSE AGENT — top-left, SECONDARY 38×38, roxo #CBA6F7 ═══ -->
+        <Button x:Name="BtnChooseAgent"
+                Canvas.Left="14" Canvas.Top="34"
                 Style="{StaticResource RadialItemStyle}"
                 Command="{Binding ToggleAgentSelectorCommand}"
-                ToolTip="Trocar provider de AI">
-            <TextBlock Text="&#129302;" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                Opacity="0"
+                ToolTipService.InitialShowDelay="500"
+                ToolTipService.ShowDuration="3000">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <TextBlock Text="Trocar AI"/>
+                </ToolTip>
+            </Button.ToolTip>
+            <Button.RenderTransform>
+                <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
+            </Button.RenderTransform>
+            <Button.Effect>
+                <DropShadowEffect Color="#CBA6F7" BlurRadius="4" ShadowDepth="0" Opacity="0.2"/>
+            </Button.Effect>
+            <Button.Triggers>
+                <EventTrigger RoutedEvent="Button.MouseEnter">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.18" Duration="0:0:0.12">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.4"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.18" Duration="0:0:0.12">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.4"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
+                                             To="16" Duration="0:0:0.15"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
+                                             To="0.85" Duration="0:0:0.15"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.MouseLeave">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.0" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.0" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
+                                             To="4" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
+                                             To="0.2" Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.PreviewMouseLeftButtonDown">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="0.88" Duration="0:0:0.06"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="0.88" Duration="0:0:0.06"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.PreviewMouseLeftButtonUp">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.18" Duration="0:0:0.14">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.3"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.18" Duration="0:0:0.14">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.3"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Button.Triggers>
+            <Path Data="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.937A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
+                  Stroke="#CBA6F7" StrokeThickness="1.2" StrokeLineJoin="Round"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                  Fill="Transparent" Width="16" Height="16" Stretch="Uniform"/>
         </Button>
 
-        <!-- Agent selector popup (inside the radial menu canvas) -->
-        <Border Canvas.Left="50" Canvas.Top="60"
+        <!-- ═══ IMPROVE PROMPT — top-right, SECONDARY 38×38, dourado #F9E2AF ═══ -->
+        <Button x:Name="BtnImprovePrompt"
+                Canvas.Left="164" Canvas.Top="34"
+                Style="{StaticResource RadialItemStyle}"
+                Command="{Binding ImprovePromptCommand}"
+                Opacity="0"
+                ToolTipService.InitialShowDelay="500"
+                ToolTipService.ShowDuration="3000">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Melhorar comando" VerticalAlignment="Center"/>
+                        <TextBlock Text="  ⌘I" Foreground="#88A6ADC8" FontSize="10" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ToolTip>
+            </Button.ToolTip>
+            <Button.RenderTransform>
+                <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
+            </Button.RenderTransform>
+            <Button.Effect>
+                <DropShadowEffect Color="#F9E2AF" BlurRadius="4" ShadowDepth="0" Opacity="0.2"/>
+            </Button.Effect>
+            <Button.Triggers>
+                <EventTrigger RoutedEvent="Button.MouseEnter">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.18" Duration="0:0:0.12">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.4"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.18" Duration="0:0:0.12">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.4"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
+                                             To="16" Duration="0:0:0.15"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
+                                             To="0.85" Duration="0:0:0.15"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.MouseLeave">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.0" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.0" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
+                                             To="4" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
+                                             To="0.2" Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.PreviewMouseLeftButtonDown">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="0.88" Duration="0:0:0.06"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="0.88" Duration="0:0:0.06"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.PreviewMouseLeftButtonUp">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.18" Duration="0:0:0.14">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.3"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.18" Duration="0:0:0.14">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.3"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Button.Triggers>
+            <Path Data="M12 2a7 7 0 0 0-4 12.7V16a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1.3A7 7 0 0 0 12 2z M9 21h6"
+                  Stroke="#F9E2AF" StrokeThickness="1.5" StrokeLineJoin="Round"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                  Fill="Transparent" Width="16" Height="16" Stretch="Uniform"/>
+        </Button>
+
+        <!-- ═══ RUN SUGGESTION — left-center, PRIMARY 42×42, verde #A6E3A1 ═══ -->
+        <Button x:Name="BtnRunSuggestion"
+                Canvas.Left="14" Canvas.Top="90"
+                Style="{StaticResource RadialPrimaryStyle}"
+                Command="{Binding RunSuggestionCommand}"
+                Opacity="0"
+                ToolTipService.InitialShowDelay="500"
+                ToolTipService.ShowDuration="3000">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <TextBlock Text="Executar sugestão"/>
+                </ToolTip>
+            </Button.ToolTip>
+            <Button.RenderTransform>
+                <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
+            </Button.RenderTransform>
+            <Button.Effect>
+                <DropShadowEffect Color="#A6E3A1" BlurRadius="6" ShadowDepth="0" Opacity="0.35"/>
+            </Button.Effect>
+            <Button.Triggers>
+                <EventTrigger RoutedEvent="Button.MouseEnter">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.18" Duration="0:0:0.12">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.4"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.18" Duration="0:0:0.12">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.4"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
+                                             To="20" Duration="0:0:0.15"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
+                                             To="0.9" Duration="0:0:0.15"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.MouseLeave">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.0" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.0" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
+                                             To="6" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
+                                             To="0.35" Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.PreviewMouseLeftButtonDown">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="0.88" Duration="0:0:0.06"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="0.88" Duration="0:0:0.06"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.PreviewMouseLeftButtonUp">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.18" Duration="0:0:0.14">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.3"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.18" Duration="0:0:0.14">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.3"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Button.Triggers>
+            <Path Data="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+                  Stroke="#A6E3A1" StrokeThickness="1.5" StrokeLineJoin="Round"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                  Fill="Transparent" Width="18" Height="18" Stretch="Uniform"/>
+        </Button>
+
+        <!-- ═══ COPY CONTEXT — right-center, SECONDARY 38×38, azul #89B4FA ═══ -->
+        <Button x:Name="BtnCopyContext"
+                Canvas.Left="164" Canvas.Top="90"
+                Style="{StaticResource RadialItemStyle}"
+                Command="{Binding CopyContextCommand}"
+                Opacity="0"
+                ToolTipService.InitialShowDelay="500"
+                ToolTipService.ShowDuration="3000">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Capturar contexto" VerticalAlignment="Center"/>
+                        <TextBlock Text="  ⌘X" Foreground="#88A6ADC8" FontSize="10" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ToolTip>
+            </Button.ToolTip>
+            <Button.RenderTransform>
+                <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
+            </Button.RenderTransform>
+            <Button.Effect>
+                <DropShadowEffect Color="#89B4FA" BlurRadius="4" ShadowDepth="0" Opacity="0.2"/>
+            </Button.Effect>
+            <Button.Triggers>
+                <EventTrigger RoutedEvent="Button.MouseEnter">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.18" Duration="0:0:0.12">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.4"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.18" Duration="0:0:0.12">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.4"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
+                                             To="16" Duration="0:0:0.15"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
+                                             To="0.85" Duration="0:0:0.15"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.MouseLeave">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.0" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.0" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
+                                             To="4" Duration="0:0:0.1"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
+                                             To="0.2" Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.PreviewMouseLeftButtonDown">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="0.88" Duration="0:0:0.06"/>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="0.88" Duration="0:0:0.06"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Button.PreviewMouseLeftButtonUp">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                             To="1.18" Duration="0:0:0.14">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.3"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                             To="1.18" Duration="0:0:0.14">
+                                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.3"/></DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Button.Triggers>
+            <Path Data="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2 M8 2h8v4H8z"
+                  Stroke="#89B4FA" StrokeThickness="1.5" StrokeLineJoin="Round"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                  Fill="Transparent" Width="16" Height="16" Stretch="Uniform"/>
+        </Button>
+
+        <!-- Agent selector popup -->
+        <Border Canvas.Left="50" Canvas.Top="58"
                 Background="#F01E1E2E"
                 BorderBrush="#33CBA6F7"
                 BorderThickness="1"
@@ -126,7 +531,7 @@
                 <DropShadowEffect ShadowDepth="0" BlurRadius="20" Opacity="0.6" Color="#1a1a2e" />
             </Border.Effect>
             <StackPanel>
-                <TextBlock Text="Escolher Agent"
+                <TextBlock Text="Escolher AI"
                            Foreground="#A6ADC8"
                            FontSize="10"
                            Margin="4,0,4,6" />
@@ -151,14 +556,6 @@
                         Command="{Binding SelectAgentCommand}"
                         CommandParameter="local"
                         Foreground="#FAB387"
-                        FontSize="12"
-                        Padding="8,4"
-                        HorizontalContentAlignment="Left" />
-                <Button Content="OpenRouter"
-                        Style="{StaticResource GhostButton}"
-                        Command="{Binding SelectAgentCommand}"
-                        CommandParameter="openrouter"
-                        Foreground="#89DCEB"
                         FontSize="12"
                         Padding="8,4"
                         HorizontalContentAlignment="Left" />

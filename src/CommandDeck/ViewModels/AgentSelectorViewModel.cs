@@ -60,7 +60,7 @@ public partial class AgentSelectorViewModel : ObservableObject
                 groupVm.Items.Add(new AgentItemViewModel
                 {
                     Definition = agent,
-                    IsSelected = agent.Id == (service.ActiveAgent?.Id ?? "cc")
+                    IsSelected = agent.Id == (service.ActiveAgent?.Id ?? "claude")
                 });
             }
 
