@@ -171,13 +171,13 @@
                                 <ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1"/>
                             </Grid.RenderTransform>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="PressScale" Property="ScaleX" Value="0.9"/>
-                                    <Setter TargetName="PressScale" Property="ScaleY" Value="0.9"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="PressScale" Property="ScaleX" Value="0.9"/>
+                                <Setter TargetName="PressScale" Property="ScaleY" Value="0.9"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Button.Template>
 
