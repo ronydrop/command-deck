@@ -28,6 +28,16 @@ public interface IAssistantService : IDisposable
         IReadOnlyList<AssistantMessage> messages,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Stream a chat response with optional tool definitions.
+    /// When tools are provided the model may return <see cref="FinishReason.ToolCalls"/> chunks
+    /// that the caller must execute before continuing the conversation.
+    /// </summary>
+    IAsyncEnumerable<AssistantResponse> StreamChatAsync(
+        IReadOnlyList<AssistantMessage> messages,
+        IReadOnlyList<ToolDefinition>? tools,
+        CancellationToken ct);
+
     /// <summary>Switch the active provider at runtime.</summary>
     void SwitchProvider(AssistantProviderType type);
 

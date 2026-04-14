@@ -23,6 +23,9 @@ public partial class ChatCanvasItemViewModel : CanvasItemViewModel, IDisposable
     private readonly IClaudeOAuthService _claudeOAuthService;
     private readonly IDatabaseService _db;
     private readonly AssistantSettings _assistantSettings;
+    private readonly IToolRegistry? _toolRegistry;
+    private readonly IToolExecutionService? _toolExec;
+    private readonly ISlashCommandService? _slashCommands;
 
     private CancellationTokenSource? _cts;
     private string _conversationId;
@@ -119,6 +122,14 @@ public partial class ChatCanvasItemViewModel : CanvasItemViewModel, IDisposable
             _activeAgentMode = AgentModes.FirstOrDefault(m => m.Id == "builtin-default");
         }
 
+        // Resolve optional services (tool registry, executor, slash commands)
+        if (App.Services.GetService(typeof(IToolRegistry)) is IToolRegistry toolRegistry)
+            _toolRegistry = toolRegistry;
+        if (App.Services.GetService(typeof(IToolExecutionService)) is IToolExecutionService toolExec)
+            _toolExec = toolExec;
+        if (App.Services.GetService(typeof(ISlashCommandService)) is ISlashCommandService slashCommands)
+            _slashCommands = slashCommands;
+
         _ = InitializeAsync();
     }
 
@@ -161,11 +172,24 @@ public partial class ChatCanvasItemViewModel : CanvasItemViewModel, IDisposable
         var text = InputText.Trim();
         if (string.IsNullOrEmpty(text)) return;
 
+        // Intercept slash commands before sending to the LLM
+        if (text.StartsWith('/') && _slashCommands is not null)
+        {
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+            var slashResult = await _slashCommands.TryExecuteAsync(text, BuildSlashContext(), _cts.Token);
+            if (slashResult.Handled)
+            {
+                InputText = string.Empty;
+                if (!string.IsNullOrEmpty(slashResult.ResponseText))
+                    Messages.Add(ChatMessage.FromSystem(slashResult.ResponseText));
+                return;
+            }
+        }
+
         InputText = string.Empty;
         await ExecuteWithProviderGuardAsync(async ct =>
         {
-            var messages = new List<AssistantMessage>();
-
             var settings = await _settingsService.GetSettingsAsync();
 
             // Agent mode system prompt takes priority over the global system prompt
@@ -173,13 +197,17 @@ public partial class ChatCanvasItemViewModel : CanvasItemViewModel, IDisposable
                 ? ActiveAgentMode.SystemPrompt
                 : settings.AiSystemPrompt;
 
+            var messages = new List<AssistantMessage>();
             if (!string.IsNullOrWhiteSpace(systemPrompt))
                 messages.Add(AssistantMessage.System(systemPrompt));
 
+            // Replay history (skip tool chips and system messages — already in context)
             foreach (var m in Messages)
-                messages.Add(m.IsUser ? AssistantMessage.User(m.Content) : AssistantMessage.Assistant(m.Content));
+            {
+                if (m.IsUser) messages.Add(AssistantMessage.User(m.Content));
+                else if (m.Role != "tool" && m.Role != "system") messages.Add(AssistantMessage.Assistant(m.Content));
+            }
             messages.Add(AssistantMessage.User(text));
-
             messages = await Task.Run(() => TrimToContextWindow(messages), ct);
 
             Messages.Add(ChatMessage.FromUser(text));
@@ -189,40 +217,80 @@ public partial class ChatCanvasItemViewModel : CanvasItemViewModel, IDisposable
 
             var loadingMsg = ChatMessage.Loading();
             Messages.Add(loadingMsg);
+            loadingMsg.IsStreaming = true;
 
-            var sb = new StringBuilder();
+            var tools = ResolveEnabledTools();
+
             try
             {
-                var lastUiUpdate = DateTime.UtcNow;
-                loadingMsg.IsStreaming = true;
-                await foreach (var response in _assistant.StreamChatAsync((IReadOnlyList<AssistantMessage>)messages, ct))
+                const int maxTurns = 8;
+                for (int turn = 0; turn < maxTurns; turn++)
                 {
-                    if (response.IsError)
+                    var sb = new StringBuilder();
+                    var accumulatedCalls = new List<ToolCall>();
+                    var finish = FinishReason.Stop;
+                    var lastUiUpdate = DateTime.UtcNow;
+
+                    await foreach (var chunk in _assistant.StreamChatAsync(messages, tools, ct))
                     {
-                        sb.Append($"\n\n[Erro: {response.Error}]");
-                        break;
+                        if (chunk.IsError)
+                        {
+                            sb.Append($"\n\n[Erro: {chunk.Error}]");
+                            break;
+                        }
+                        if (!string.IsNullOrEmpty(chunk.Content))
+                        {
+                            sb.Append(chunk.Content);
+                            if ((DateTime.UtcNow - lastUiUpdate).TotalMilliseconds >= 80)
+                            {
+                                loadingMsg.Content = sb.ToString();
+                                lastUiUpdate = DateTime.UtcNow;
+                            }
+                        }
+                        if (chunk.ToolCalls.Count > 0)
+                            accumulatedCalls.AddRange(chunk.ToolCalls);
+                        if (chunk.FinishReason != FinishReason.Stop)
+                            finish = chunk.FinishReason;
                     }
-                    sb.Append(response.Content);
-                    if ((DateTime.UtcNow - lastUiUpdate).TotalMilliseconds >= 80)
+                    loadingMsg.Content = sb.ToString();
+
+                    // No tool calls — final response, exit loop
+                    if (finish != FinishReason.ToolCalls || accumulatedCalls.Count == 0)
+                        break;
+
+                    // Append the assistant turn with tool calls to the message list
+                    messages.Add(AssistantMessage.AssistantWithTools(sb.ToString(), accumulatedCalls));
+
+                    // Execute each tool and append results for the next turn
+                    foreach (var call in accumulatedCalls)
                     {
-                        loadingMsg.Content = sb.ToString();
-                        lastUiUpdate = DateTime.UtcNow;
+                        var result = _toolExec is not null
+                            ? await _toolExec.ExecuteAsync(call, ct)
+                            : new ToolResult { ToolCallId = call.Id, Content = "Tool execution not available.", IsError = true };
+
+                        messages.Add(AssistantMessage.Tool(call.Id, result.Content, result.IsError));
+
+                        // Inject a visual chip into the chat so the user can see what tools ran
+                        await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                            Messages.Add(ChatMessage.ToolInvocation(call.Name, call.InputJson, result.Content)));
                     }
                 }
-                loadingMsg.Content = sb.ToString();
+
                 _ = _db.SaveChatMessageAsync(_conversationId, "assistant", loadingMsg.Content, GetCurrentModelName(), GetCurrentProviderName())
                     .ContinueWith(t => System.Diagnostics.Debug.WriteLine($"[ChatTile] SaveMsg failed: {t.Exception?.InnerException?.Message}"),
                         TaskContinuationOptions.OnlyOnFaulted);
             }
             catch (OperationCanceledException)
             {
-                sb.Append("[cancelado]");
-                loadingMsg.Content = sb.ToString();
+                loadingMsg.Content = string.IsNullOrEmpty(loadingMsg.Content)
+                    ? "[cancelado]"
+                    : loadingMsg.Content + "\n[cancelado]";
             }
             catch (Exception ex)
             {
-                sb.Append($"\n\n[Erro: {ex.Message}]");
-                loadingMsg.Content = sb.ToString();
+                loadingMsg.Content = string.IsNullOrEmpty(loadingMsg.Content)
+                    ? $"[Erro: {ex.Message}]"
+                    : loadingMsg.Content + $"\n\n[Erro: {ex.Message}]";
             }
             finally
             {
@@ -341,6 +409,54 @@ public partial class ChatCanvasItemViewModel : CanvasItemViewModel, IDisposable
     }
 
     // ─── Private helpers ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns the list of ToolDefinitions enabled for the active agent mode,
+    /// or null when no tools are configured (provider gets no tools array).
+    /// </summary>
+    private IReadOnlyList<ToolDefinition>? ResolveEnabledTools()
+    {
+        if (_toolRegistry is null || ActiveAgentMode is null) return null;
+        if (ActiveAgentMode.EnabledTools.Count == 0) return null;
+        return ActiveAgentMode.EnabledTools
+            .Select(name => _toolRegistry.Get(name))
+            .OfType<ToolDefinition>()
+            .ToList();
+    }
+
+    /// <summary>
+    /// Builds a <see cref="SlashCommandContext"/> wired to the current VM state
+    /// and callbacks, allowing slash commands to mutate the chat without taking
+    /// a direct ViewModel reference (avoids Services → ViewModels dependency).
+    /// </summary>
+    private SlashCommandContext BuildSlashContext() => new SlashCommandContext
+    {
+        AvailableModels = AvailableModels,
+        AgentModes      = AgentModes,
+        Args            = string.Empty,
+        ToolRegistry    = _toolRegistry!,
+        ToolExec        = _toolExec!,
+        SetModel = model =>
+        {
+            if (AvailableModels.Contains(model))
+                SelectedModel = model;
+        },
+        SetAgent  = mode => ActiveAgentMode = mode,
+        ClearHistory = ClearHistory,
+        SwitchProvider = providerName =>
+        {
+            var providerType = providerName.ToLowerInvariant() switch
+            {
+                "claude" or "anthropic" => AssistantProviderType.Anthropic,
+                "openai"                => AssistantProviderType.OpenAI,
+                "openrouter"            => AssistantProviderType.OpenRouter,
+                "ollama" or "local"     => AssistantProviderType.Ollama,
+                _                       => AssistantProviderType.None
+            };
+            if (providerType != AssistantProviderType.None)
+                SwitchProviderCommand.Execute(providerType);
+        }
+    };
 
     private async Task PersistModelAsync(string model)
     {

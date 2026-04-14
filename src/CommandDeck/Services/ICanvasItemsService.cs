@@ -78,6 +78,23 @@ public interface ICanvasItemsService
     /// <summary>Manually triggers a workspace-changed notification (auto-save + minimap refresh).</summary>
     void NotifyChanged();
 
+    // ─── Bento mode ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Creates a canvas item from the catalog key and assigns it to the given bento slot (0..7).
+    /// No-op if the slot is already occupied (caller should validate before calling).
+    /// </summary>
+    CanvasItemViewModel? AssignCatalogKeyToBentoSlot(string catalogKey, int slotIndex);
+
+    /// <summary>
+    /// Moves a canvas item to a different bento slot.
+    /// If the target slot is occupied, the two items swap slots.
+    /// </summary>
+    void MoveBentoItem(string itemId, int targetSlotIndex);
+
+    /// <summary>Clears the BentoSlotIndex of the item occupying the given slot (if any), making it available.</summary>
+    void ClearBentoSlot(int slotIndex);
+
     // ─── Events ───────────────────────────────────────────────────────────────
 
     /// <summary>Fired whenever the collection or any item's spatial state changes.</summary>

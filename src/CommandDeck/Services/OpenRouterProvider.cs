@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -196,6 +198,155 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
         }
     }
 
+    /// <summary>
+    /// Streaming chat with optional tool/function calling (OpenAI-compatible format).
+    /// </summary>
+    public async IAsyncEnumerable<AssistantResponse> StreamChatAsync(
+        IReadOnlyList<AssistantMessage> messages,
+        IReadOnlyList<ToolDefinition>? tools,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        ThrowIfDisposed();
+        if (!_isInitialized) await InitializeAsync();
+
+        var apiKey = !string.IsNullOrWhiteSpace(_settings.OpenRouterKey) ? _settings.OpenRouterKey : _apiKey;
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            yield return AssistantResponse.Failed("OpenRouter não configurado. Defina uma API key nas Configurações.");
+            yield break;
+        }
+
+        var model    = !string.IsNullOrWhiteSpace(_settings.OpenRouterModel) ? _settings.OpenRouterModel : DefaultModel;
+        var bodyDict = new Dictionary<string, object>
+        {
+            ["model"]       = model,
+            ["messages"]    = SerializeMessages(messages),
+            ["temperature"] = 0.7,
+            ["max_tokens"]  = 4096,
+            ["stream"]      = true
+        };
+
+        if (tools is { Count: > 0 })
+        {
+            bodyDict["tools"] = tools.Select(t => new
+            {
+                type = "function",
+                function = new { name = t.Name, description = t.Description, parameters = t.InputSchema }
+            }).ToArray();
+            bodyDict["tool_choice"] = "auto";
+        }
+
+        var body = JsonSerializer.Serialize(bodyDict, JsonOptions);
+
+        HttpResponseMessage? response = null;
+        string? networkError = null;
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/chat/completions");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            request.Headers.Add("HTTP-Referer", "https://commanddeck.app");
+            request.Headers.Add("X-Title", "CommandDeck");
+            request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+            response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                networkError = $"OpenRouter error ({(int)response.StatusCode}): {ExtractError(errorBody)}";
+            }
+        }
+        catch (OperationCanceledException) { networkError = "Requisição cancelada."; }
+        catch (HttpRequestException ex)    { networkError = $"Erro de rede: {ex.Message}"; }
+
+        if (networkError is not null || response is null)
+        {
+            yield return AssistantResponse.Failed(networkError ?? "Erro desconhecido ao conectar com OpenRouter.");
+            yield break;
+        }
+
+        var toolAcc     = new Dictionary<int, (string Id, string Name, System.Text.StringBuilder Args)>();
+        var textSb      = new System.Text.StringBuilder();
+        var finalFinish = FinishReason.Stop;
+
+        using (response)
+        {
+            using var stream = await response.Content.ReadAsStreamAsync(ct);
+            using var reader = new System.IO.StreamReader(stream);
+
+            while (!reader.EndOfStream && !ct.IsCancellationRequested)
+            {
+                var line = await reader.ReadLineAsync(ct);
+                if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data: ")) continue;
+
+                var data = line["data: ".Length..];
+                if (data == "[DONE]") break;
+
+                try
+                {
+                    using var doc = JsonDocument.Parse(data);
+                    var root = doc.RootElement;
+                    if (!root.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0) continue;
+                    var choice = choices[0];
+
+                    if (choice.TryGetProperty("finish_reason", out var finishEl) && finishEl.ValueKind == JsonValueKind.String)
+                    {
+                        finalFinish = finishEl.GetString() switch
+                        {
+                            "tool_calls" => FinishReason.ToolCalls,
+                            "length"     => FinishReason.Length,
+                            _            => FinishReason.Stop
+                        };
+                    }
+
+                    if (!choice.TryGetProperty("delta", out var delta)) continue;
+
+                    if (delta.TryGetProperty("content", out var contentEl) && contentEl.ValueKind == JsonValueKind.String)
+                    {
+                        var text = contentEl.GetString();
+                        if (!string.IsNullOrEmpty(text))
+                        {
+                            textSb.Append(text);
+                            yield return AssistantResponse.Success(text);
+                        }
+                    }
+
+                    if (delta.TryGetProperty("tool_calls", out var tcArr) && tcArr.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var tcDelta in tcArr.EnumerateArray())
+                        {
+                            var idx = tcDelta.TryGetProperty("index", out var idxEl) ? idxEl.GetInt32() : 0;
+                            if (!toolAcc.ContainsKey(idx))
+                            {
+                                var id   = tcDelta.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? string.Empty : string.Empty;
+                                var name = tcDelta.TryGetProperty("function", out var fn0) && fn0.TryGetProperty("name", out var nm0)
+                                    ? nm0.GetString() ?? string.Empty : string.Empty;
+                                toolAcc[idx] = (id, name, new System.Text.StringBuilder());
+                            }
+                            if (tcDelta.TryGetProperty("function", out var fnEl) && fnEl.TryGetProperty("arguments", out var argsEl))
+                            {
+                                var fragment = argsEl.GetString();
+                                if (!string.IsNullOrEmpty(fragment))
+                                    toolAcc[idx].Args.Append(fragment);
+                            }
+                        }
+                    }
+                }
+                catch (JsonException) { /* skip malformed chunks */ }
+            }
+        }
+
+        if (toolAcc.Count > 0)
+        {
+            var calls = toolAcc.OrderBy(kv => kv.Key)
+                .Select(kv => new ToolCall { Id = kv.Value.Id, Name = kv.Value.Name, InputJson = kv.Value.Args.ToString() })
+                .ToList();
+            yield return AssistantResponse.WithToolCalls(textSb.ToString(), calls);
+        }
+        else if (finalFinish != FinishReason.Stop)
+        {
+            yield return new AssistantResponse { FinishReason = finalFinish };
+        }
+    }
+
     public async Task<string> ExplainAsync(string terminalOutput, CancellationToken ct = default)
     {
         var messages = new List<AssistantMessage>
@@ -234,19 +385,77 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
         _httpClient.Dispose();
     }
 
+    private static List<object> SerializeMessages(IReadOnlyList<AssistantMessage> messages)
+    {
+        var result = new List<object>(messages.Count);
+        foreach (var m in messages)
+        {
+            if (m.Role == AssistantRole.Tool)
+            {
+                result.Add(new { role = "tool", tool_call_id = m.ToolCallId ?? string.Empty, content = m.Content });
+            }
+            else if (m.Role == AssistantRole.Assistant && m.ToolCalls is { Count: > 0 })
+            {
+                result.Add(new
+                {
+                    role       = "assistant",
+                    content    = string.IsNullOrEmpty(m.Content) ? null : m.Content,
+                    tool_calls = m.ToolCalls.Select(tc => new
+                    {
+                        id       = tc.Id,
+                        type     = "function",
+                        function = new { name = tc.Name, arguments = tc.InputJson }
+                    }).ToArray()
+                });
+            }
+            else
+            {
+                result.Add(new { role = m.Role.ToString().ToLowerInvariant(), content = m.Content });
+            }
+        }
+        return result;
+    }
+
     private static AssistantResponse ParseResponse(string responseBody)
     {
         try
         {
             using var doc = JsonDocument.Parse(responseBody);
-            var root = doc.RootElement;
+            var root    = doc.RootElement;
             var content = string.Empty;
+            var toolCalls = new List<ToolCall>();
+            var finishReason = FinishReason.Stop;
 
             if (root.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
             {
                 var choice = choices[0];
-                if (choice.TryGetProperty("message", out var msg) && msg.TryGetProperty("content", out var c))
-                    content = c.GetString() ?? string.Empty;
+
+                if (choice.TryGetProperty("message", out var msg))
+                {
+                    if (msg.TryGetProperty("content", out var c) && c.ValueKind == JsonValueKind.String)
+                        content = c.GetString() ?? string.Empty;
+
+                    if (msg.TryGetProperty("tool_calls", out var tcArr) && tcArr.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var tc in tcArr.EnumerateArray())
+                        {
+                            var id   = tc.TryGetProperty("id",       out var idEl) ? idEl.GetString() ?? string.Empty : string.Empty;
+                            var name = tc.TryGetProperty("function", out var fnEl) && fnEl.TryGetProperty("name", out var nmEl) ? nmEl.GetString() ?? string.Empty : string.Empty;
+                            var args = fnEl.ValueKind == JsonValueKind.Object && fnEl.TryGetProperty("arguments", out var argsEl) ? argsEl.GetString() ?? "{}" : "{}";
+                            toolCalls.Add(new ToolCall { Id = id, Name = name, InputJson = args });
+                        }
+                    }
+                }
+
+                if (choice.TryGetProperty("finish_reason", out var finishEl) && finishEl.ValueKind == JsonValueKind.String)
+                {
+                    finishReason = finishEl.GetString() switch
+                    {
+                        "tool_calls" => FinishReason.ToolCalls,
+                        "length"     => FinishReason.Length,
+                        _            => FinishReason.Stop
+                    };
+                }
             }
 
             TokenUsage? usage = null;
@@ -254,12 +463,14 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
             {
                 usage = new TokenUsage
                 {
-                    PromptTokens = usageEl.TryGetProperty("prompt_tokens", out var pt) ? pt.GetInt32() : 0,
+                    PromptTokens     = usageEl.TryGetProperty("prompt_tokens",     out var pt) ? pt.GetInt32() : 0,
                     CompletionTokens = usageEl.TryGetProperty("completion_tokens", out var ct) ? ct.GetInt32() : 0
                 };
             }
 
-            return new AssistantResponse { Content = content, Usage = usage };
+            return toolCalls.Count > 0
+                ? AssistantResponse.WithToolCalls(content, toolCalls)
+                : new AssistantResponse { Content = content, FinishReason = finishReason, Usage = usage };
         }
         catch (JsonException ex)
         {

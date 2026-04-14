@@ -15,57 +15,55 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <!-- Accent color strip -->
+            <!-- 0: Accent strip 3px -->
             <RowDefinition Height="3" />
-            <!-- Toolbar: icon + title + action buttons -->
+            <!-- 1: Header: grip + Chat + dot + ≡ ⊞ × -->
             <RowDefinition Height="36" />
-            <!-- Provider / model / agent selectors -->
-            <RowDefinition Height="Auto" />
-            <!-- Messages list -->
+            <!-- 2: Messages list -->
             <RowDefinition Height="*" />
-            <!-- Shimmer loading bar -->
-            <RowDefinition Height="3" />
-            <!-- Status text -->
+            <!-- 3: Input area (CONECTADO + TextBox) -->
             <RowDefinition Height="Auto" />
-            <!-- Input area -->
+            <!-- 4: Bottom toolbar (single compact row) -->
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- ─── Accent strip ─────────────────────────────────────────────── -->
+        <!-- ── Row 0: Accent strip ──────────────────────────────────────── -->
         <Border Grid.Row="0" CornerRadius="0">
             <Border.Background>
                 <SolidColorBrush Color="{DynamicResource AccentPurple}" />
             </Border.Background>
         </Border>
 
-        <!-- ─── Toolbar ──────────────────────────────────────────────────── -->
+        <!-- ── Row 1: Header ────────────────────────────────────────────── -->
         <Border Grid.Row="1">
             <Border.Background>
                 <SolidColorBrush Color="{DynamicResource Surface0}" Opacity="0.85" />
             </Border.Background>
-            <Grid Margin="8,0">
+            <Grid Margin="6,0,4,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />  <!-- grip + title -->
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />  <!-- actions -->
                 </Grid.ColumnDefinitions>
 
-                <!-- Icon + title -->
+                <!-- Grip dots + "Chat" title -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="💬" FontSize="14" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding ChatTitle, FallbackValue='Chat AI'}"
+                    <TextBlock Text="⠿" FontSize="13"
+                               Foreground="{DynamicResource SubtextBrush}"
+                               Opacity="0.3" VerticalAlignment="Center"
+                               Margin="0,0,6,0" IsHitTestVisible="False"/>
+                    <TextBlock Text="Chat"
                                FontSize="12" FontWeight="Medium"
                                Foreground="{DynamicResource TextBrush}"
-                               VerticalAlignment="Center"
-                               MaxWidth="160" TextTrimming="CharacterEllipsis"
-                               Margin="6,0,0,0" />
+                               VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <!-- Right-side actions -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- Right actions: status dot + cancel + ≡ + ⊞ + × -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal"
+                            VerticalAlignment="Center">
 
-                    <!-- Provider availability indicator -->
-                    <Ellipse Width="7" Height="7" Margin="0,0,4,0" VerticalAlignment="Center">
+                    <!-- Status dot -->
+                    <Ellipse Width="7" Height="7" VerticalAlignment="Center" Margin="0,0,5,0">
                         <Ellipse.Style>
                             <Style TargetType="Ellipse">
                                 <Setter Property="Fill" Value="{DynamicResource AccentGreenBrush}" />
@@ -78,23 +76,28 @@
                         </Ellipse.Style>
                     </Ellipse>
 
-                    <!-- Cancel button (visible when loading) -->
-                    <Button Width="26" Height="26" Margin="2,0,0,0"
-                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                    <!-- Cancel (visible only while loading) -->
+                    <Button Width="26" Height="26" Background="Transparent" BorderThickness="0"
+                            Cursor="Hand"
                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
                             Command="{Binding CancelRequestCommand}"
                             ToolTip="Cancelar">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border x:Name="Bg" CornerRadius="4" Background="Transparent" Width="26" Height="26">
-                                    <TextBlock Text="⏹" FontSize="9"
-                                               Foreground="{DynamicResource SubtextBrush}"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Border x:Name="Bg" CornerRadius="5" Background="Transparent"
+                                        Width="26" Height="26">
+                                    <Path Data="M18,6 L6,18 M6,6 L18,18"
+                                          Stroke="{DynamicResource SubtextBrush}"
+                                          StrokeThickness="1.5" Width="10" Height="10"
+                                          Stretch="Uniform"
+                                          StrokeLineJoin="Round"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"/>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
                                         <Setter TargetName="Bg" Property="Background">
-                                            <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" /></Setter.Value>
+                                            <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.6"/></Setter.Value>
                                         </Setter>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
@@ -102,109 +105,43 @@
                         </Button.Template>
                     </Button>
 
-                    <!-- Clear history button -->
-                    <Button Width="26" Height="26" Margin="2,0,0,0"
-                            Background="Transparent" BorderThickness="0" Cursor="Hand"
-                            Command="{Binding ClearHistoryCommand}"
-                            ToolTip="Limpar conversa"
-                            VerticalAlignment="Center">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="Bg" CornerRadius="4" Background="Transparent" Width="26" Height="26">
-                                    <TextBlock Text="🗑" FontSize="10"
-                                               Foreground="{DynamicResource SubtextBrush}"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="Bg" Property="Background">
-                                            <Setter.Value><SolidColorBrush Color="{DynamicResource AccentRed}" Opacity="0.2" /></Setter.Value>
-                                        </Setter>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
+                    <!-- ≡ Sessões (placeholder) -->
+                    <Button Style="{StaticResource ChatHeaderIconButton}" ToolTip="Sessões">
+                        <Path Data="M3,6 H21 M3,12 H21 M3,18 H21"
+                              Stroke="{DynamicResource SubtextBrush}"
+                              StrokeThickness="1.5" Width="12" Height="10"
+                              Stretch="Uniform"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                    </Button>
+
+                    <!-- ⊞ Template picker -->
+                    <Button x:Name="TemplatePickerBtn"
+                            Style="{StaticResource ChatHeaderIconButton}"
+                            Click="OnTemplatePickerClick"
+                            ToolTip="Templates (Ctrl+T)">
+                        <Path Data="M3,3 H10 V10 H3 Z M14,3 H21 V10 H14 Z M3,14 H10 V21 H3 Z M14,14 H21 V21 H14 Z"
+                              Stroke="{DynamicResource SubtextBrush}"
+                              StrokeThickness="1.5" Width="11" Height="11"
+                              Stretch="Uniform" Fill="Transparent"
+                              StrokeLineJoin="Round"/>
+                    </Button>
+
+                    <!-- × Close tile -->
+                    <Button Style="{StaticResource ChatHeaderIconButton}"
+                            Click="OnCloseTileClick"
+                            ToolTip="Fechar">
+                        <Path Data="M18,6 L6,18 M6,6 L18,18"
+                              Stroke="{DynamicResource SubtextBrush}"
+                              StrokeThickness="1.5" Width="10" Height="10"
+                              Stretch="Uniform"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                     </Button>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- ─── Provider / Model / Agent selectors ──────────────────────── -->
-        <Border Grid.Row="2" Padding="8,5,8,6" BorderThickness="0,0,0,1">
-            <Border.BorderBrush>
-                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5" />
-            </Border.BorderBrush>
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <!-- Provider + Model selectors -->
-                <Grid Grid.Row="0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <ComboBox Grid.Column="0"
-                              x:Name="ProviderCombo"
-                              Height="24" FontSize="10"
-                              ItemsSource="{Binding ProviderLabels}"
-                              SelectedItem="{Binding SelectedProviderLabel, Mode=TwoWay}"
-                              SelectionChanged="OnProviderSelected"
-                              ToolTip="Selecionar provider de IA">
-                        <ComboBox.Style>
-                            <Style TargetType="ComboBox" BasedOn="{StaticResource DarkComboBox}" />
-                        </ComboBox.Style>
-                    </ComboBox>
-
-                    <ComboBox Grid.Column="2"
-                              Height="24" FontSize="10"
-                              ItemsSource="{Binding AvailableModels}"
-                              SelectedItem="{Binding SelectedModel, Mode=TwoWay}"
-                              ToolTip="Selecionar modelo">
-                        <ComboBox.Style>
-                            <Style TargetType="ComboBox" BasedOn="{StaticResource DarkComboBox}" />
-                        </ComboBox.Style>
-                    </ComboBox>
-                </Grid>
-
-                <!-- Agent Mode selector -->
-                <Grid Grid.Row="1" Margin="0,4,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <ComboBox Grid.Column="0"
-                              x:Name="AgentModeCombo"
-                              Height="24" FontSize="10"
-                              ItemsSource="{Binding AgentModes}"
-                              SelectedItem="{Binding ActiveAgentMode, Mode=TwoWay}"
-                              SelectionChanged="OnAgentModeChanged"
-                              ToolTip="Selecionar modo do agente">
-                        <ComboBox.Style>
-                            <Style TargetType="ComboBox" BasedOn="{StaticResource DarkComboBox}"/>
-                        </ComboBox.Style>
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Icon}" FontSize="10" Margin="0,0,5,0"/>
-                                    <TextBlock Text="{Binding Name}" FontSize="10"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <TextBlock Grid.Column="1" Text="{Binding ActiveModeLabel}"
-                               FontSize="9" Foreground="{DynamicResource SubtextBrush}"
-                               VerticalAlignment="Center" Margin="6,0,0,0"/>
-                </Grid>
-            </Grid>
-        </Border>
-
-        <!-- ─── Messages list ────────────────────────────────────────────── -->
-        <ScrollViewer Grid.Row="3"
+        <!-- ── Row 2: Messages list ─────────────────────────────────────── -->
+        <ScrollViewer Grid.Row="2"
                       x:Name="MessagesScrollViewer"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled"
@@ -225,102 +162,95 @@
                                 </Style>
                             </Grid.Style>
 
-                                <!-- Streaming dots -->
-                                <StackPanel Orientation="Horizontal"
-                                            Margin="10,8"
-                                            Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVis}}">
-                                    <Ellipse x:Name="Dot1" Width="6" Height="6" Margin="2,0"
-                                             Fill="{DynamicResource SubtextBrush}" Opacity="0.15">
-                                        <Ellipse.RenderTransform><TranslateTransform Y="0"/></Ellipse.RenderTransform>
-                                    </Ellipse>
-                                    <Ellipse x:Name="Dot2" Width="5" Height="5" Margin="2,1,2,0"
-                                             Fill="{DynamicResource SubtextBrush}" Opacity="0.1">
-                                        <Ellipse.RenderTransform><TranslateTransform Y="0"/></Ellipse.RenderTransform>
-                                    </Ellipse>
-                                    <Ellipse x:Name="Dot3" Width="7" Height="7" Margin="2,0"
-                                             Fill="{DynamicResource SubtextBrush}" Opacity="0.2">
-                                        <Ellipse.RenderTransform><TranslateTransform Y="0"/></Ellipse.RenderTransform>
-                                    </Ellipse>
-                                    <StackPanel.Triggers>
-                                        <EventTrigger RoutedEvent="Loaded">
-                                            <BeginStoryboard>
-                                                <Storyboard RepeatBehavior="Forever">
+                            <!-- Streaming dots (visible only while loading with no content yet) -->
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="10,8"
+                                        Visibility="{Binding ShowDots, Converter={StaticResource BoolToVis}}">
+                                <Ellipse x:Name="Dot1" Width="6" Height="6" Margin="2,0"
+                                         Fill="{DynamicResource SubtextBrush}" Opacity="0.15">
+                                    <Ellipse.RenderTransform><TranslateTransform Y="0"/></Ellipse.RenderTransform>
+                                </Ellipse>
+                                <Ellipse x:Name="Dot2" Width="5" Height="5" Margin="2,1,2,0"
+                                         Fill="{DynamicResource SubtextBrush}" Opacity="0.1">
+                                    <Ellipse.RenderTransform><TranslateTransform Y="0"/></Ellipse.RenderTransform>
+                                </Ellipse>
+                                <Ellipse x:Name="Dot3" Width="7" Height="7" Margin="2,0"
+                                         Fill="{DynamicResource SubtextBrush}" Opacity="0.2">
+                                    <Ellipse.RenderTransform><TranslateTransform Y="0"/></Ellipse.RenderTransform>
+                                </Ellipse>
+                                <StackPanel.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimation Storyboard.TargetName="Dot1"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 From="0.12" To="1"
+                                                                 Duration="0:0:0.52"
+                                                                 BeginTime="0:0:0.06"
+                                                                 AutoReverse="True">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <SineEase EasingMode="EaseInOut"/>
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="Dot1"
+                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                 From="0" To="-3"
+                                                                 Duration="0:0:0.52"
+                                                                 BeginTime="0:0:0.06"
+                                                                 AutoReverse="True">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <SineEase EasingMode="EaseOut"/>
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="Dot2"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 From="0.08" To="0.85"
+                                                                 Duration="0:0:0.39"
+                                                                 BeginTime="0:0:0.28"
+                                                                 AutoReverse="True">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <QuadraticEase EasingMode="EaseOut"/>
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="Dot2"
+                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                 From="0" To="-2"
+                                                                 Duration="0:0:0.39"
+                                                                 BeginTime="0:0:0.28"
+                                                                 AutoReverse="True">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <QuadraticEase EasingMode="EaseOut"/>
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="Dot3"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 From="0.18" To="0.95"
+                                                                 Duration="0:0:0.67"
+                                                                 BeginTime="0:0:0.11"
+                                                                 AutoReverse="True">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <CubicEase EasingMode="EaseInOut"/>
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="Dot3"
+                                                                 Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                 From="0" To="-4"
+                                                                 Duration="0:0:0.67"
+                                                                 BeginTime="0:0:0.11"
+                                                                 AutoReverse="True">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <CubicEase EasingMode="EaseOut"/>
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </StackPanel.Triggers>
+                            </StackPanel>
 
-                                                    <!-- Dot1: médio, começa logo, duração 0.52s, bounce sutil -->
-                                                    <DoubleAnimation Storyboard.TargetName="Dot1"
-                                                                     Storyboard.TargetProperty="Opacity"
-                                                                     From="0.12" To="1"
-                                                                     Duration="0:0:0.52"
-                                                                     BeginTime="0:0:0.06"
-                                                                     AutoReverse="True">
-                                                        <DoubleAnimation.EasingFunction>
-                                                            <SineEase EasingMode="EaseInOut"/>
-                                                        </DoubleAnimation.EasingFunction>
-                                                    </DoubleAnimation>
-                                                    <DoubleAnimation Storyboard.TargetName="Dot1"
-                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                                                                     From="0" To="-3"
-                                                                     Duration="0:0:0.52"
-                                                                     BeginTime="0:0:0.06"
-                                                                     AutoReverse="True">
-                                                        <DoubleAnimation.EasingFunction>
-                                                            <SineEase EasingMode="EaseOut"/>
-                                                        </DoubleAnimation.EasingFunction>
-                                                    </DoubleAnimation>
-
-                                                    <!-- Dot2: menor, começa mais tarde, ritmo diferente (0.39s) -->
-                                                    <DoubleAnimation Storyboard.TargetName="Dot2"
-                                                                     Storyboard.TargetProperty="Opacity"
-                                                                     From="0.08" To="0.85"
-                                                                     Duration="0:0:0.39"
-                                                                     BeginTime="0:0:0.28"
-                                                                     AutoReverse="True">
-                                                        <DoubleAnimation.EasingFunction>
-                                                            <QuadraticEase EasingMode="EaseOut"/>
-                                                        </DoubleAnimation.EasingFunction>
-                                                    </DoubleAnimation>
-                                                    <DoubleAnimation Storyboard.TargetName="Dot2"
-                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                                                                     From="0" To="-2"
-                                                                     Duration="0:0:0.39"
-                                                                     BeginTime="0:0:0.28"
-                                                                     AutoReverse="True">
-                                                        <DoubleAnimation.EasingFunction>
-                                                            <QuadraticEase EasingMode="EaseOut"/>
-                                                        </DoubleAnimation.EasingFunction>
-                                                    </DoubleAnimation>
-
-                                                    <!-- Dot3: maior, começa depois, ritmo mais lento (0.67s) -->
-                                                    <DoubleAnimation Storyboard.TargetName="Dot3"
-                                                                     Storyboard.TargetProperty="Opacity"
-                                                                     From="0.18" To="0.95"
-                                                                     Duration="0:0:0.67"
-                                                                     BeginTime="0:0:0.11"
-                                                                     AutoReverse="True">
-                                                        <DoubleAnimation.EasingFunction>
-                                                            <CubicEase EasingMode="EaseInOut"/>
-                                                        </DoubleAnimation.EasingFunction>
-                                                    </DoubleAnimation>
-                                                    <DoubleAnimation Storyboard.TargetName="Dot3"
-                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                                                                     From="0" To="-4"
-                                                                     Duration="0:0:0.67"
-                                                                     BeginTime="0:0:0.11"
-                                                                     AutoReverse="True">
-                                                        <DoubleAnimation.EasingFunction>
-                                                            <CubicEase EasingMode="EaseOut"/>
-                                                        </DoubleAnimation.EasingFunction>
-                                                    </DoubleAnimation>
-
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </EventTrigger>
-                                    </StackPanel.Triggers>
-                                </StackPanel>
-
-                            <!-- Message bubble (not streaming) -->
+                            <!-- Message bubble -->
                             <Grid MaxWidth="320"
-                                  Visibility="{Binding IsStreaming, Converter={StaticResource InvBoolToVis}}">
+                                  Visibility="{Binding ShowContent, Converter={StaticResource BoolToVis}}">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
@@ -360,7 +290,7 @@
                                                TextWrapping="Wrap" />
                                 </Border>
 
-                                <!-- Copy button (only for assistant messages) -->
+                                <!-- Copy button (assistant messages only) -->
                                 <StackPanel Grid.Row="1" Orientation="Horizontal"
                                             Margin="4,2,0,4"
                                             Visibility="{Binding IsUser, Converter={StaticResource InvBoolToVis}}">
@@ -390,86 +320,93 @@
             </ItemsControl>
         </ScrollViewer>
 
-        <!-- ─── Shimmer loading bar ─────────────────────────────────────── -->
-        <Grid Grid.Row="4" ClipToBounds="True"
-              Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
-            <Rectangle Fill="{DynamicResource Surface1Brush}" />
-            <Rectangle x:Name="ShimmerHighlight" Width="200" HorizontalAlignment="Left">
-                <Rectangle.Fill>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="Transparent" Offset="0" />
-                        <GradientStop Color="{DynamicResource AccentPurple}" Offset="0.5" />
-                        <GradientStop Color="Transparent" Offset="1" />
-                    </LinearGradientBrush>
-                </Rectangle.Fill>
-                <Rectangle.RenderTransform>
-                    <TranslateTransform X="-200" />
-                </Rectangle.RenderTransform>
-                <Rectangle.Triggers>
-                    <EventTrigger RoutedEvent="Loaded">
-                        <BeginStoryboard Storyboard="{StaticResource ShimmerAnimation}" />
-                    </EventTrigger>
-                </Rectangle.Triggers>
-            </Rectangle>
-        </Grid>
+        <!-- ── Empty state (shown when Messages.Count == 0) ─────────────── -->
+        <StackPanel Grid.Row="2"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    IsHitTestVisible="False"
+                    Opacity="0.4">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Messages.Count}" Value="0">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
 
-        <!-- ─── Status bar ──────────────────────────────────────────────── -->
-        <Border Grid.Row="5"
-                Padding="10,3,10,3"
-                Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
-            <TextBlock Text="{Binding StatusText}"
-                       FontSize="10"
+            <!-- Outline speech-bubble SVG icon -->
+            <Viewbox Width="34" Height="34" HorizontalAlignment="Center">
+                <Canvas Width="24" Height="24">
+                    <Path Data="M21,15 C21,15.53 20.79,16.04 20.41,16.41 C20.04,16.79 19.53,17 19,17 H7 L3,21 V5 C3,4.47 3.21,3.96 3.59,3.59 C3.96,3.21 4.47,3 5,3 H19 C19.53,3 20.04,3.21 20.41,3.59 C20.79,3.96 21,4.47 21,5 V15 Z"
+                          Stroke="{DynamicResource SubtextBrush}"
+                          StrokeThickness="1.3" Fill="Transparent"
+                          StrokeLineJoin="Round"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"/>
+                </Canvas>
+            </Viewbox>
+
+            <TextBlock Text="Inicie uma conversa"
+                       FontSize="12" Margin="0,8,0,0"
                        Foreground="{DynamicResource SubtextBrush}"
-                       Opacity="0.7"
-                       TextTrimming="CharacterEllipsis" />
-        </Border>
+                       HorizontalAlignment="Center"/>
+            <TextBlock Text="ou use /help para ver os comandos"
+                       FontSize="10" Margin="0,3,0,0"
+                       Foreground="{DynamicResource SubtextBrush}"
+                       HorizontalAlignment="Center" Opacity="0.6"/>
+        </StackPanel>
 
-        <!-- ─── Input area ───────────────────────────────────────────────── -->
-        <Border Grid.Row="6"
-                Padding="10,8"
+        <!-- ── Row 3: Input area ────────────────────────────────────────── -->
+        <Border Grid.Row="3"
+                Padding="10,6,10,4"
                 BorderThickness="0,1,0,0">
             <Border.BorderBrush>
-                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.4" />
+                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.35" />
             </Border.BorderBrush>
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="4" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />   <!-- ● CONECTADO -->
+                    <RowDefinition Height="Auto" />   <!-- TextBox -->
+                </Grid.RowDefinitions>
 
-                <!-- Template picker button -->
-                <Button Grid.Column="0"
-                        x:Name="TemplateBtnInput"
-                        Width="30" Height="30"
-                        Click="OnTemplatePickerClick"
-                        ToolTip="Prompt Templates (Ctrl+T)"
-                        Background="Transparent" BorderThickness="0">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="TplBg" CornerRadius="6" Background="Transparent"
-                                    Width="30" Height="30">
-                                <TextBlock Text="📝" FontSize="12"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="TplBg" Property="Background">
-                                        <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5"/></Setter.Value>
-                                    </Setter>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
+                <!-- ● CONECTADO indicator -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal"
+                            HorizontalAlignment="Right" Margin="0,0,2,3">
+                    <Ellipse Width="6" Height="6" VerticalAlignment="Center" Margin="0,0,4,0">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="{DynamicResource AccentGreenBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsProviderAvailable}" Value="False">
+                                        <Setter Property="Fill" Value="{DynamicResource AccentRedBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock FontSize="9" Foreground="{DynamicResource SubtextBrush}" Opacity="0.65">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="CONECTADO" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsProviderAvailable}" Value="False">
+                                        <Setter Property="Text" Value="OFFLINE" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
 
-                <TextBox Grid.Column="2"
+                <!-- Text input (full width) -->
+                <TextBox Grid.Row="1"
                          x:Name="ChatInput"
                          Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
                          Style="{StaticResource DarkTextBox}"
-                         Tag="Pergunte algo..."
+                         Tag="Mensagem ao agente, ou use /comandos e /habilidades"
                          AcceptsReturn="False"
                          Padding="10,6"
                          MinHeight="34"
@@ -481,43 +418,114 @@
                          IsEnabled="{Binding IsLoading, Converter={StaticResource InvBoolToVis},
                              ConverterParameter=BoolToEnabled}"
                          KeyDown="OnChatInputKeyDown" />
-
-                <Button Grid.Column="4"
-                        Width="34" Height="34"
-                        Click="OnSendClicked"
-                        ToolTip="Enviar (Ctrl+Enter)"
-                        IsEnabled="{Binding IsLoading, Converter={StaticResource InvBoolToVis},
-                            ConverterParameter=BoolToEnabled}">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="SendBg" CornerRadius="8" Width="34" Height="34">
-                                <Border.Background>
-                                    <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.7" />
-                                </Border.Background>
-                                <TextBlock Text="➤" FontSize="13"
-                                           Foreground="White"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center" />
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="SendBg" Property="Opacity" Value="0.85" />
-                                </Trigger>
-                                <Trigger Property="IsEnabled" Value="False">
-                                    <Setter TargetName="SendBg" Property="Opacity" Value="0.35" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
             </Grid>
         </Border>
 
-        <!-- ─── Template Picker Popup ───────────────────────────────────────── -->
+        <!-- ── Row 4: Bottom toolbar ────────────────────────────────────── -->
+        <Border Grid.Row="4"
+                Padding="4,3,4,6"
+                BorderThickness="0,1,0,0">
+            <Border.BorderBrush>
+                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.35"/>
+            </Border.BorderBrush>
+
+            <Grid Height="30">
+                <!-- Left items -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+                    <!-- Shield (permissões) -->
+                    <Button Style="{StaticResource ChatToolbarIconBtn}" ToolTip="Permissões">
+                        <Path Style="{StaticResource ChatToolbarIconPath}"
+                              Data="M12,2 L3,6.5 V12 C3,16.77 7.02,21.26 12,22.3 C16.98,21.26 21,16.77 21,12 V6.5 Z"
+                              Fill="#CC3A3A" Stroke="#CC3A3A" StrokeThickness="0" Opacity="0.85"/>
+                    </Button>
+
+                    <!-- Globe/MCP -->
+                    <Button Style="{StaticResource ChatToolbarIconBtn}" ToolTip="MCP / Conectividade">
+                        <Path Style="{StaticResource ChatToolbarIconPath}"
+                              Data="M12,2 A10,10 0 1,0 12,22 A10,10 0 0,0 12,2 M2,12 H22 M12,2 C9.5,7 9.5,17 12,22 C14.5,17 14.5,7 12,2"/>
+                    </Button>
+
+                    <!-- Separator -->
+                    <Rectangle Width="1" Height="16" Margin="2,0,2,0"
+                               VerticalAlignment="Center" Opacity="0.25">
+                        <Rectangle.Fill>
+                            <SolidColorBrush Color="{DynamicResource Surface2}"/>
+                        </Rectangle.Fill>
+                    </Rectangle>
+
+                    <!-- Provider compact dropdown -->
+                    <ComboBox x:Name="ProviderCombo"
+                              Style="{StaticResource CompactInlineComboBox}"
+                              ItemsSource="{Binding ProviderLabels}"
+                              SelectedItem="{Binding SelectedProviderLabel, Mode=TwoWay}"
+                              SelectionChanged="OnProviderSelected"
+                              MinWidth="68" MaxWidth="88"
+                              ToolTip="Provider de IA"/>
+
+                    <!-- Model compact dropdown -->
+                    <ComboBox Style="{StaticResource CompactInlineComboBox}"
+                              ItemsSource="{Binding AvailableModels}"
+                              SelectedItem="{Binding SelectedModel, Mode=TwoWay}"
+                              MinWidth="80" MaxWidth="130"
+                              ToolTip="Modelo de IA"/>
+
+                    <!-- Agent compact dropdown (green) -->
+                    <ComboBox x:Name="AgentModeCombo"
+                              Style="{StaticResource AgentInlineComboBox}"
+                              ItemsSource="{Binding AgentModes}"
+                              SelectedItem="{Binding ActiveAgentMode, Mode=TwoWay}"
+                              SelectionChanged="OnAgentModeChanged"
+                              MinWidth="70" MaxWidth="110"
+                              ToolTip="Modo do agente">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock FontSize="10.5">
+                                    <Run Text="{Binding Icon}"/><Run Text=" "/><Run Text="{Binding Name}"/>
+                                </TextBlock>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <!-- Separator -->
+                    <Rectangle Width="1" Height="16" Margin="2,0,1,0"
+                               VerticalAlignment="Center" Opacity="0.25">
+                        <Rectangle.Fill>
+                            <SolidColorBrush Color="{DynamicResource Surface2}"/>
+                        </Rectangle.Fill>
+                    </Rectangle>
+
+                    <!-- Fork/Tools icon (placeholder — shows /tools list via slash command) -->
+                    <Button Style="{StaticResource ChatToolbarIconBtn}"
+                            ToolTip="Tools disponíveis no agente (use /tools no chat)"
+                            Click="OnToolsIconClick">
+                        <Path Style="{StaticResource ChatToolbarIconPath}"
+                              Data="M7,3 L7,10 M7,10 C5.34,10 4,11.34 4,13 C4,14.66 5.34,16 7,16 C8.66,16 10,14.66 10,13 C10,11.34 8.66,10 7,10 M17,13 L17,21 M17,13 C18.66,13 20,11.66 20,10 C20,8.34 18.66,7 17,7 C15.34,7 14,8.34 14,10 C14,11.66 15.34,13 17,13 M17,7 L17,3"/>
+                    </Button>
+
+                    <!-- Paperclip/Attach -->
+                    <Button Style="{StaticResource ChatToolbarIconBtn}" ToolTip="Anexar arquivo">
+                        <Path Style="{StaticResource ChatToolbarIconPath}"
+                              Data="M21.44,11.05 L12.25,20.24 A6,6 0 0,1 3.84,11.83 L12.83,2.84 A4,4 0 0,1 19.07,9.08 L10.08,18.07 A2,2 0 0,1 7.85,15.84 L16.34,7.35"/>
+                    </Button>
+                </StackPanel>
+
+                <!-- Send button — right-aligned -->
+                <Button HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource ChatSendButton}"
+                        Click="OnSendClicked"
+                        ToolTip="Enviar (Ctrl+Enter)"
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InvBoolToVis},
+                            ConverterParameter=BoolToEnabled}"/>
+            </Grid>
+        </Border>
+
+        <!-- ── Template Picker Popup (anchored to ⊞ button in header) ──── -->
         <Popup x:Name="TemplatePickerPopup"
-               PlacementTarget="{Binding ElementName=TemplateBtnInput}"
-               Placement="Top"
-               VerticalOffset="-6"
+               PlacementTarget="{Binding ElementName=TemplatePickerBtn}"
+               Placement="Bottom"
+               VerticalOffset="4"
                StaysOpen="False"
                AllowsTransparency="True"
                MaxWidth="380">

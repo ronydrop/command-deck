@@ -171,6 +171,14 @@
                         </Setter.Value>
                     </Setter>
                     <Style.Triggers>
+                        <!-- Chat widget: cyan glow on hover -->
+                        <DataTrigger Binding="{Binding ItemType}" Value="ChatWidget">
+                            <Setter Property="BorderBrush">
+                                <Setter.Value>
+                                    <SolidColorBrush Color="{DynamicResource AccentCyan}" Opacity="0.45"/>
+                                </Setter.Value>
+                            </Setter>
+                        </DataTrigger>
                         <DataTrigger Binding="{Binding IsTiledMode}" Value="True">
                             <Setter Property="CornerRadius" Value="0" />
                         </DataTrigger>
@@ -239,6 +247,14 @@
                     <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}" />
                     <Setter Property="CornerRadius" Value="8" />
                     <Style.Triggers>
+                        <!-- Chat widget: cyan accent border -->
+                        <DataTrigger Binding="{Binding ItemType}" Value="ChatWidget">
+                            <Setter Property="BorderBrush">
+                                <Setter.Value>
+                                    <SolidColorBrush Color="{DynamicResource AccentCyan}" Opacity="0.65"/>
+                                </Setter.Value>
+                            </Setter>
+                        </DataTrigger>
                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
                             <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             <Setter Property="BorderThickness" Value="1.5" />

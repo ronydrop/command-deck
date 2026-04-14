@@ -208,7 +208,6 @@ public partial class TerminalCanvasView : UserControl
             GradientStops =
             {
                 new GradientStop(Colors.Black,       0.0),
-                new GradientStop(Colors.Black,       0.5), // solid core to the inner half
                 new GradientStop(Colors.Transparent, 1.0),
             },
         };
@@ -476,9 +475,9 @@ public partial class TerminalCanvasView : UserControl
             // exactly what an Absolute-mapped mask brush needs.
             var worldPt = e.GetPosition(WorldGlowGrid);
 
-            // 120 px screen-space radius (codesurf canvasGlowRadius), zoom-independent.
+            // 70 px screen-space radius — subtle spotlight matching CodeSurf.
             double zoom        = CanvasScale.ScaleX;
-            double worldRadius = 120.0 / zoom;
+            double worldRadius = 70.0 / zoom;
 
             _glowMask.Center         = worldPt;
             _glowMask.GradientOrigin = worldPt;
@@ -998,7 +997,9 @@ public partial class TerminalCanvasView : UserControl
 
     private void OnExitFocusModeRequested()
     {
-        ExitFocusMode(animated: true);
+        // VM requested the View to animate exiting focus mode —
+        // do NOT re-invoke the ViewModel command to avoid a feedback loop.
+        ExitFocusMode(animated: true, invokeViewModel: false);
     }
 
     // ─── Sidebar ─────────────────────────────────────────────────────────
@@ -1033,98 +1034,6 @@ public partial class TerminalCanvasView : UserControl
         e.Handled = true; // prevent OnSidebarChatItemClick from firing
         if ((sender as FrameworkElement)?.DataContext is ChatCanvasItemViewModel item)
             _canvasVm?.RemoveItem(item);
-    }
-
-    // ─── Widget buttons ───────────────────────────────────────────────────
-
-    private void OnToggleGitWidgetClick(object sender, RoutedEventArgs e)
-    {
-        if (_canvasVm is null) return;
-
-        // Git widget (320x280) — top-right corner of visible viewport
-        const double widgetW = 320;
-        const double margin = 20;
-        double vpX = ViewportArea.ActualWidth - widgetW - margin;
-        double vpY = margin;
-
-        double canvasX = (vpX - CanvasTranslate.X) / CanvasScale.ScaleX;
-        double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
-
-        _canvasVm.ToggleGitWidget(canvasX, canvasY);
-    }
-
-    private void OnToggleProcessWidgetClick(object sender, RoutedEventArgs e)
-    {
-        if (_canvasVm is null) return;
-
-        // Process widget (400x350) — to the left of the Git widget area
-        const double gitW = 320;
-        const double processW = 400;
-        const double margin = 20;
-        const double gap = 20;
-        double vpX = ViewportArea.ActualWidth - gitW - processW - gap - margin;
-        double vpY = margin;
-
-        double canvasX = (vpX - CanvasTranslate.X) / CanvasScale.ScaleX;
-        double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
-
-        _canvasVm.ToggleProcessWidget(canvasX, canvasY);
-    }
-
-    private void OnAddNoteWidgetClick(object sender, RoutedEventArgs e)
-    {
-        if (_canvasVm is null) return;
-
-        const double margin = 20;
-        double vpX = margin + 60;
-        double vpY = ViewportArea.ActualHeight - 260 - margin;
-
-        double canvasX = (vpX - CanvasTranslate.X) / CanvasScale.ScaleX;
-        double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
-
-        _canvasVm.AddNoteWidget(canvasX, canvasY);
-    }
-
-    private void OnAddKanbanWidgetClick(object sender, RoutedEventArgs e)
-    {
-        if (_canvasVm is null) return;
-
-        const double margin = 20;
-        double vpX = margin + 60;
-        double vpY = ViewportArea.ActualHeight - 260 - margin;
-
-        double canvasX = (vpX - CanvasTranslate.X) / CanvasScale.ScaleX;
-        double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
-
-        _canvasVm.AddKanbanWidget(canvasX, canvasY);
-    }
-
-    private void OnAddChatWidgetClick(object sender, RoutedEventArgs e)
-    {
-        if (_canvasVm is null) return;
-
-        const double margin = 20;
-        double vpX = margin + 60;
-        double vpY = ViewportArea.ActualHeight - 260 - margin;
-
-        double canvasX = (vpX - CanvasTranslate.X) / CanvasScale.ScaleX;
-        double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
-
-        _canvasVm.AddChatWidget(canvasX, canvasY);
-    }
-
-    private void OnAddSystemMonitorWidgetClick(object sender, RoutedEventArgs e)
-    {
-        if (_canvasVm is null) return;
-
-        const double margin = 20;
-        double vpX = margin + 60;
-        double vpY = ViewportArea.ActualHeight - 260 - margin;
-
-        double canvasX = (vpX - CanvasTranslate.X) / CanvasScale.ScaleX;
-        double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
-
-        _canvasVm.AddSystemMonitorWidget(canvasX, canvasY);
     }
 
     // ─── Image paste / drop ─────────────────────────────────────────────
@@ -1345,9 +1254,13 @@ public partial class TerminalCanvasView : UserControl
         BtnVerTodos.Visibility = Visibility.Visible;
     }
 
-    private void ExitFocusMode(bool animated)
+    private void ExitFocusMode(bool animated, bool invokeViewModel = true)
     {
-        _canvasVm?.ExitFocusModeCommand.Execute(null);
+        // Only invoke the ViewModel command when this action originates from the View (user gesture)
+        // to avoid VM -> View -> VM recursion that causes StackOverflowException.
+        if (invokeViewModel)
+            _canvasVm?.ExitFocusModeCommand.Execute(null);
+
         BtnVerTodos.Visibility = Visibility.Collapsed;
         AnimateFocusOverlay(0);
 

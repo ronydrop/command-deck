@@ -221,6 +221,14 @@ public partial class ProjectListViewModel : ObservableObject
         await _projectService.ReorderProjectsAsync(orderedIds);
     }
 
+    /// <summary>Syncs SelectedProject to match the globally active project.</summary>
+    public void SyncSelection(Project? activeProject)
+    {
+        SelectedProject = activeProject == null
+            ? null
+            : FilteredProjects.FirstOrDefault(p => p.Id == activeProject.Id);
+    }
+
     /// <summary>
     /// Recalculates which projects are active (have terminal sessions) vs inactive.
     /// Safe to call from any thread — marshals to UI thread if needed.

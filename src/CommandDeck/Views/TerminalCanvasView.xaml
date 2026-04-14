@@ -19,6 +19,7 @@
         <conv:CanvasItemTypeIconConverter   x:Key="ItemTypeIconConverter" />
         <conv:FirstLetterConverter          x:Key="FirstLetterConverter" />
         <conv:ZoomLevelConverter            x:Key="ZoomLevelConverter" />
+        <conv:LayoutModeToVisibilityConverter x:Key="LayoutModeToVis" />
     </UserControl.Resources>
 
     <!-- Root: toolbar (top) + workspace area (bottom) -->
@@ -389,12 +390,13 @@
                     </Border>
 
                     <!-- ── Layout mode toggle (Canvas / Tiled) ── -->
-                    <Border CornerRadius="4"
+                    <Border CornerRadius="20"
                             Margin="6,0,0,0"
                             Background="{DynamicResource Surface0Brush}"
-                            BorderBrush="{DynamicResource Surface1Brush}"
+                            BorderBrush="{DynamicResource Surface2Brush}"
                             BorderThickness="1"
-                            Padding="2">
+                            ClipToBounds="True"
+                            Padding="3">
                         <StackPanel Orientation="Horizontal">
                             <!-- Canvas mode button -->
                             <Button Padding="8,4"
@@ -481,6 +483,39 @@
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="⬜⬜" FontSize="9" VerticalAlignment="Center" Margin="0,0,5,0"/>
                                     <TextBlock Text="Split"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Bento mode button -->
+                            <Button Padding="8,4"
+                                    Command="{Binding CanvasViewModel.SetBentoModeCommand}"
+                                    ToolTip="Modo Bento — grid 3×3 com slots e painel de blocos"
+                                    Cursor="Hand">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource LayoutModeButton}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanvasViewModel.IsBentoMode}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                                <Setter Property="Opacity" Value="1" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="M2 2H8V8H2Z M10 2H16V8H10Z M18 2H22V8H18Z M2 10H8V16H2Z M18 10H22V16H18Z M2 18H8V22H2Z M10 18H16V22H10Z M18 18H22V22H18Z"
+                                          Stroke="{DynamicResource TextBrush}"
+                                          StrokeThickness="1.2"
+                                          Fill="Transparent"
+                                          Width="12" Height="12"
+                                          Stretch="Uniform"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,5,0" />
+                                    <TextBlock Text="Bento"
                                                FontSize="11"
                                                FontWeight="SemiBold"
                                                Foreground="{DynamicResource TextBrush}"
@@ -598,6 +633,15 @@
                     </ContextMenu>
                 </Grid.ContextMenu>
 
+                <!-- Bento Layout Presenter — visible only in Bento mode -->
+                <ctrl:BentoLayoutPresenter
+                    x:Name="BentoPresenter"
+                    Panel.ZIndex="10"
+                    DataContext="{Binding CanvasViewModel}"
+                    Visibility="{Binding LayoutMode,
+                                 Converter={StaticResource LayoutModeToVis},
+                                 ConverterParameter=Bento}" />
+
                 <!-- ── Wallpaper background layer (hidden in tiled mode) ── -->
                 <Image Source="{Binding CanvasViewModel.WallpaperSource}"
                        Stretch="{Binding CanvasViewModel.WallpaperStretch}"
@@ -620,7 +664,10 @@
                         HorizontalAlignment="Left"
                         VerticalAlignment="Top"
                         Background="Transparent"
-                        IsHitTestVisible="{Binding CanvasViewModel.HasTerminals}">
+                        IsHitTestVisible="{Binding CanvasViewModel.HasTerminals}"
+                        Visibility="{Binding CanvasViewModel.LayoutMode,
+                                     Converter={StaticResource LayoutModeToVis},
+                                     ConverterParameter=NotBento}">
                     <Canvas.RenderTransform>
                         <TransformGroup>
                             <ScaleTransform x:Name="CanvasScale" ScaleX="1" ScaleY="1" />
@@ -653,24 +700,6 @@
                                         <GeometryDrawing Brush="{DynamicResource DotGridDotBrush}">
                                             <GeometryDrawing.Geometry>
                                                 <EllipseGeometry Center="2,2" RadiusX="1.2" RadiusY="1.2" />
-                                            </GeometryDrawing.Geometry>
-                                        </GeometryDrawing>
-                                        <!-- Faint horizontal hairline — color from theme token -->
-                                        <GeometryDrawing>
-                                            <GeometryDrawing.Pen>
-                                                <Pen Thickness="0.5" Brush="{DynamicResource DotGridLineBrush}" />
-                                            </GeometryDrawing.Pen>
-                                            <GeometryDrawing.Geometry>
-                                                <LineGeometry StartPoint="0,0" EndPoint="32,0" />
-                                            </GeometryDrawing.Geometry>
-                                        </GeometryDrawing>
-                                        <!-- Faint vertical hairline — color from theme token -->
-                                        <GeometryDrawing>
-                                            <GeometryDrawing.Pen>
-                                                <Pen Thickness="0.5" Brush="{DynamicResource DotGridLineBrush}" />
-                                            </GeometryDrawing.Pen>
-                                            <GeometryDrawing.Geometry>
-                                                <LineGeometry StartPoint="0,0" EndPoint="0,32" />
                                             </GeometryDrawing.Geometry>
                                         </GeometryDrawing>
                                     </DrawingGroup>
@@ -1110,146 +1139,6 @@
                             </StackPanel>
                         </DockPanel>
                     </Border>
-
-                    <!-- ── Toggle widget buttons ──────────────────────────────────── -->
-                    <StackPanel DockPanel.Dock="Bottom" Margin="8,8">
-                        <!-- Git widget -->
-                        <Grid Margin="0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Content="Widget Git"
-                                    Style="{StaticResource GhostButton}"
-                                    HorizontalContentAlignment="Left"
-                                    Padding="8,5" FontSize="11"
-                                    Click="OnToggleGitWidgetClick" />
-                            <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
-                                    VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
-                                    ToolTip="Exibe a branch atual, arquivos modificados, staged e novos, alem do ultimo commit do repositorio."
-                                    Background="Transparent">
-                                <TextBlock Text="?" FontSize="9" FontWeight="Bold"
-                                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                        </Grid>
-                        <!-- Process widget -->
-                        <Grid Margin="0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Content="Widget Processos"
-                                    Style="{StaticResource GhostButton}"
-                                    HorizontalContentAlignment="Left"
-                                    Padding="8,5" FontSize="11"
-                                    Click="OnToggleProcessWidgetClick" />
-                            <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
-                                    VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
-                                    ToolTip="Monitora processos de desenvolvimento ativos (node, npm, php, python, docker) com uso de CPU e memoria."
-                                    Background="Transparent">
-                                <TextBlock Text="?" FontSize="9" FontWeight="Bold"
-                                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                        </Grid>
-                        <!-- Note widget -->
-                        <Grid Margin="0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Content="Widget Notas"
-                                    Style="{StaticResource GhostButton}"
-                                    HorizontalContentAlignment="Left"
-                                    Padding="8,5" FontSize="11"
-                                    Click="OnAddNoteWidgetClick" />
-                            <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
-                                    VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
-                                    ToolTip="Cria um bloco de notas rapido no canvas. Ideal para lembretes, TODOs e anotacoes durante o desenvolvimento."
-                                    Background="Transparent">
-                                <TextBlock Text="?" FontSize="9" FontWeight="Bold"
-                                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                        </Grid>
-                        <!-- Widget Kanban -->
-                        <Grid Margin="0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Style="{StaticResource GhostButton}"
-                                    HorizontalContentAlignment="Left"
-                                    Padding="8,5" FontSize="11"
-                                    Click="OnAddKanbanWidgetClick">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#x1F5C2;" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Widget Kanban" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-                            <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
-                                    VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
-                                    ToolTip="Board kanban com colunas e cards. Suporta dispatch de tarefas para agentes AI."
-                                    Background="Transparent">
-                                <TextBlock Text="?" FontSize="9" FontWeight="Bold"
-                                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                        </Grid>
-                        <!-- Widget Chat AI -->
-                        <Grid Margin="0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Style="{StaticResource GhostButton}"
-                                    HorizontalContentAlignment="Left"
-                                    Padding="8,5" FontSize="11"
-                                    Click="OnAddChatWidgetClick">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#x1F4AC;" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Widget Chat AI" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-                            <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
-                                    VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
-                                    ToolTip="Chat AI independente no canvas. Multiplas conversas simultaneas."
-                                    Background="Transparent">
-                                <TextBlock Text="?" FontSize="9" FontWeight="Bold"
-                                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                        </Grid>
-                        <!-- Widget Monitor -->
-                        <Grid Margin="0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Style="{StaticResource GhostButton}"
-                                    HorizontalContentAlignment="Left"
-                                    Padding="8,5" FontSize="11"
-                                    Click="OnAddSystemMonitorWidgetClick">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#x1F4CA;" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Monitor do Sistema" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-                            <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
-                                    VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
-                                    ToolTip="CPU e memoria em tempo real."
-                                    Background="Transparent">
-                                <TextBlock Text="?" FontSize="9" FontWeight="Bold"
-                                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                        </Grid>
-                    </StackPanel>
-
-                    <Separator DockPanel.Dock="Bottom"
-                               Background="{DynamicResource Surface1Brush}"
-                               Margin="0" />
 
                     <!-- ── Chat list ──────────────────────────────────────────────── -->
                     <ScrollViewer VerticalScrollBarVisibility="Auto"

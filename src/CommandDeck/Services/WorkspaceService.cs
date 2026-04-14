@@ -14,6 +14,7 @@ public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspa
 {
     private readonly CanvasItemFactory _factory;
     private readonly IPersistenceService _persistence;
+    private readonly IWidgetCatalogService _widgetCatalog;
     private int _nextZIndex = 1;
 
     // Side-by-side layout: terminals placed left→right, wrap to next row when too wide
@@ -36,10 +37,14 @@ public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspa
     public event Action? WorkspaceChanged;
     public event Action<WorkspaceModel>? ActiveWorkspaceChanged;
 
-    public WorkspaceService(CanvasItemFactory factory, IPersistenceService persistence)
+    /// <summary>Fired when the caller should create a new Terminal in a specific bento slot.</summary>
+    public event Action<int>? AddTerminalForBentoSlotRequested;
+
+    public WorkspaceService(CanvasItemFactory factory, IPersistenceService persistence, IWidgetCatalogService widgetCatalog)
     {
         _factory = factory;
         _persistence = persistence;
+        _widgetCatalog = widgetCatalog;
     }
 
     // ─── Add ────────────────────────────────────────────────────────────────────
@@ -156,6 +161,80 @@ public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspa
         {
             AddWidgetItem(type);
         }
+    }
+
+    // ─── Bento mode ──────────────────────────────────────────────────────────────
+
+    public CanvasItemViewModel? AssignCatalogKeyToBentoSlot(string catalogKey, int slotIndex)
+    {
+        // Terminal items require a terminal process — delegate to the ViewModel
+        var entry = _widgetCatalog.Get(catalogKey);
+        if (entry is null) return null;
+
+        if (entry.CanvasItemType == Models.CanvasItemType.Terminal)
+        {
+            AddTerminalForBentoSlotRequested?.Invoke(slotIndex);
+            return null;
+        }
+
+        // Reject if slot already occupied
+        if (Items.Any(i => i.BentoSlotIndex == slotIndex))
+            return null;
+
+        CanvasItemViewModel item;
+
+        if (entry.CanvasItemType is { } canvasType)
+        {
+            item = canvasType switch
+            {
+                Models.CanvasItemType.ChatWidget          => AddChatTile(),
+                Models.CanvasItemType.CodeEditorWidget    => AddCodeEditorTile(),
+                Models.CanvasItemType.FileExplorerWidget  => AddFileExplorerTile(),
+                Models.CanvasItemType.BrowserWidget       => AddBrowserTile(),
+                Models.CanvasItemType.ActivityFeedWidget  => AddActivityFeedTile(),
+                _                                         => AddChatTile() // fallback
+            };
+        }
+        else if (entry.WidgetType is { } widgetType)
+        {
+            item = AddWidgetItem(widgetType);
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[WorkspaceService] Catalog entry '{catalogKey}' has no CanvasItemType or WidgetType.");
+            return null;
+        }
+
+        item.BentoSlotIndex = slotIndex;
+        WorkspaceChanged?.Invoke();
+        ScheduleAutoSave();
+        return item;
+    }
+
+    public void MoveBentoItem(string itemId, int targetSlotIndex)
+    {
+        var moving = Items.FirstOrDefault(i => i.Model.Id == itemId);
+        if (moving is null) return;
+
+        var occupant = Items.FirstOrDefault(i => i.BentoSlotIndex == targetSlotIndex);
+
+        int oldSlot = moving.BentoSlotIndex;
+        moving.BentoSlotIndex = targetSlotIndex;
+
+        if (occupant is not null && occupant.Model.Id != itemId)
+            occupant.BentoSlotIndex = oldSlot; // swap
+
+        WorkspaceChanged?.Invoke();
+        ScheduleAutoSave();
+    }
+
+    public void ClearBentoSlot(int slotIndex)
+    {
+        var item = Items.FirstOrDefault(i => i.BentoSlotIndex == slotIndex);
+        if (item is null) return;
+        item.BentoSlotIndex = -1;
+        WorkspaceChanged?.Invoke();
+        ScheduleAutoSave();
     }
 
     // ─── Remove ─────────────────────────────────────────────────────────────────

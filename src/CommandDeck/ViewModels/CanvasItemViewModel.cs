@@ -29,6 +29,11 @@ public abstract partial class CanvasItemViewModel : ObservableObject
     [ObservableProperty] private bool _isSelected;
     [ObservableProperty] private bool _isTiledMode;
 
+    // ─── Bento layout ────────────────────────────────────────────────────────
+
+    /// <summary>Bento slot index (0..7). -1 = not assigned to a bento slot.</summary>
+    [ObservableProperty] private int _bentoSlotIndex = -1;
+
     // ─── Tile customization (Fase 3.4) ───────────────────────────────────────
 
     /// <summary>Custom accent color hex. Null = use theme default accent.</summary>
@@ -96,6 +101,9 @@ public abstract partial class CanvasItemViewModel : ObservableObject
         _height = model.Height;
         _zIndex = model.ZIndex;
 
+        // Restore bento slot from model
+        _bentoSlotIndex = model.BentoSlotIndex;
+
         // Restore customization from model
         _accentColor = model.AccentColor;
         _tileLabel = model.TileLabel;
@@ -108,6 +116,7 @@ public abstract partial class CanvasItemViewModel : ObservableObject
 
     // ─── Sync VM → Model ─────────────────────────────────────────────────────
 
+    partial void OnBentoSlotIndexChanged(int value) => Model.BentoSlotIndex = value;
     partial void OnXChanged(double value) => Model.X = value;
     partial void OnYChanged(double value) => Model.Y = value;
     partial void OnWidthChanged(double value) => Model.Width = value;

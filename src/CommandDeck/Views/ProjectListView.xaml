@@ -12,11 +12,30 @@
         <conv:CountToVisibilityConverter x:Key="CountToVis" />
         <conv:HexColorToBrushConverter x:Key="HexToBrush" />
         <conv:ProjectTerminalCountConverter x:Key="TerminalCountConv" />
+        <conv:StringEqualsConverter x:Key="StringEqualsConv" />
 
         <!-- Shared item template used by both Active and Inactive lists -->
         <DataTemplate x:Key="ProjectItemTemplate">
             <Grid x:Name="RootGrid">
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Style.Triggers>
+                            <DataTrigger Value="True">
+                                <DataTrigger.Binding>
+                                    <MultiBinding Converter="{StaticResource StringEqualsConv}">
+                                        <Binding Path="Id" />
+                                        <Binding Path="DataContext.CurrentProject.Id"
+                                                 RelativeSource="{RelativeSource AncestorType=Window}" />
+                                    </MultiBinding>
+                                </DataTrigger.Binding>
+                                <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
                 <Grid.ColumnDefinitions>
+                    <!-- Accent bar -->
+                    <ColumnDefinition Width="3" />
                     <!-- Color indicator + icon -->
                     <ColumnDefinition Width="Auto" />
                     <!-- Name and path -->
@@ -25,9 +44,33 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
+                <!-- Accent bar -->
+                <Rectangle Grid.Column="0"
+                           RadiusX="1.5" RadiusY="1.5"
+                           Margin="0,6,4,6">
+                    <Rectangle.Style>
+                        <Style TargetType="Rectangle">
+                            <Setter Property="Opacity" Value="0" />
+                            <Style.Triggers>
+                                <DataTrigger Value="True">
+                                    <DataTrigger.Binding>
+                                        <MultiBinding Converter="{StaticResource StringEqualsConv}">
+                                            <Binding Path="Id" />
+                                            <Binding Path="DataContext.CurrentProject.Id"
+                                                     RelativeSource="{RelativeSource AncestorType=Window}" />
+                                        </MultiBinding>
+                                    </DataTrigger.Binding>
+                                    <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+                                    <Setter Property="Opacity" Value="1" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Rectangle.Style>
+                </Rectangle>
+
                 <!-- Color dot -->
-                <Border Grid.Column="0"
-                        Width="32" Height="32"
+                <Border Grid.Column="1"
+                        Width="28" Height="28"
                         CornerRadius="6"
                         Background="{Binding Color, Converter={StaticResource HexToBrush}}"
                         Margin="0,0,10,0"
@@ -42,7 +85,7 @@
                 </Border>
 
                 <!-- Name and Path -->
-                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
 
                     <!-- Name row: text + terminal count badge -->
                     <Grid>
@@ -99,9 +142,19 @@
                 </StackPanel>
 
                 <!-- Action buttons -->
-                <StackPanel Grid.Column="2"
+                <StackPanel Grid.Column="3"
                             Orientation="Horizontal"
                             VerticalAlignment="Center">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Opacity" Value="0" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                    <Setter Property="Opacity" Value="1" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
                     <!-- Favorite toggle -->
                     <Button Style="{StaticResource IconButton}"
                             Width="24" Height="24"

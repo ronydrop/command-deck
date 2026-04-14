@@ -159,11 +159,11 @@
          'rgba(200,214,78,0.22)'.
          ═══════════════════════════════════════════════════════════════════════ -->
 
-    <!-- Base dots: subtle gray — always visible at all zoom levels -->
-    <SolidColorBrush x:Key="DotGridDotBrush"  Color="#2A2E35" />
-    <!-- Base hairlines: fainter gray -->
+    <!-- Base dots: subtle white at low opacity — matches CodeSurf dot style -->
+    <SolidColorBrush x:Key="DotGridDotBrush"  Color="#2EFFFFFF" />
+    <!-- Base hairlines: kept for compatibility, not drawn (hairlines removed from tile) -->
     <SolidColorBrush x:Key="DotGridLineBrush" Color="#1A2A2E35" />
-    <!-- Glow dots: neon lime, revealed only inside the cursor spotlight -->
-    <SolidColorBrush x:Key="DotGridGlowBrush" Color="{StaticResource AccentPurple}" Opacity="0.38" />
+    <!-- Glow dots: neutral white, revealed only inside the cursor spotlight -->
+    <SolidColorBrush x:Key="DotGridGlowBrush" Color="#FFFFFF" Opacity="0.18" />
 
 </ResourceDictionary>

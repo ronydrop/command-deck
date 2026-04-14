@@ -15,5 +15,8 @@ public enum LayoutMode
     Tiled,
 
     /// <summary>Binary split-pane layout with adjustable splitters.</summary>
-    SplitPane
+    SplitPane,
+
+    /// <summary>Fixed 3×3 bento-box grid with 8 drop-target slots and a central block catalog.</summary>
+    Bento
 }

@@ -1,0 +1,26 @@
+<UserControl x:Class="CommandDeck.Controls.BentoLayoutPresenter"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctrl="clr-namespace:CommandDeck.Controls">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Slots 0..7 are generated in code-behind -->
+
+        <!-- Central panel of BLOCOS (Row=1, Col=1) -->
+        <ctrl:BlockCatalogPanel x:Name="CatalogPanel"
+                                Grid.Row="1" Grid.Column="1"
+                                Margin="8"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Center" />
+    </Grid>
+</UserControl>

@@ -91,6 +91,56 @@
                           Style="{StaticResource IconPathSmall}" />
                 </Button>
 
+                <!-- Project breadcrumb -->
+                <Border Grid.Column="1"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Margin="8,0"
+                        Padding="6,4"
+                        CornerRadius="6"
+                        Cursor="Hand"
+                        MouseLeftButtonUp="OnBreadcrumbClick">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentProject}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Color dot -->
+                        <Ellipse Width="8" Height="8"
+                                 VerticalAlignment="Center"
+                                 Margin="0,0,6,0"
+                                 Fill="{Binding CurrentProject.Color, Converter={StaticResource HexToBrush}, FallbackValue=Transparent}" />
+                        <!-- Project name -->
+                        <TextBlock Text="{Binding CurrentProject.Name}"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   VerticalAlignment="Center" />
+                        <!-- Separator -->
+                        <TextBlock Text="  ›  "
+                                   FontSize="13"
+                                   Foreground="{DynamicResource SubtextBrush}"
+                                   VerticalAlignment="Center" />
+                        <!-- Project path -->
+                        <TextBlock Text="{Binding CurrentProject.Path}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource SubtextBrush}"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="300"
+                                   ToolTip="{Binding CurrentProject.Path}" />
+                    </StackPanel>
+                </Border>
+
                 <!-- Painel -->
                 <Button Grid.Column="2"
                         Command="{Binding NavigateToCommand}"
@@ -1138,6 +1188,8 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Status text -->
@@ -1246,6 +1298,30 @@
                           Style="{StaticResource IconPathSmall}"
                           Margin="0,0,4,0" />
                     <TextBlock Text="{Binding ActiveTerminalCount}"
+                               Style="{StaticResource CaptionText}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- RAM usage -->
+                <StackPanel Grid.Column="7" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="8,0"
+                            ToolTip="Uso de memória RAM (usado / total)">
+                    <Path Data="{StaticResource MemoryIcon}"
+                          Style="{StaticResource IconPathSmall}"
+                          Margin="0,0,4,0" />
+                    <TextBlock Text="{Binding RamStatusText}"
+                               Style="{StaticResource CaptionText}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Disk free space -->
+                <StackPanel Grid.Column="8" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="8,0,4,0"
+                            ToolTip="Espaço livre em disco">
+                    <Path Data="{StaticResource HardDriveIcon}"
+                          Style="{StaticResource IconPathSmall}"
+                          Margin="0,0,4,0" />
+                    <TextBlock Text="{Binding DiskStatusText}"
                                Style="{StaticResource CaptionText}"
                                VerticalAlignment="Center" />
                 </StackPanel>

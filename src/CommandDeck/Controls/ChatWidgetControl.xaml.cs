@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using CommandDeck.Models;
+using CommandDeck.Services;
 using CommandDeck.ViewModels;
 
 namespace CommandDeck.Controls;
@@ -142,6 +143,22 @@ public partial class ChatWidgetControl : UserControl
                     _ = vm.SendMessageCommand.ExecuteAsync(null);
             }
         }
+    }
+
+    /// <summary>Removes this chat tile from the canvas.</summary>
+    private void OnCloseTileClick(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ChatCanvasItemViewModel vm) return;
+        if (App.Services.GetService(typeof(ICanvasItemsService)) is ICanvasItemsService canvas)
+            canvas.RemoveItem(vm.Model.Id);
+    }
+
+    /// <summary>Injects /tools into the input so the user can see registered tools.</summary>
+    private void OnToolsIconClick(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ChatCanvasItemViewModel vm) return;
+        vm.InputText = "/tools";
+        ChatInput.Focus();
     }
 }
 

@@ -46,6 +46,17 @@ public interface IAssistantProvider
         IReadOnlyList<AssistantMessage> messages,
         Action<string>? onChunk = null) => DefaultStreamChatFallback();
 
+    /// <summary>
+    /// Streaming chat completion with optional tool definitions.
+    /// When tools are provided, the provider may return chunks with <see cref="FinishReason.ToolCalls"/>
+    /// and populated <see cref="AssistantResponse.ToolCalls"/> for the caller to execute.
+    /// Default: delegates to the no-tools overload (tools silently ignored).
+    /// </summary>
+    IAsyncEnumerable<AssistantResponse> StreamChatAsync(
+        IReadOnlyList<AssistantMessage> messages,
+        IReadOnlyList<ToolDefinition>? tools,
+        CancellationToken ct) => StreamChatAsync(messages);
+
     /// <summary>Cancel current request. Default: no-op.</summary>
     void CancelCurrentRequest() { }
 

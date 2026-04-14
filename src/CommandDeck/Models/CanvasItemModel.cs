@@ -60,6 +60,9 @@ public class CanvasItemModel
     /// <summary>Position index when displayed in tiled layout mode (-1 = unset).</summary>
     public int TiledIndex { get; set; } = -1;
 
+    /// <summary>Index of the Bento slot this item occupies (0..7, reading order skipping center). -1 when not assigned.</summary>
+    public int BentoSlotIndex { get; set; } = -1;
+
     // ─── Tile customization (Fase 3.4) ───────────────────────────────────────
 
     /// <summary>Custom accent color hex (e.g. "#cba6f7"). Null = use theme default.</summary>

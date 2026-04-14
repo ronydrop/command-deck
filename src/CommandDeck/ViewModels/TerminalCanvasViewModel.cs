@@ -85,6 +85,9 @@ public partial class TerminalCanvasViewModel : ObservableObject
     /// <summary>True when in split-pane mode.</summary>
     public bool IsSplitPaneMode => LayoutMode == LayoutMode.SplitPane;
 
+    /// <summary>True when in bento-box grid mode.</summary>
+    public bool IsBentoMode => LayoutMode == LayoutMode.Bento;
+
     /// <summary>Viewport width in pixels (fed from View SizeChanged).</summary>
     [ObservableProperty] private double _viewportWidth;
 
@@ -209,6 +212,9 @@ public partial class TerminalCanvasViewModel : ObservableObject
 
     [RelayCommand]
     private void SetSplitPaneMode() => LayoutMode = LayoutMode.SplitPane;
+
+    [RelayCommand]
+    private void SetBentoMode() => LayoutMode = LayoutMode.Bento;
 
     /// <summary>Called from View when the viewport size changes.</summary>
     public void OnViewportSizeChanged(double width, double height)
@@ -364,6 +370,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
         OnPropertyChanged(nameof(IsCanvasMode));
         OnPropertyChanged(nameof(IsTiledMode));
         OnPropertyChanged(nameof(IsSplitPaneMode));
+        OnPropertyChanged(nameof(IsBentoMode));
 
         if (newValue == LayoutMode.Tiled)
         {
@@ -400,8 +407,38 @@ public partial class TerminalCanvasViewModel : ObservableObject
             // Calculate split-pane positions
             RecalculateSplitPaneLayout();
         }
+        else if (newValue == LayoutMode.Bento)
+        {
+            // Exit focus mode if active
+            if (IsFocusMode) ExitFocusMode();
+
+            _cameraService.SaveSnapshot();
+
+            // Stash free-canvas positions so they can be restored when leaving Bento
+            foreach (var item in Items)
+            {
+                item.StashFreePosition();
+                item.IsTiledMode = false; // bento uses its own presenter, not tiled positions
+            }
+
+            // Assign unassigned items to slots (first 8, in Items order)
+            var unassigned = Items.Where(i => i.BentoSlotIndex < 0).ToList();
+            int slot = 0;
+            foreach (var item in unassigned)
+            {
+                if (slot >= 8) break;
+                item.BentoSlotIndex = slot++;
+            }
+        }
         else // Returning to FreeCanvas
         {
+            // If leaving bento, clear bento slot assignments so they don't persist to free mode
+            if (oldValue == LayoutMode.Bento)
+            {
+                foreach (var item in Items)
+                    item.BentoSlotIndex = -1;
+            }
+
             // Restore the positions the user had before switching to tiled
             foreach (var item in Items)
             {

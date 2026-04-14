@@ -81,4 +81,10 @@ public partial class MainWindow : Window
         if (DataContext is MainViewModel vm)
             vm.CloseShortcutsOverlayCommand.Execute(null);
     }
+
+    private void OnBreadcrumbClick(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || vm.CurrentProject is null) return;
+        System.Windows.Clipboard.SetText(vm.CurrentProject.Path);
+    }
 }

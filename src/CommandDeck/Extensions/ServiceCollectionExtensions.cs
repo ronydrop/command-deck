@@ -61,6 +61,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAssistantService, AssistantService>();
         services.AddSingleton<IGitAiService, GitAiService>();
 
+        // Tool registry + execution (used by chat widgets and slash commands)
+        services.AddSingleton<IToolRegistry, ToolRegistry>();
+        services.AddSingleton<IToolExecutionService, ToolExecutionService>();
+        services.AddSingleton<ISlashCommandService, SlashCommandService>();
+
         // AI Orb
         services.AddSingleton<IAiOrbService, AiOrbService>();
         services.AddSingleton<IVoiceInputService, VoiceInputService>();

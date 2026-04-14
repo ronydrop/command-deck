@@ -105,4 +105,26 @@ public class AgentMode
 
     /// <summary>Greeting message shown when mode is activated.</summary>
     public string WelcomeMessage { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Preferred AI provider for this mode (null = use the user's current selection).
+    /// </summary>
+    public AssistantProviderType? PreferredProvider { get; set; }
+
+    /// <summary>
+    /// Preferred model name for this mode (null = use the user's current selection).
+    /// E.g. "claude-opus-4-6", "gpt-4o".
+    /// </summary>
+    public string? PreferredModel { get; set; }
+
+    /// <summary>
+    /// Names of tools (from <see cref="IToolRegistry"/>) this mode is allowed to invoke.
+    /// Empty means no tools are enabled for this mode.
+    /// </summary>
+    public List<string> EnabledTools { get; set; } = new();
+
+    /// <summary>
+    /// Max tokens override for requests in this mode (null = use provider default of 8192).
+    /// </summary>
+    public int? MaxTokens { get; set; }
 }

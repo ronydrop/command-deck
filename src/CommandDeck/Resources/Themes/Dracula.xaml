@@ -60,9 +60,9 @@
 
     <DropShadowEffect x:Key="CardShadow" ShadowDepth="3" BlurRadius="22" Opacity="0.35" Color="#000000" Direction="270" />
 
-    <!-- DOT GRID: base white dots + accent glow (revealed via OpacityMask near cursor) -->
+    <!-- DOT GRID: base white dots + neutral glow (revealed via OpacityMask near cursor) -->
     <SolidColorBrush x:Key="DotGridDotBrush"  Color="#2EFFFFFF" />
     <SolidColorBrush x:Key="DotGridLineBrush" Color="#0FFFFFFF" />
-    <SolidColorBrush x:Key="DotGridGlowBrush" Color="{StaticResource AccentPurple}" Opacity="0.22" />
+    <SolidColorBrush x:Key="DotGridGlowBrush" Color="#FFFFFF" Opacity="0.18" />
 
 </ResourceDictionary>

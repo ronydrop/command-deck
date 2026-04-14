@@ -143,6 +143,19 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
         IReadOnlyList<AssistantMessage> messages,
         Action<string>? onChunk = null)
     {
+        await foreach (var resp in StreamChatAsync(messages, tools: null, CancellationToken.None))
+        {
+            if (!resp.IsError && !string.IsNullOrEmpty(resp.Content))
+                onChunk?.Invoke(resp.Content);
+            yield return resp;
+        }
+    }
+
+    public async IAsyncEnumerable<AssistantResponse> StreamChatAsync(
+        IReadOnlyList<AssistantMessage> messages,
+        IReadOnlyList<ToolDefinition>? tools,
+        CancellationToken ct)
+    {
         ThrowIfDisposed();
 
         if (!_isInitialized)
@@ -151,19 +164,15 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
         if (!IsConfigured)
         {
             var hint = IsOAuthMode
-                ? "Claude Code nao encontrado. Instale o Claude Code ou use uma API key."
-                : "Anthropic provider nao configurado. Defina uma API key nas Configuracoes.";
+                ? "Claude Code não encontrado. Instale o Claude Code ou use uma API key."
+                : "Anthropic provider não configurado. Defina uma API key nas Configurações.";
             yield return AssistantResponse.Failed(hint);
             yield break;
         }
 
-        _currentCts?.Cancel();
-        _currentCts = new CancellationTokenSource();
-        var ct = _currentCts.Token;
-
         var modelToUse = !string.IsNullOrWhiteSpace(_settings.AnthropicModel) ? _settings.AnthropicModel : _model;
         var (systemPrompt, userMessages) = SplitMessages(messages);
-        var requestBody = BuildRequestBody(modelToUse, systemPrompt, userMessages, stream: true);
+        var requestBody = BuildRequestBody(modelToUse, systemPrompt, userMessages, stream: true, tools);
 
         HttpResponseMessage? response = null;
         string? networkError = null;
@@ -172,8 +181,8 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl.TrimEnd('/')}/v1/messages");
             await ConfigureRequestAuthAsync(request);
             request.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
-
             response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync(ct);
@@ -181,6 +190,7 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
                 networkError = $"Anthropic API error ({(int)response.StatusCode}): {detail}";
             }
         }
+        catch (OperationCanceledException) { yield break; }
         catch (HttpRequestException ex)
         {
             networkError = $"Erro de rede com Anthropic ({_baseUrl}/v1/messages): {ex.Message}";
@@ -197,6 +207,12 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
             using var stream = await response.Content.ReadAsStreamAsync(ct);
             using var reader = new System.IO.StreamReader(stream);
 
+            // State for accumulating tool_use blocks across SSE events
+            // Key = content_block index, Value = (tool_use_id, tool_name, accumulated_input_json)
+            var toolAccumulators = new Dictionary<int, (string Id, string Name, System.Text.StringBuilder Input)>();
+            var finalFinishReason = FinishReason.Stop;
+            bool toolsRequested = false;
+
             while (!reader.EndOfStream && !ct.IsCancellationRequested)
             {
                 var line = await reader.ReadLineAsync(ct);
@@ -204,39 +220,92 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
                 if (!line.StartsWith("data: ")) continue;
 
                 var data = line["data: ".Length..];
-                if (data == "[DONE]") yield break;
+                if (data == "[DONE]") break;
 
-                string? chunk = null;
                 try
                 {
                     using var doc = JsonDocument.Parse(data);
                     var root = doc.RootElement;
 
-                    if (root.TryGetProperty("type", out var typeEl))
+                    if (!root.TryGetProperty("type", out var typeEl)) continue;
+                    var eventType = typeEl.GetString();
+
+                    switch (eventType)
                     {
-                        var eventType = typeEl.GetString();
-                        if (eventType == "content_block_delta" &&
-                            root.TryGetProperty("delta", out var delta) &&
-                            delta.TryGetProperty("text", out var textEl))
+                        case "content_block_start":
                         {
-                            chunk = textEl.GetString();
+                            // Check if this is a tool_use block start
+                            if (root.TryGetProperty("index", out var idxEl) &&
+                                root.TryGetProperty("content_block", out var block) &&
+                                block.TryGetProperty("type", out var bType) &&
+                                bType.GetString() == "tool_use")
+                            {
+                                var idx    = idxEl.GetInt32();
+                                var toolId = block.TryGetProperty("id",   out var idEl)   ? (idEl.GetString()   ?? string.Empty) : string.Empty;
+                                var toolNm = block.TryGetProperty("name", out var nmEl)   ? (nmEl.GetString()   ?? string.Empty) : string.Empty;
+                                toolAccumulators[idx] = (toolId, toolNm, new System.Text.StringBuilder());
+                            }
+                            break;
                         }
-                        else if (eventType == "message_stop")
+
+                        case "content_block_delta":
                         {
-                            yield break;
+                            if (!root.TryGetProperty("delta", out var delta)) break;
+                            var deltaType = delta.TryGetProperty("type", out var dt) ? dt.GetString() : null;
+
+                            if (deltaType == "text_delta" && delta.TryGetProperty("text", out var textEl))
+                            {
+                                var chunk = textEl.GetString();
+                                if (!string.IsNullOrEmpty(chunk))
+                                    yield return AssistantResponse.Success(chunk);
+                            }
+                            else if (deltaType == "input_json_delta" &&
+                                     root.TryGetProperty("index", out var idxEl) &&
+                                     delta.TryGetProperty("partial_json", out var pjEl))
+                            {
+                                var idx = idxEl.GetInt32();
+                                if (toolAccumulators.TryGetValue(idx, out var acc))
+                                    acc.Input.Append(pjEl.GetString());
+                            }
+                            break;
                         }
+
+                        case "message_delta":
+                        {
+                            if (root.TryGetProperty("delta", out var delta) &&
+                                delta.TryGetProperty("stop_reason", out var sr) &&
+                                sr.GetString() == "tool_use")
+                            {
+                                finalFinishReason = FinishReason.ToolCalls;
+                                toolsRequested = true;
+                            }
+                            break;
+                        }
+
+                        case "message_stop":
+                            goto done;
                     }
                 }
                 catch (JsonException)
                 {
                     // Skip malformed SSE lines
                 }
+            }
 
-                if (!string.IsNullOrEmpty(chunk))
-                {
-                    onChunk?.Invoke(chunk);
-                    yield return AssistantResponse.Success(chunk);
-                }
+            done:
+            // Emit accumulated tool calls as a final response chunk
+            if (toolsRequested && toolAccumulators.Count > 0)
+            {
+                var calls = toolAccumulators.Values
+                    .Select(acc => new ToolCall
+                    {
+                        Id        = acc.Id,
+                        Name      = acc.Name,
+                        InputJson = acc.Input.ToString()
+                    })
+                    .ToList();
+
+                yield return AssistantResponse.WithToolCalls(string.Empty, calls);
             }
         }
     }
@@ -319,24 +388,92 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
         return (system, result);
     }
 
-    private static string BuildRequestBody(string model, string? system, List<AssistantMessage> messages, bool stream)
+    private static string BuildRequestBody(
+        string model,
+        string? system,
+        List<AssistantMessage> messages,
+        bool stream,
+        IReadOnlyList<ToolDefinition>? tools = null,
+        int maxTokens = 8192)
     {
         var bodyObj = new Dictionary<string, object>
         {
-            ["model"] = model,
-            ["max_tokens"] = 4096,
-            ["stream"] = stream,
-            ["messages"] = messages.Select(m => new
-            {
-                role = m.Role.ToString().ToLowerInvariant(),
-                content = m.Content
-            }).ToList()
+            ["model"]      = model,
+            ["max_tokens"] = maxTokens,
+            ["stream"]     = stream,
+            ["messages"]   = SerializeMessages(messages)
         };
 
         if (!string.IsNullOrWhiteSpace(system))
             bodyObj["system"] = system;
 
+        if (tools is { Count: > 0 })
+        {
+            bodyObj["tools"] = tools.Select(t => new Dictionary<string, object>
+            {
+                ["name"]         = t.Name,
+                ["description"]  = t.Description,
+                ["input_schema"] = t.InputSchema
+            }).ToList();
+        }
+
         return JsonSerializer.Serialize(bodyObj);
+    }
+
+    // Serialize messages including Tool-role (tool_result) and AssistantWithTools turns.
+    private static List<object> SerializeMessages(List<AssistantMessage> messages)
+    {
+        var result = new List<object>();
+        foreach (var msg in messages)
+        {
+            switch (msg.Role)
+            {
+                case AssistantRole.User:
+                    result.Add(new { role = "user", content = msg.Content });
+                    break;
+
+                case AssistantRole.Assistant when msg.ToolCalls is { Count: > 0 }:
+                    // Assistant turn that requested tool use — Anthropic expects content blocks
+                    var contentBlocks = new List<object>();
+                    if (!string.IsNullOrWhiteSpace(msg.Content))
+                        contentBlocks.Add(new { type = "text", text = msg.Content });
+                    foreach (var tc in msg.ToolCalls)
+                    {
+                        var inputObj = string.IsNullOrWhiteSpace(tc.InputJson)
+                            ? (object)new { }
+                            : JsonSerializer.Deserialize<JsonElement>(tc.InputJson);
+                        contentBlocks.Add(new { type = "tool_use", id = tc.Id, name = tc.Name, input = inputObj });
+                    }
+                    result.Add(new { role = "assistant", content = contentBlocks });
+                    break;
+
+                case AssistantRole.Assistant:
+                    result.Add(new { role = "assistant", content = msg.Content });
+                    break;
+
+                case AssistantRole.Tool:
+                    // Tool results go as a user message with a tool_result content block
+                    result.Add(new
+                    {
+                        role = "user",
+                        content = new[]
+                        {
+                            new
+                            {
+                                type = "tool_result",
+                                tool_use_id = msg.ToolCallId ?? string.Empty,
+                                content = msg.Content
+                            }
+                        }
+                    });
+                    break;
+
+                default:
+                    result.Add(new { role = "user", content = msg.Content });
+                    break;
+            }
+        }
+        return result;
     }
 
     private static AssistantResponse ParseResponse(string responseBody)
@@ -346,12 +483,30 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
             using var doc = JsonDocument.Parse(responseBody);
             var root = doc.RootElement;
 
-            var content = string.Empty;
-            if (root.TryGetProperty("content", out var contentArray) && contentArray.GetArrayLength() > 0)
+            var textContent = string.Empty;
+            var toolCalls = new List<ToolCall>();
+
+            if (root.TryGetProperty("content", out var contentArray))
             {
-                var firstBlock = contentArray[0];
-                if (firstBlock.TryGetProperty("text", out var textEl))
-                    content = textEl.GetString() ?? string.Empty;
+                foreach (var block in contentArray.EnumerateArray())
+                {
+                    if (!block.TryGetProperty("type", out var blockType)) continue;
+
+                    var bType = blockType.GetString();
+                    if (bType == "text" && block.TryGetProperty("text", out var textEl))
+                    {
+                        textContent += textEl.GetString() ?? string.Empty;
+                    }
+                    else if (bType == "tool_use")
+                    {
+                        var id   = block.TryGetProperty("id",   out var idEl)   ? (idEl.GetString()   ?? string.Empty) : string.Empty;
+                        var name = block.TryGetProperty("name", out var nmEl)   ? (nmEl.GetString()   ?? string.Empty) : string.Empty;
+                        var inputJson = block.TryGetProperty("input", out var inEl)
+                            ? inEl.GetRawText()
+                            : "{}";
+                        toolCalls.Add(new ToolCall { Id = id, Name = name, InputJson = inputJson });
+                    }
+                }
             }
 
             var finishReason = FinishReason.Unknown;
@@ -359,10 +514,10 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
             {
                 finishReason = (stopEl.GetString() ?? "") switch
                 {
-                    "end_turn" => FinishReason.Stop,
+                    "end_turn"   => FinishReason.Stop,
                     "max_tokens" => FinishReason.Length,
-                    "tool_use" => FinishReason.ToolCalls,
-                    _ => FinishReason.Unknown
+                    "tool_use"   => FinishReason.ToolCalls,
+                    _            => FinishReason.Unknown
                 };
             }
 
@@ -371,16 +526,17 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
             {
                 usage = new TokenUsage
                 {
-                    PromptTokens = usageEl.TryGetProperty("input_tokens", out var pt) ? pt.GetInt32() : 0,
+                    PromptTokens     = usageEl.TryGetProperty("input_tokens",  out var pt) ? pt.GetInt32() : 0,
                     CompletionTokens = usageEl.TryGetProperty("output_tokens", out var ct) ? ct.GetInt32() : 0
                 };
             }
 
             return new AssistantResponse
             {
-                Content = content,
+                Content      = textContent,
                 FinishReason = finishReason,
-                Usage = usage
+                ToolCalls    = toolCalls,
+                Usage        = usage
             };
         }
         catch (JsonException ex)

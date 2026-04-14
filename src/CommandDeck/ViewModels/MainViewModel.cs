@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using Debug = System.Diagnostics.Trace;
 using System.Linq;
 using System.Threading;
@@ -34,6 +36,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IAiTerminalService _aiTerminalService;
     private readonly IProjectSwitchService _projectSwitchService;
     private readonly SemaphoreSlim _projectSwitchLock = new(1, 1);
+    private DispatcherTimer? _sysStatTimer;
 
     /// <summary>AI Floating Orb ViewModel.</summary>
     public AiOrbViewModel AiOrb { get; }
@@ -49,6 +52,9 @@ public partial class MainViewModel : ObservableObject
     public TerminalCanvasViewModel CanvasViewModel { get; }
     public CommandPaletteViewModel CommandPalette { get; }
     public WorkspaceTreeViewModel WorkspaceTree { get; }
+
+    /// <summary>Widget catalog for the Bento block catalog panel.</summary>
+    public WidgetCatalogViewModel WidgetCatalog { get; }
 
     /// <summary>Tabbed terminal layout ViewModel.</summary>
     public TabbedTerminalViewModel TabbedTerminal { get; }
@@ -131,6 +137,14 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isNotificationHistoryOpen;
 
+    /// <summary>RAM usage display text (e.g. "3.2 / 16.0 GB").</summary>
+    [ObservableProperty]
+    private string _ramStatusText = "— GB";
+
+    /// <summary>Disk free space display text (e.g. "120.4 GB free").</summary>
+    [ObservableProperty]
+    private string _diskStatusText = "— GB";
+
     /// <summary>Default AI tool ID (persisted, drives dropdown checkmark).</summary>
     [ObservableProperty]
     private string _defaultAiToolId = "claude";
@@ -179,7 +193,8 @@ public partial class MainViewModel : ObservableObject
         BranchSelectorViewModel branchSelector,
         AiOrbViewModel aiOrb,
         IProjectSwitchService projectSwitchService,
-        TabbedTerminalViewModel tabbedTerminal)
+        TabbedTerminalViewModel tabbedTerminal,
+        WidgetCatalogViewModel widgetCatalog)
     {
         _terminalService = terminalService;
         _projectService = projectService;
@@ -222,6 +237,7 @@ public partial class MainViewModel : ObservableObject
         BranchSelector = branchSelector;
         AiOrb = aiOrb;
         TabbedTerminal = tabbedTerminal;
+        WidgetCatalog = widgetCatalog;
 
         // Wire TerminalManager context and events
         TerminalManager.CurrentProject = null; // will be set on project switch
@@ -262,6 +278,45 @@ public partial class MainViewModel : ObservableObject
         _paneStateService.AggregatedIconsChanged += icons => PaneStateIcons = icons;
         _notificationService.NotificationAdded += _ => UnreadNotificationCount = _notificationService.UnreadCount;
         _notificationService.NotificationDismissed += _ => UnreadNotificationCount = _notificationService.UnreadCount;
+
+        // System resource stats (RAM + disk) — refresh every 5 s
+        StartSysStatTimer();
+    }
+
+    private void StartSysStatTimer()
+    {
+        OnSysStatTick(); // populate immediately on startup
+        _sysStatTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _sysStatTimer.Tick += (_, _) => OnSysStatTick();
+        _sysStatTimer.Start();
+    }
+
+    private void OnSysStatTick()
+    {
+        try
+        {
+            // RAM via WMI
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                "SELECT FreePhysicalMemory, TotalVisibleMemorySize FROM Win32_OperatingSystem");
+            foreach (System.Management.ManagementObject obj in searcher.Get())
+            {
+                var totalKb = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
+                var freeKb  = Convert.ToDouble(obj["FreePhysicalMemory"]);
+                var usedGb  = Math.Round((totalKb - freeKb) / 1_048_576.0, 1);
+                var totalGb = Math.Round(totalKb / 1_048_576.0, 1);
+                RamStatusText = $"{usedGb:F1} / {totalGb:F1} GB";
+            }
+        }
+        catch { RamStatusText = "— GB"; }
+
+        try
+        {
+            // Disk free space for the drive where the app is running
+            var drive = new DriveInfo(Path.GetPathRoot(AppContext.BaseDirectory) ?? "C:\\");
+            var freeGb = Math.Round(drive.AvailableFreeSpace / 1_073_741_824.0, 1);
+            DiskStatusText = $"{freeGb:F1} GB";
+        }
+        catch { DiskStatusText = "— GB"; }
     }
 
     [RelayCommand]
@@ -856,6 +911,11 @@ public partial class MainViewModel : ObservableObject
             ProcessMonitor.StartMonitoring();
         else if (!needsMonitor && hadMonitor)
             ProcessMonitor.StopMonitoring();
+    }
+
+    partial void OnCurrentProjectChanged(Project? value)
+    {
+        ProjectList.SyncSelection(value);
     }
 
 }

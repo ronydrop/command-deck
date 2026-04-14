@@ -183,6 +183,18 @@ public partial class App : Application
         // Subscribe to OS theme changes so System mode re-applies when Windows switches dark ↔ light.
         SystemThemeDetector.SystemModeChanged += OnSystemThemeModeChanged;
 
+        // Register Kanban tools and slash commands into their respective registries.
+        // Must run after DI is built and canvas services are configured.
+        try
+        {
+            KanbanToolsRegistrar.RegisterAll(_serviceProvider!);
+            SlashCommandRegistrar.RegisterAll(_serviceProvider!);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[App] Tool/slash registration error: {ex}");
+        }
+
         // Resolve and show the main window
         try
         {

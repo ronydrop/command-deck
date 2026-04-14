@@ -118,6 +118,19 @@ public sealed class AssistantService : IAssistantService
         }
     }
 
+    public async IAsyncEnumerable<AssistantResponse> StreamChatAsync(
+        IReadOnlyList<AssistantMessage> messages,
+        IReadOnlyList<ToolDefinition>? tools,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        await foreach (var response in _active.StreamChatAsync(messages, tools, ct))
+        {
+            ct.ThrowIfCancellationRequested();
+            ReportUsage(response);
+            yield return response;
+        }
+    }
+
     /// <summary>
     /// Switches the active provider to the one matching <paramref name="type"/>.
     /// If no registered provider maps to that type, the current provider is kept.

@@ -485,10 +485,12 @@ Forneça:
             IsBuiltIn = true,
             Temperature = 0.7,
             WelcomeMessage = "Olá! Sou seu assistente de desenvolvimento. Como posso ajudar?",
+            EnabledTools = ["kanban_create_card", "kanban_list_cards", "kanban_move_card", "kanban_update_card"],
             SystemPrompt = """
-You are a helpful developer assistant integrated into CommandDeck, a terminal management and development dashboard for Windows. 
-Be concise, practical, and focus on development tasks. Use code blocks for code snippets. 
+You are a helpful developer assistant integrated into CommandDeck, a terminal management and development dashboard for Windows.
+Be concise, practical, and focus on development tasks. Use code blocks for code snippets.
 Respond in the same language as the user's message.
+You have access to Kanban tools to manage tasks and cards in the user's project board.
 """
         },
         new()

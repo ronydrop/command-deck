@@ -693,6 +693,298 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════════════════════════════════
+         CHAT WIDGET TOOLBAR STYLES
+         Used exclusively by ChatWidgetControl — header icon buttons, compact
+         inline combo-boxes (Provider ˅ / Model ˅ / Agente ˅), send button.
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Small ghost button for the chat header (≡, ⊞, ×) -->
+    <Style x:Key="ChatHeaderIconButton" TargetType="Button">
+        <Setter Property="Width"           Value="26"/>
+        <Setter Property="Height"          Value="26"/>
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="Padding"         Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" CornerRadius="5" Background="Transparent"
+                            Width="26" Height="26">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background">
+                                <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.6"/></Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bg" Property="Opacity" Value="0.6"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Small ghost button for bottom toolbar (shield, globe, fork, clip) -->
+    <Style x:Key="ChatToolbarIconBtn" TargetType="Button">
+        <Setter Property="Width"           Value="28"/>
+        <Setter Property="Height"          Value="28"/>
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="Padding"         Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" CornerRadius="5" Background="Transparent"
+                            Width="28" Height="28">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background">
+                                <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.55"/></Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bg" Property="Opacity" Value="0.55"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Shared Path style for toolbar SVG icons -->
+    <Style x:Key="ChatToolbarIconPath" TargetType="Path">
+        <Setter Property="Stretch"            Value="Uniform"/>
+        <Setter Property="Width"              Value="13"/>
+        <Setter Property="Height"             Value="13"/>
+        <Setter Property="Stroke"             Value="{DynamicResource SubtextBrush}"/>
+        <Setter Property="StrokeThickness"    Value="1.5"/>
+        <Setter Property="Fill"               Value="Transparent"/>
+        <Setter Property="StrokeLineJoin"     Value="Round"/>
+        <Setter Property="StrokeStartLineCap" Value="Round"/>
+        <Setter Property="StrokeEndLineCap"   Value="Round"/>
+    </Style>
+
+    <!-- Compact inline combo (Provider ˅ / Model ˅) — no box, just text + chevron -->
+    <Style x:Key="CompactInlineComboBox" TargetType="ComboBox">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="Foreground"      Value="{DynamicResource SubtextBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Height"          Value="26"/>
+        <Setter Property="Padding"         Value="5,0,3,0"/>
+        <Setter Property="FontSize"        Value="10.5"/>
+        <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="ItemContainerStyle">
+            <Setter.Value>
+                <Style TargetType="ComboBoxItem">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground"  Value="{DynamicResource TextBrush}"/>
+                    <Setter Property="FontSize"    Value="11"/>
+                    <Setter Property="Padding"     Value="10,6"/>
+                    <Setter Property="Cursor"      Value="Hand"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource Surface1Brush}"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                        <Border x:Name="Bg" CornerRadius="5" Background="Transparent"
+                                Padding="{TemplateBinding Padding}">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <ContentPresenter x:Name="ContentSite"
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  VerticalAlignment="Center"
+                                                  MaxWidth="100"/>
+                                <Path Data="M0,0 L3.5,4 L7,0"
+                                      Stroke="{DynamicResource SubtextBrush}"
+                                      StrokeThickness="1.2" Fill="Transparent"
+                                      Width="7" Height="4" Margin="4,0,0,0"
+                                      VerticalAlignment="Center"
+                                      StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"/>
+                            </StackPanel>
+                        </Border>
+                        <ToggleButton IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
+                                          RelativeSource={RelativeSource TemplatedParent}}"
+                                      Focusable="False" ClickMode="Press">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border Background="Transparent"/>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                        <Popup x:Name="PART_Popup"
+                               IsOpen="{TemplateBinding IsDropDownOpen}"
+                               Placement="Bottom"
+                               PlacementTarget="{Binding ElementName=Bg}"
+                               AllowsTransparency="True"
+                               Focusable="False"
+                               PopupAnimation="Fade">
+                            <Border Background="{DynamicResource GlassBgBrush}"
+                                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8"
+                                    MaxHeight="250"
+                                    MinWidth="{Binding ActualWidth, ElementName=Bg}">
+                                <Border.Effect>
+                                    <DropShadowEffect ShadowDepth="2" BlurRadius="16" Opacity="0.3"/>
+                                </Border.Effect>
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsPresenter/>
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background">
+                                <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5"/></Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsDropDownOpen" Value="True">
+                            <Setter TargetName="Bg" Property="Background">
+                                <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.7"/></Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Agent inline combo — same base, green foreground + subtle green border -->
+    <Style x:Key="AgentInlineComboBox" TargetType="ComboBox"
+           BasedOn="{StaticResource CompactInlineComboBox}">
+        <Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                        <Border x:Name="Bg" CornerRadius="5" Background="Transparent"
+                                BorderThickness="1" Padding="{TemplateBinding Padding}">
+                            <Border.BorderBrush>
+                                <SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.35"/>
+                            </Border.BorderBrush>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <ContentPresenter x:Name="ContentSite"
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  VerticalAlignment="Center"
+                                                  MaxWidth="90"/>
+                                <Path Data="M0,0 L3.5,4 L7,0"
+                                      Stroke="{DynamicResource AccentGreenBrush}"
+                                      StrokeThickness="1.2" Fill="Transparent"
+                                      Width="7" Height="4" Margin="4,0,0,0"
+                                      VerticalAlignment="Center"
+                                      StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"/>
+                            </StackPanel>
+                        </Border>
+                        <ToggleButton IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
+                                          RelativeSource={RelativeSource TemplatedParent}}"
+                                      Focusable="False" ClickMode="Press">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border Background="Transparent"/>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                        <Popup x:Name="PART_Popup"
+                               IsOpen="{TemplateBinding IsDropDownOpen}"
+                               Placement="Bottom"
+                               PlacementTarget="{Binding ElementName=Bg}"
+                               AllowsTransparency="True"
+                               Focusable="False"
+                               PopupAnimation="Fade">
+                            <Border Background="{DynamicResource GlassBgBrush}"
+                                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                                    BorderThickness="1" CornerRadius="8"
+                                    MaxHeight="250"
+                                    MinWidth="{Binding ActualWidth, ElementName=Bg}">
+                                <Border.Effect>
+                                    <DropShadowEffect ShadowDepth="2" BlurRadius="16" Opacity="0.3"/>
+                                </Border.Effect>
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsPresenter/>
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background">
+                                <Setter.Value><SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.1"/></Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsDropDownOpen" Value="True">
+                            <Setter TargetName="Bg" Property="Background">
+                                <Setter.Value><SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.15"/></Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Send button (toolbar, icon-only, green accent) -->
+    <Style x:Key="ChatSendButton" TargetType="Button">
+        <Setter Property="Width"           Value="28"/>
+        <Setter Property="Height"          Value="28"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" CornerRadius="6" Width="28" Height="28">
+                        <Border.Background>
+                            <SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.75"/>
+                        </Border.Background>
+                        <!-- Paper-plane / send path -->
+                        <Path Data="M21,3 L3,10.5 L10,13.5 L13,21 Z M10,13.5 L21,3"
+                              Stroke="White" StrokeThickness="1.4" Fill="Transparent"
+                              Width="13" Height="13" Stretch="Uniform"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                              StrokeLineJoin="Round"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Opacity" Value="0.9"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bg" Property="Opacity" Value="0.7"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bg" Property="Opacity" Value="0.3"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
          LISTBOX STYLE
          ═══════════════════════════════════════════════════════════════════════ -->
 

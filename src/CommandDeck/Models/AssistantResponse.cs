@@ -57,6 +57,12 @@ public class AssistantResponse
     public bool IsError => !string.IsNullOrEmpty(Error) || FinishReason == FinishReason.Error;
 
     /// <summary>
+    /// Tool calls requested by the model when <see cref="FinishReason"/> is <see cref="FinishReason.ToolCalls"/>.
+    /// Empty for normal text responses.
+    /// </summary>
+    public IReadOnlyList<ToolCall> ToolCalls { get; init; } = Array.Empty<ToolCall>();
+
+    /// <summary>
     /// Creates a successful response.
     /// </summary>
     public static AssistantResponse Success(string content, TokenUsage? usage = null) => new()
@@ -74,5 +80,15 @@ public class AssistantResponse
         Content = string.Empty,
         FinishReason = FinishReason.Error,
         Error = error
+    };
+
+    /// <summary>
+    /// Creates a response that carries tool calls to be executed by the client.
+    /// </summary>
+    public static AssistantResponse WithToolCalls(string text, IReadOnlyList<ToolCall> calls) => new()
+    {
+        Content = text,
+        FinishReason = FinishReason.ToolCalls,
+        ToolCalls = calls
     };
 }
