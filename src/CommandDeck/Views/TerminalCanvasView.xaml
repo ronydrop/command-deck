@@ -461,6 +461,32 @@
                                                VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
+
+                            <!-- Split Pane mode button -->
+                            <Button Padding="8,4"
+                                    Command="{Binding CanvasViewModel.SetSplitPaneModeCommand}"
+                                    ToolTip="Modo Split Pane — layout binário ajustável"
+                                    Cursor="Hand">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource LayoutModeButton}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanvasViewModel.IsSplitPaneMode}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                                <Setter Property="Opacity" Value="1" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="⬜⬜" FontSize="9" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                    <TextBlock Text="Split"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </Border>
 

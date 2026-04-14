@@ -31,6 +31,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
     private readonly IUndoRedoService _undoRedo;
     private readonly TiledLayoutStrategy _tiledStrategy;
     private readonly FreeCanvasLayoutStrategy _freeStrategy;
+    private readonly SplitPaneLayoutStrategy _splitPaneStrategy;
     private DispatcherTimer? _layoutDebounceTimer;
     private const int LayoutDebounceMs = 50;
 
@@ -78,6 +79,9 @@ public partial class TerminalCanvasViewModel : ObservableObject
     /// <summary>True when in tiled grid mode (auto-arranged layout).</summary>
     public bool IsTiledMode => LayoutMode == LayoutMode.Tiled;
 
+    /// <summary>True when in split-pane mode.</summary>
+    public bool IsSplitPaneMode => LayoutMode == LayoutMode.SplitPane;
+
     /// <summary>Viewport width in pixels (fed from View SizeChanged).</summary>
     [ObservableProperty] private double _viewportWidth;
 
@@ -124,6 +128,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
         IUndoRedoService undoRedo,
         TiledLayoutStrategy tiledStrategy,
         FreeCanvasLayoutStrategy freeStrategy,
+        SplitPaneLayoutStrategy splitPaneStrategy,
         MiniMapViewModel miniMap)
     {
         _workspaceService = workspaceService;
@@ -135,6 +140,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
         _undoRedo = undoRedo;
         _tiledStrategy = tiledStrategy;
         _freeStrategy = freeStrategy;
+        _splitPaneStrategy = splitPaneStrategy;
 
         MiniMap = miniMap;
 
@@ -195,6 +201,9 @@ public partial class TerminalCanvasViewModel : ObservableObject
     [RelayCommand]
     private void SetTiledMode() => LayoutMode = LayoutMode.Tiled;
 
+    [RelayCommand]
+    private void SetSplitPaneMode() => LayoutMode = LayoutMode.SplitPane;
+
     /// <summary>Called from View when the viewport size changes.</summary>
     public void OnViewportSizeChanged(double width, double height)
     {
@@ -235,6 +244,30 @@ public partial class TerminalCanvasViewModel : ObservableObject
             widget.Y = -9999;
             widget.Width = 0;
             widget.Height = 0;
+        }
+    }
+
+    /// <summary>
+    /// Calculates and applies the split-pane layout to all items.
+    /// ALL items (terminals + widgets) participate in the split.
+    /// </summary>
+    public void RecalculateSplitPaneLayout()
+    {
+        if (!IsSplitPaneMode || ViewportWidth <= 0 || ViewportHeight <= 0) return;
+
+        var allItems = _workspaceService.Items.ToList();
+        if (allItems.Count == 0) return;
+
+        var layout = _splitPaneStrategy.CalculateLayout(allItems.Count, ViewportWidth, ViewportHeight);
+
+        for (int i = 0; i < allItems.Count && i < layout.Placements.Count; i++)
+        {
+            var p = layout.Placements[i];
+            var item = allItems[i];
+            item.X = p.X;
+            item.Y = p.Y;
+            item.Width = p.Width;
+            item.Height = p.Height;
         }
     }
 
@@ -323,6 +356,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsCanvasMode));
         OnPropertyChanged(nameof(IsTiledMode));
+        OnPropertyChanged(nameof(IsSplitPaneMode));
 
         if (newValue == LayoutMode.Tiled)
         {
@@ -341,6 +375,23 @@ public partial class TerminalCanvasViewModel : ObservableObject
 
             // Calculate and apply tiled positions
             RecalculateTiledLayout();
+        }
+        else if (newValue == LayoutMode.SplitPane)
+        {
+            // Exit focus mode if active
+            if (IsFocusMode) ExitFocusMode();
+
+            _cameraService.SaveSnapshot();
+
+            // Stash free-canvas positions
+            foreach (var item in Items)
+            {
+                item.StashFreePosition();
+                item.IsTiledMode = true; // reuse tiled style (no drag/resize)
+            }
+
+            // Calculate split-pane positions
+            RecalculateSplitPaneLayout();
         }
         else // Returning to FreeCanvas
         {

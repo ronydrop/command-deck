@@ -122,6 +122,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<FreeCanvasLayoutStrategy>();
         services.AddSingleton<TiledLayoutStrategy>();
+        services.AddSingleton<SplitPaneLayoutStrategy>();
 
         services.AddSingleton<IKanbanService, KanbanService>();
 

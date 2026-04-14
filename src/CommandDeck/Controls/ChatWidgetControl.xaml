@@ -210,39 +210,98 @@
                                 </Style>
                             </Grid.Style>
 
-                            <!-- Streaming dots -->
-                            <StackPanel Orientation="Horizontal"
-                                        Margin="10,8"
-                                        Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVis}}">
-                                <Ellipse x:Name="Dot1" Width="6" Height="6" Margin="2,0"
-                                         Fill="{DynamicResource SubtextBrush}" Opacity="0.6" />
-                                <Ellipse x:Name="Dot2" Width="6" Height="6" Margin="2,0"
-                                         Fill="{DynamicResource SubtextBrush}" Opacity="0.4" />
-                                <Ellipse x:Name="Dot3" Width="6" Height="6" Margin="2,0"
-                                         Fill="{DynamicResource SubtextBrush}" Opacity="0.2" />
-                                <StackPanel.Triggers>
-                                    <EventTrigger RoutedEvent="Loaded">
-                                        <BeginStoryboard>
-                                            <Storyboard RepeatBehavior="Forever">
-                                                <DoubleAnimation Storyboard.TargetName="Dot1"
-                                                                 Storyboard.TargetProperty="Opacity"
-                                                                 From="0.2" To="1" Duration="0:0:0.5"
-                                                                 AutoReverse="True" />
-                                                <DoubleAnimation Storyboard.TargetName="Dot2"
-                                                                 Storyboard.TargetProperty="Opacity"
-                                                                 From="0.2" To="1" Duration="0:0:0.5"
-                                                                 BeginTime="0:0:0.17"
-                                                                 AutoReverse="True" />
-                                                <DoubleAnimation Storyboard.TargetName="Dot3"
-                                                                 Storyboard.TargetProperty="Opacity"
-                                                                 From="0.2" To="1" Duration="0:0:0.5"
-                                                                 BeginTime="0:0:0.34"
-                                                                 AutoReverse="True" />
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                </StackPanel.Triggers>
-                            </StackPanel>
+                                <!-- Streaming dots -->
+                                <StackPanel Orientation="Horizontal"
+                                            Margin="10,8"
+                                            Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVis}}">
+                                    <Ellipse x:Name="Dot1" Width="6" Height="6" Margin="2,0"
+                                             Fill="{DynamicResource SubtextBrush}" Opacity="0.15">
+                                        <Ellipse.RenderTransform><TranslateTransform Y="0"/></Ellipse.RenderTransform>
+                                    </Ellipse>
+                                    <Ellipse x:Name="Dot2" Width="5" Height="5" Margin="2,1,2,0"
+                                             Fill="{DynamicResource SubtextBrush}" Opacity="0.1">
+                                        <Ellipse.RenderTransform><TranslateTransform Y="0"/></Ellipse.RenderTransform>
+                                    </Ellipse>
+                                    <Ellipse x:Name="Dot3" Width="7" Height="7" Margin="2,0"
+                                             Fill="{DynamicResource SubtextBrush}" Opacity="0.2">
+                                        <Ellipse.RenderTransform><TranslateTransform Y="0"/></Ellipse.RenderTransform>
+                                    </Ellipse>
+                                    <StackPanel.Triggers>
+                                        <EventTrigger RoutedEvent="Loaded">
+                                            <BeginStoryboard>
+                                                <Storyboard RepeatBehavior="Forever">
+
+                                                    <!-- Dot1: médio, começa logo, duração 0.52s, bounce sutil -->
+                                                    <DoubleAnimation Storyboard.TargetName="Dot1"
+                                                                     Storyboard.TargetProperty="Opacity"
+                                                                     From="0.12" To="1"
+                                                                     Duration="0:0:0.52"
+                                                                     BeginTime="0:0:0.06"
+                                                                     AutoReverse="True">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <SineEase EasingMode="EaseInOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation Storyboard.TargetName="Dot1"
+                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                     From="0" To="-3"
+                                                                     Duration="0:0:0.52"
+                                                                     BeginTime="0:0:0.06"
+                                                                     AutoReverse="True">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <SineEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+
+                                                    <!-- Dot2: menor, começa mais tarde, ritmo diferente (0.39s) -->
+                                                    <DoubleAnimation Storyboard.TargetName="Dot2"
+                                                                     Storyboard.TargetProperty="Opacity"
+                                                                     From="0.08" To="0.85"
+                                                                     Duration="0:0:0.39"
+                                                                     BeginTime="0:0:0.28"
+                                                                     AutoReverse="True">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <QuadraticEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation Storyboard.TargetName="Dot2"
+                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                     From="0" To="-2"
+                                                                     Duration="0:0:0.39"
+                                                                     BeginTime="0:0:0.28"
+                                                                     AutoReverse="True">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <QuadraticEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+
+                                                    <!-- Dot3: maior, começa depois, ritmo mais lento (0.67s) -->
+                                                    <DoubleAnimation Storyboard.TargetName="Dot3"
+                                                                     Storyboard.TargetProperty="Opacity"
+                                                                     From="0.18" To="0.95"
+                                                                     Duration="0:0:0.67"
+                                                                     BeginTime="0:0:0.11"
+                                                                     AutoReverse="True">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseInOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+                                                    <DoubleAnimation Storyboard.TargetName="Dot3"
+                                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                                     From="0" To="-4"
+                                                                     Duration="0:0:0.67"
+                                                                     BeginTime="0:0:0.11"
+                                                                     AutoReverse="True">
+                                                        <DoubleAnimation.EasingFunction>
+                                                            <CubicEase EasingMode="EaseOut"/>
+                                                        </DoubleAnimation.EasingFunction>
+                                                    </DoubleAnimation>
+
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </StackPanel.Triggers>
+                                </StackPanel>
 
                             <!-- Message bubble (not streaming) -->
                             <Grid MaxWidth="320"

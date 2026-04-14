@@ -276,15 +276,18 @@ public partial class TerminalCanvasView : UserControl
 
     private void OnLayoutModeChanged(LayoutMode newMode)
     {
-        if (newMode == LayoutMode.Tiled)
+        if (newMode == LayoutMode.Tiled || newMode == LayoutMode.SplitPane)
         {
-            // Reset camera: scale 1, Y locked to 0, X to 0 (user can pan horizontally)
+            // Reset camera: scale 1, origin 0/0
             CanvasScale.ScaleX = 1;
             CanvasScale.ScaleY = 1;
             CanvasTranslate.X = 0;
             CanvasTranslate.Y = 0;
             _zoomTargetsInitialized = false;
             _canvasVm?.SyncCamera(0, 0, 1);
+
+            if (newMode == LayoutMode.SplitPane)
+                _canvasVm?.RecalculateSplitPaneLayout();
         }
         else
         {

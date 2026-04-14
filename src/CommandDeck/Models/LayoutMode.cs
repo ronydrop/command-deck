@@ -12,5 +12,8 @@ public enum LayoutMode
     FreeCanvas,
 
     /// <summary>Auto-arranged tiled grid layout.</summary>
-    Tiled
+    Tiled,
+
+    /// <summary>Binary split-pane layout with adjustable splitters.</summary>
+    SplitPane
 }
