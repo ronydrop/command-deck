@@ -74,10 +74,9 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
@@ -93,7 +92,7 @@
                 </Button>
 
                 <!-- Painel -->
-                <Button Grid.Column="1"
+                <Button Grid.Column="2"
                         Command="{Binding NavigateToCommand}"
                         CommandParameter="{x:Static vm:ViewType.Dashboard}"
                         VerticalAlignment="Center"
@@ -118,7 +117,7 @@
                 </Button>
 
                 <!-- Terminal -->
-                <Button Grid.Column="2"
+                <Button Grid.Column="3"
                         Command="{Binding NavigateToCommand}"
                         CommandParameter="{x:Static vm:ViewType.Terminal}"
                         VerticalAlignment="Center"
@@ -143,7 +142,7 @@
                 </Button>
 
                 <!-- Tabbed Terminal -->
-                <Button Grid.Column="3"
+                <Button Grid.Column="4"
                         Command="{Binding NavigateToCommand}"
                         CommandParameter="{x:Static vm:ViewType.TabbedTerminal}"
                         VerticalAlignment="Center"

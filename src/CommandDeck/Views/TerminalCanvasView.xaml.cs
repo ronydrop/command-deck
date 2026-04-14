@@ -77,9 +77,10 @@ public partial class TerminalCanvasView : UserControl
     private double _preFocusTransX;
     private double _preFocusTransY;
 
-    // ─── Proximity glow throttle ──────────────────────────────────────────
+    // ─── Proximity glow throttle + spotlight mask ────────────────────────
 
-    private DateTime _lastGlowTime;
+    private DateTime              _lastGlowTime;
+    private RadialGradientBrush?  _glowMask;
 
     // ─── ViewModels ──────────────────────────────────────────────────────
 
@@ -197,6 +198,21 @@ public partial class TerminalCanvasView : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+
+        // Build the mutable OpacityMask for WorldGlowGrid.
+        // MappingMode=Absolute lets us set Center/Radius in world-space pixels.
+        // Must NOT be frozen — we mutate it on every MouseMove.
+        _glowMask = new RadialGradientBrush
+        {
+            MappingMode = BrushMappingMode.Absolute,
+            GradientStops =
+            {
+                new GradientStop(Colors.Black,       0.0),
+                new GradientStop(Colors.Black,       0.5), // solid core to the inner half
+                new GradientStop(Colors.Transparent, 1.0),
+            },
+        };
+        WorldGlowGrid.OpacityMask = _glowMask;
     }
 
     // ─── Lifecycle ────────────────────────────────────────────────────────
@@ -448,18 +464,29 @@ public partial class TerminalCanvasView : UserControl
 
     private void OnViewportMouseMove(object sender, MouseEventArgs e)
     {
-        // ── Proximity glow (throttled to ~30 fps) ─────────────────────
+        // ── Spotlight mask over the glow grid (throttled to ~30 fps) ─────
         var glowNow = DateTime.UtcNow;
-        if ((glowNow - _lastGlowTime).TotalMilliseconds >= 33)
+        if ((glowNow - _lastGlowTime).TotalMilliseconds >= 33 && _glowMask is not null)
         {
             _lastGlowTime = glowNow;
-            var glowPos = e.GetPosition(ProximityGlowCanvas);
-            Canvas.SetLeft(ProximityGlowEllipse, glowPos.X - 210); // center on cursor (420/2)
-            Canvas.SetTop(ProximityGlowEllipse,  glowPos.Y - 210);
-            if (ProximityGlowEllipse.Opacity < 0.22)
+
+            // GetPosition(WorldGlowGrid) returns pre-transform local coords —
+            // exactly what an Absolute-mapped mask brush needs.
+            var worldPt = e.GetPosition(WorldGlowGrid);
+
+            // 120 px screen-space radius (codesurf canvasGlowRadius), zoom-independent.
+            double zoom        = CanvasScale.ScaleX;
+            double worldRadius = 120.0 / zoom;
+
+            _glowMask.Center         = worldPt;
+            _glowMask.GradientOrigin = worldPt;
+            _glowMask.RadiusX        = worldRadius;
+            _glowMask.RadiusY        = worldRadius;
+
+            if (WorldGlowGrid.Opacity < 1.0)
             {
-                var fadeIn = new DoubleAnimation(0.22, TimeSpan.FromMilliseconds(180));
-                ProximityGlowEllipse.BeginAnimation(OpacityProperty, fadeIn);
+                var fadeIn = new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(180));
+                WorldGlowGrid.BeginAnimation(OpacityProperty, fadeIn);
             }
         }
 
@@ -544,11 +571,11 @@ public partial class TerminalCanvasView : UserControl
         _momentumVelY = 0;
     }
 
-    /// <summary>Fades out the proximity glow when the cursor leaves the viewport.</summary>
+    /// <summary>Fades out the spotlight glow when the cursor leaves the viewport.</summary>
     private void OnViewportMouseLeave(object sender, MouseEventArgs e)
     {
-        var fadeOut = new DoubleAnimation(0.0, TimeSpan.FromMilliseconds(200));
-        ProximityGlowEllipse.BeginAnimation(OpacityProperty, fadeOut);
+        var fadeOut = new DoubleAnimation(0.0, TimeSpan.FromMilliseconds(300));
+        WorldGlowGrid.BeginAnimation(OpacityProperty, fadeOut);
     }
 
     /// <summary>Updates the visual position and size of the rubber-band rectangle.</summary>

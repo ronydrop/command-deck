@@ -782,26 +782,6 @@
 
                 </Canvas>
 
-                <!-- Proximity glow — radial soft light that follows the cursor (viewport-space) -->
-                <Canvas x:Name="ProximityGlowCanvas"
-                        IsHitTestVisible="False"
-                        Panel.ZIndex="1">
-                    <Ellipse x:Name="ProximityGlowEllipse"
-                             Width="420" Height="420"
-                             Opacity="0"
-                             IsHitTestVisible="False">
-                        <Ellipse.Fill>
-                            <RadialGradientBrush>
-                                <GradientStop Color="{DynamicResource AccentPurple}" Offset="0" />
-                                <GradientStop Color="Transparent" Offset="1" />
-                            </RadialGradientBrush>
-                        </Ellipse.Fill>
-                        <Ellipse.Effect>
-                            <BlurEffect Radius="40" />
-                        </Ellipse.Effect>
-                    </Ellipse>
-                </Canvas>
-
                 <!-- Rubber-band selection rectangle (viewport-space, drawn above cards) -->
                 <Canvas x:Name="SelectionCanvas"
                         IsHitTestVisible="False"
