@@ -677,6 +677,93 @@
                             </StackPanel>
                         </Border>
                     </Grid>
+
+                        <!-- Grade e Alinhamento do Canvas -->
+                        <Border Style="{StaticResource Card}" Margin="0,8,0,0">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <Path Data="M3 3H21M3 9H21M3 15H21M3 21H21M9 3V21M15 3V21"
+                                          Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.5"
+                                          StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          Width="20" Height="20" Stretch="Uniform"
+                                          VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBlock Text="Grade e Alinhamento do Canvas"
+                                               Style="{StaticResource SubheadingText}" Margin="0" />
+                                </StackPanel>
+                                <TextBlock Text="Controla o snap e guias de alinhamento ao arrastar terminais"
+                                           Style="{StaticResource CaptionText}" Margin="0,0,0,12" />
+
+                                <!-- Snap to grid toggle -->
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Snap na Grade"
+                                                   FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                        <TextBlock Text="Arrasta terminais encaixam na grade"
+                                                   Style="{StaticResource CaptionText}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="1" IsChecked="{Binding CanvasSnapEnabled}"
+                                              VerticalAlignment="Center" />
+                                </Grid>
+
+                                <!-- Grid size -->
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="120" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Tamanho da Grade"
+                                                   FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                        <TextBlock Text="Célula em pixels (padrão: 20px)"
+                                                   Style="{StaticResource CaptionText}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <Grid Grid.Column="1">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="44" />
+                                        </Grid.ColumnDefinitions>
+                                        <Slider Minimum="10" Maximum="80"
+                                                Value="{Binding CanvasSnapGridSize}"
+                                                TickFrequency="10" IsSnapToTickEnabled="True"
+                                                VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <Border Grid.Column="1" Background="{DynamicResource Surface1Brush}"
+                                                CornerRadius="4" Padding="4,2" HorizontalAlignment="Center">
+                                            <TextBlock Style="{StaticResource CaptionText}"
+                                                       HorizontalAlignment="Center"
+                                                       FontFamily="{StaticResource MonoFont}" FontSize="11">
+                                                <TextBlock.Text>
+                                                    <Binding Path="CanvasSnapGridSize" StringFormat="{}{0}px" />
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Border>
+                                    </Grid>
+                                </Grid>
+
+                                <!-- Alignment guides toggle -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Guias de Alinhamento"
+                                                   FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                        <TextBlock Text="Exibe linhas azuis ao alinhar com outros terminais"
+                                                   Style="{StaticResource CaptionText}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="1" IsChecked="{Binding CanvasAlignmentGuidesEnabled}"
+                                              VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -1001,50 +1088,6 @@
                                     </StackPanel>
                                     <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding NotificationSoundEnabled}" IsEnabled="{Binding NotificationsEnabled}" />
                                 </Grid>
-                            </Border>
-                            <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8" Padding="16,12" Margin="0,0,0,8">
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="Som do Dynamic Island" Style="{StaticResource BodyText}" FontWeight="SemiBold" />
-                                        <TextBlock Text="Alerta sonoro ao exigir aprovação ou resposta no island" Style="{StaticResource CaptionText}" Opacity="0.6" Margin="0,2,0,0" />
-                                    </StackPanel>
-                                    <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding DynamicIslandSoundEnabled}" />
-                                </Grid>
-                            </Border>
-                            <TextBlock Text="FILA E FEED DO ISLAND" Style="{StaticResource CaptionText}" FontWeight="SemiBold" Foreground="{DynamicResource SubtextBrush}" Opacity="0.7" FontSize="10" Margin="4,0,0,8" />
-                            <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8" Padding="0" Margin="0,0,0,0">
-                                <StackPanel>
-                                    <Grid Margin="16,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="120" /></Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                            <TextBlock Text="Máximo de eventos no feed" Style="{StaticResource BodyText}" />
-                                            <TextBlock Text="Remove os de menor prioridade quando exceder" Style="{StaticResource CaptionText}" Opacity="0.55" Margin="0,2,0,0" />
-                                        </StackPanel>
-                                        <controls:NumericUpDownControl Grid.Column="1" VerticalAlignment="Center"
-                                            Value="{Binding DynamicIslandMaxFeedEvents, UpdateSourceTrigger=PropertyChanged}"
-                                            Minimum="5" Maximum="200" Step="1" />
-                                    </Grid>
-                                    <Rectangle Height="1" Fill="{DynamicResource Surface1Brush}" Opacity="0.4" Margin="16,0" />
-                                    <Grid Margin="16,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="120" /></Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                            <TextBlock Text="Itens visíveis na fila" Style="{StaticResource BodyText}" />
-                                            <TextBlock Text="Antes do texto &quot;e mais N&quot; no painel expandido" Style="{StaticResource CaptionText}" Opacity="0.55" Margin="0,2,0,0" />
-                                        </StackPanel>
-                                        <controls:NumericUpDownControl Grid.Column="1" VerticalAlignment="Center"
-                                            Value="{Binding DynamicIslandQueueVisibleLimit, UpdateSourceTrigger=PropertyChanged}"
-                                            Minimum="1" Maximum="20" Step="1" />
-                                    </Grid>
-                                    <Rectangle Height="1" Fill="{DynamicResource Surface1Brush}" Opacity="0.4" Margin="16,0" />
-                                    <Grid Margin="16,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="120" /></Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                            <TextBlock Text="Janela de deduplicação" Style="{StaticResource BodyText}" />
-                                            <TextBlock Text="Segundos para fundir notificações repetidas no feed" Style="{StaticResource CaptionText}" Opacity="0.55" Margin="0,2,0,0" />
-                                        </StackPanel>
-                                        <controls:NumericUpDownControl Grid.Column="1" VerticalAlignment="Center"
-                                            Value="{Binding DynamicIslandNotificationDedupeWindowSeconds, UpdateSourceTrigger=PropertyChanged}"
-                                            Minimum="5" Maximum="300" Step="1" />
-                                    </Grid>
-                                </StackPanel>
                             </Border>
                         </StackPanel>
                     </Border>

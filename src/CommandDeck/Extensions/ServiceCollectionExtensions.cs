@@ -117,6 +117,14 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<FreeCanvasLayoutStrategy>();
         services.AddSingleton<TiledLayoutStrategy>();
+
+        services.AddSingleton<IKanbanService, KanbanService>();
+
+        // Undo/redo history for canvas operations
+        services.AddSingleton<IUndoRedoService, UndoRedoService>();
+
+        services.AddSingleton<ITaskAutomationService, TaskAutomationService>();
+
         return services;
     }
 
@@ -130,6 +138,17 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IProjectDetectionService, ProjectDetectionService>();
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddSingleton<IGitService, GitService>();
+        return services;
+    }
+
+    // ─── MCP Server ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Registers the local MCP server that exposes CommandDeck tools to AI agents.
+    /// </summary>
+    public static IServiceCollection AddMcpServices(this IServiceCollection services)
+    {
+        services.AddSingleton<IMcpServerService, McpServerService>();
         return services;
     }
 
@@ -149,6 +168,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TerminalCanvasViewModel>();
         services.AddSingleton<AssistantPanelViewModel>();
         services.AddSingleton<TerminalManagerViewModel>();
+        services.AddSingleton<TabbedTerminalViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<ProjectListViewModel>();
         services.AddSingleton<DashboardViewModel>();
@@ -156,7 +176,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<BrowserViewModel>();
         services.AddSingleton<AiOrbViewModel>();
         services.AddSingleton<AgentSelectorViewModel>();
-        services.AddSingleton<DynamicIslandViewModel>();
 
         // Transient: each request gets a fresh instance
         services.AddTransient<TerminalViewModel>();

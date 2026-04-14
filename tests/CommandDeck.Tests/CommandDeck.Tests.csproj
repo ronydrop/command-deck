@@ -13,11 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="../../src/CommandDeck/Helpers/DynamicIslandPresentationHelper.cs" Link="DynamicIslandPresentationHelper.cs" />
     <Compile Include="../../src/CommandDeck/Models/AiAgentState.cs" Link="AiAgentState.cs" />
-    <Compile Include="../../src/CommandDeck/Models/DynamicIslandEventItem.cs" Link="DynamicIslandEventItem.cs" />
-    <Compile Include="../../src/CommandDeck/Models/DynamicIslandVisuals.cs" Link="DynamicIslandVisuals.cs" />
-    <Compile Include="../../src/CommandDeck/Models/DynamicIslandChoiceOption.cs" Link="DynamicIslandChoiceOption.cs" />
     <Compile Include="../../src/CommandDeck/Models/NotificationItem.cs" Link="NotificationItem.cs" />
   </ItemGroup>
 

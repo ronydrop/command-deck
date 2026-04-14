@@ -57,7 +57,6 @@ public partial class App : Application
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<IPaneStateService, PaneStateService>();
         services.AddSingleton<IAiAgentStateService, AiAgentStateService>();
-        services.AddSingleton<IDynamicIslandEventService, DynamicIslandEventService>();
         services.AddSingleton<ICommandPaletteService, CommandPaletteService>();
         services.AddSingleton<IUpdateService, UpdateService>();
 
@@ -73,6 +72,7 @@ public partial class App : Application
         services.AddCanvasServices();
         services.AddAiServices();
         services.AddBrowserServices();
+        services.AddMcpServices();
 
         // ─── Project Switch Service ──────────────────────────────────────
         // ViewModels are injected as Lazy<T> so the service never holds a
@@ -83,7 +83,6 @@ public partial class App : Application
         services.AddViewModels();
 
         // ─── Windows & Views ─────────────────────────────────────────────
-        services.AddSingleton<DynamicIslandWindow>();
         services.AddSingleton<MainWindow>();
     }
 
@@ -157,17 +156,6 @@ public partial class App : Application
             return;
         }
 
-        // Resolve Dynamic Island window so it is constructed and event-subscribed.
-        // Visibility is controlled by DynamicIslandViewModel.InitializeAsync (loaded from settings).
-        try
-        {
-            _serviceProvider!.GetRequiredService<DynamicIslandWindow>();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[DynamicIsland] Window resolve failed: {ex}");
-        }
-
         // Post-window initialization runs asynchronously to avoid blocking UI thread (deadlock).
         _ = InitializeServicesAsync();
     }
@@ -206,7 +194,7 @@ public partial class App : Application
                 var baseUrl = providerLower == "local" ? appSettings.OllamaBaseUrl : string.Empty;
 
                 System.Diagnostics.Debug.WriteLine($"[App] AI startup — provider={appSettings.AiProvider}, model={appSettings.AiModel}, baseUrl={baseUrl}");
-                assistantService.ApplySettings(appSettings.AiProvider, appSettings.AiModel, baseUrl, apiKey, appSettings.AnthropicAuthMode);
+                assistantService.ApplySettings(appSettings.AiProvider ?? string.Empty, appSettings.AiModel, baseUrl, apiKey, appSettings.AnthropicAuthMode);
             }
             catch (Exception ex2)
             {
@@ -240,16 +228,17 @@ public partial class App : Application
             System.Diagnostics.Debug.WriteLine($"[AiOrb] Init failed: {ex}");
         }
 
-        // Initialize Dynamic Island (loads existing sessions + persisted visibility)
+        // Start the local MCP server (exposes CommandDeck tools to AI agents)
         try
         {
-            var island = _serviceProvider!.GetRequiredService<DynamicIslandViewModel>();
-            await island.InitializeAsync();
+            var mcpServer = _serviceProvider!.GetRequiredService<IMcpServerService>();
+            _ = mcpServer.StartAsync();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[DynamicIsland] Init failed: {ex}");
+            System.Diagnostics.Debug.WriteLine($"[McpServer] Start failed: {ex}");
         }
+
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -295,12 +284,12 @@ public partial class App : Application
             }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[App.OnExit] Settings save failed: {ex.Message}"); }
 
+            // Stop MCP server and clean up its config file before container disposal
             try
             {
-                var island = _serviceProvider.GetService<DynamicIslandViewModel>();
-                island?.Dispose();
+                _serviceProvider.GetService<IMcpServerService>()?.Dispose();
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[App.OnExit] DynamicIsland dispose failed: {ex.Message}"); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[App.OnExit] MCP server dispose failed: {ex.Message}"); }
 
             if (_serviceProvider is IDisposable disposable)
                 disposable.Dispose();

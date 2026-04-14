@@ -28,6 +28,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
     private readonly IPaneStateService _paneStateService;
     private readonly IAiAgentStateService _aiAgentStateService;
     private readonly ISettingsService _settingsService;
+    private readonly IUndoRedoService _undoRedo;
     private readonly TiledLayoutStrategy _tiledStrategy;
     private readonly FreeCanvasLayoutStrategy _freeStrategy;
     private DispatcherTimer? _layoutDebounceTimer;
@@ -120,6 +121,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
         IPaneStateService paneStateService,
         IAiAgentStateService aiAgentStateService,
         ISettingsService settingsService,
+        IUndoRedoService undoRedo,
         TiledLayoutStrategy tiledStrategy,
         FreeCanvasLayoutStrategy freeStrategy,
         MiniMapViewModel miniMap)
@@ -130,12 +132,20 @@ public partial class TerminalCanvasViewModel : ObservableObject
         _paneStateService = paneStateService;
         _aiAgentStateService = aiAgentStateService;
         _settingsService = settingsService;
+        _undoRedo = undoRedo;
         _tiledStrategy = tiledStrategy;
         _freeStrategy = freeStrategy;
 
         MiniMap = miniMap;
 
         _cameraService.CameraChanged += OnCameraChanged;
+
+        // Notify undo/redo RelayCommands whenever the stack state changes
+        _undoRedo.StateChanged += () =>
+        {
+            UndoActionCommand.NotifyCanExecuteChanged();
+            RedoActionCommand.NotifyCanExecuteChanged();
+        };
 
         // Propagate pane state changes to the matching canvas item
         _paneStateService.StateChanged += OnPaneStateChanged;
@@ -352,6 +362,34 @@ public partial class TerminalCanvasViewModel : ObservableObject
         LayoutModeChanged?.Invoke(newValue);
     }
 
+    // ─── Undo / Redo commands ────────────────────────────────────────────────
+
+    /// <summary>Reverses the last recorded canvas operation (Ctrl+Z).</summary>
+    [RelayCommand(CanExecute = nameof(CanUndoAction))]
+    private void UndoAction() => _undoRedo.Undo();
+    private bool CanUndoAction() => _undoRedo.CanUndo;
+
+    /// <summary>Re-applies the last undone canvas operation (Ctrl+Shift+Z).</summary>
+    [RelayCommand(CanExecute = nameof(CanRedoAction))]
+    private void RedoAction() => _undoRedo.Redo();
+    private bool CanRedoAction() => _undoRedo.CanRedo;
+
+    // ─── Undo record helpers (called from CanvasCardControl code-behind) ─────
+
+    /// <summary>
+    /// Records a completed item move in the undo history.
+    /// Call this after drag is released with the position the item was at before the drag.
+    /// </summary>
+    public void RecordMove(CanvasItemViewModel item, double oldX, double oldY)
+        => _undoRedo.Record(new Models.MoveItemCommand(item, oldX, oldY, item.X, item.Y));
+
+    /// <summary>
+    /// Records a completed item resize in the undo history.
+    /// Call this after resize is released with the dimensions the item had before the resize.
+    /// </summary>
+    public void RecordResize(CanvasItemViewModel item, double oldWidth, double oldHeight)
+        => _undoRedo.Record(new Models.ResizeItemCommand(item, oldWidth, oldHeight, item.Width, item.Height));
+
     // ─── Commands ────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -428,6 +466,46 @@ public partial class TerminalCanvasViewModel : ObservableObject
         item.X = canvasX;
         item.Y = canvasY;
         return item;
+    }
+
+    /// <summary>Adds a Kanban board widget to the canvas at the given position.</summary>
+    public void AddKanbanWidget(double canvasX = 40, double canvasY = 40)
+    {
+        var item = _workspaceService.AddWidgetItem(WidgetType.Kanban);
+        item.X = canvasX;
+        item.Y = canvasY;
+    }
+
+    /// <summary>Adds a Chat AI widget to the canvas at the given position.</summary>
+    public void AddChatWidget(double canvasX = 40, double canvasY = 40)
+    {
+        var item = _workspaceService.AddWidgetItem(WidgetType.Chat);
+        item.X = canvasX;
+        item.Y = canvasY;
+    }
+
+    /// <summary>Adds a System Monitor widget to the canvas at the given position.</summary>
+    public void AddSystemMonitorWidget(double canvasX = 40, double canvasY = 40)
+    {
+        var item = _workspaceService.AddWidgetItem(WidgetType.SystemMonitor);
+        item.X = canvasX;
+        item.Y = canvasY;
+    }
+
+    /// <summary>Adds a Token Counter widget to the canvas at the given position.</summary>
+    public void AddTokenCounterWidget(double canvasX = 40, double canvasY = 40)
+    {
+        var item = _workspaceService.AddWidgetItem(WidgetType.TokenCounter);
+        item.X = canvasX;
+        item.Y = canvasY;
+    }
+
+    /// <summary>Adds a Pomodoro Timer widget to the canvas at the given position.</summary>
+    public void AddPomodoroWidget(double canvasX = 40, double canvasY = 40)
+    {
+        var item = _workspaceService.AddWidgetItem(WidgetType.Pomodoro);
+        item.X = canvasX;
+        item.Y = canvasY;
     }
 
     // ─── Multi-selection ─────────────────────────────────────────────────────

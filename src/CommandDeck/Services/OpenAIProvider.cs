@@ -289,7 +289,7 @@ public class OpenAIProvider : IAssistantProvider
         };
         return ChatAsync(messages).ContinueWith(t =>
             t.IsFaulted ? t.Exception?.InnerException?.Message ?? "Error" :
-            t.Result.IsError ? t.Result.Error : t.Result.Content ?? string.Empty, ct);
+            t.Result.IsError ? t.Result.Error ?? string.Empty : t.Result.Content ?? string.Empty, ct);
     }
 
     /// <inheritdoc/>
@@ -303,7 +303,7 @@ public class OpenAIProvider : IAssistantProvider
         };
         return ChatAsync(messages).ContinueWith(t =>
             t.IsFaulted ? t.Exception?.InnerException?.Message ?? "Error" :
-            t.Result.IsError ? t.Result.Error : t.Result.Content ?? string.Empty, ct);
+            t.Result.IsError ? t.Result.Error ?? string.Empty : t.Result.Content ?? string.Empty, ct);
     }
 
     // ─── Private: Build / Parse OpenAI API structures ─────────────────────

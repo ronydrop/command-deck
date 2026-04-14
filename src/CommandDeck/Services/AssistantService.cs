@@ -130,7 +130,7 @@ public sealed class AssistantService : IAssistantService
             _active = found;
             _settings.ActiveProvider = type;
             // GetCurrentModel() already reads from the just-updated ActiveProvider
-            _ = _db.SaveAssistantPreferencesAsync(found.ProviderName, GetCurrentModel());
+            _ = _db.SaveAssistantPreferencesAsync(found.ProviderName, GetCurrentModel() ?? string.Empty);
         }
     }
 
@@ -286,7 +286,7 @@ public sealed class AssistantService : IAssistantService
             {
                 _active = found;
                 var modelName = GetCurrentModel();
-                _ = _db.SaveAssistantPreferencesAsync(found.ProviderName, modelName);
+                _ = _db.SaveAssistantPreferencesAsync(found.ProviderName, modelName ?? string.Empty);
             }
         }
     }

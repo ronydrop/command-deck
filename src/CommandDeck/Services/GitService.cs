@@ -548,4 +548,70 @@ public class GitService : IGitService
         _commitsCache.TryRemove(key, out _);
         _changesCache.TryRemove(key, out _);
     }
+
+    // ── Per-file staging ──────────────────────────────────────────────────────
+
+    /// <inheritdoc/>
+    public async Task<GitOperationResult> StageFileAsync(string repositoryPath, string filePath)
+    {
+        var safeFile = filePath.Replace("\"", "\\\"");
+        var (_, stderr, exitCode) = await RunGitCommandFullAsync(repositoryPath, $"add -- \"{safeFile}\"");
+        return exitCode == 0 ? GitOperationResult.Ok() : GitOperationResult.Fail(stderr ?? "Erro ao fazer stage do arquivo");
+    }
+
+    /// <inheritdoc/>
+    public async Task<GitOperationResult> UnstageFileAsync(string repositoryPath, string filePath)
+    {
+        var safeFile = filePath.Replace("\"", "\\\"");
+        var (_, stderr, exitCode) = await RunGitCommandFullAsync(repositoryPath, $"restore --staged -- \"{safeFile}\"");
+        return exitCode == 0 ? GitOperationResult.Ok() : GitOperationResult.Fail(stderr ?? "Erro ao fazer unstage do arquivo");
+    }
+
+    // ── Stash ─────────────────────────────────────────────────────────────────
+
+    /// <inheritdoc/>
+    public async Task<GitOperationResult> StashSaveAsync(string repositoryPath, string? message = null)
+    {
+        var cmd = string.IsNullOrWhiteSpace(message)
+            ? "stash push"
+            : $"stash push -m \"{message.Replace("\"", "\\\"")}\"";
+
+        var (_, stderr, exitCode) = await RunGitCommandFullAsync(repositoryPath, cmd);
+        return exitCode == 0 ? GitOperationResult.Ok() : GitOperationResult.Fail(stderr ?? "Erro ao salvar stash");
+    }
+
+    /// <inheritdoc/>
+    public async Task<GitOperationResult> StashPopAsync(string repositoryPath)
+    {
+        var (_, stderr, exitCode) = await RunGitCommandFullAsync(repositoryPath, "stash pop");
+        return exitCode == 0 ? GitOperationResult.Ok() : GitOperationResult.Fail(stderr ?? "Erro ao pop stash");
+    }
+
+    /// <inheritdoc/>
+    public async Task<GitOperationResult> StashApplyAsync(string repositoryPath, string stashIndex)
+    {
+        var (_, stderr, exitCode) = await RunGitCommandFullAsync(repositoryPath, $"stash apply {stashIndex}");
+        return exitCode == 0 ? GitOperationResult.Ok() : GitOperationResult.Fail(stderr ?? "Erro ao aplicar stash");
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<Models.GitStashEntry>> GetStashListAsync(string repositoryPath)
+    {
+        var output = await RunGitCommandAsync(repositoryPath, "stash list --format=%gd|%s|%cr");
+        if (string.IsNullOrWhiteSpace(output)) return [];
+
+        var entries = new List<Models.GitStashEntry>();
+        foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = line.Split('|', 3);
+            entries.Add(new Models.GitStashEntry
+            {
+                Index        = parts.Length > 0 ? parts[0].Trim() : string.Empty,
+                Message      = parts.Length > 1 ? parts[1].Trim() : string.Empty,
+                RelativeTime = parts.Length > 2 ? parts[2].Trim() : string.Empty
+            });
+        }
+
+        return entries;
+    }
 }

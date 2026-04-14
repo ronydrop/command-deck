@@ -38,9 +38,6 @@ public partial class MainViewModel : ObservableObject
     /// <summary>AI Floating Orb ViewModel.</summary>
     public AiOrbViewModel AiOrb { get; }
 
-    /// <summary>Dynamic Island overlay ViewModel.</summary>
-    public DynamicIslandViewModel DynamicIsland { get; }
-
     // ─── Sub ViewModels ──────────────────────────────────────────────────────
 
     /// <summary>Manages terminal tab lifecycle (create, close, active tracking).</summary>
@@ -56,6 +53,9 @@ public partial class MainViewModel : ObservableObject
     /// <summary>AI Assistant side-panel ViewModel.</summary>
     public AssistantPanelViewModel AssistantPanel { get; }
     public BrowserViewModel Browser { get; }
+
+    /// <summary>Tabbed terminal layout ViewModel.</summary>
+    public TabbedTerminalViewModel TabbedTerminal { get; }
 
     /// <summary>Branch selector overlay ViewModel.</summary>
     public BranchSelectorViewModel BranchSelector { get; }
@@ -187,8 +187,8 @@ public partial class MainViewModel : ObservableObject
         IAiTerminalService aiTerminalService,
         BranchSelectorViewModel branchSelector,
         AiOrbViewModel aiOrb,
-        DynamicIslandViewModel dynamicIsland,
-        IProjectSwitchService projectSwitchService)
+        IProjectSwitchService projectSwitchService,
+        TabbedTerminalViewModel tabbedTerminal)
     {
         _terminalService = terminalService;
         _projectService = projectService;
@@ -232,7 +232,7 @@ public partial class MainViewModel : ObservableObject
         Browser = browserViewModel;
         BranchSelector = branchSelector;
         AiOrb = aiOrb;
-        DynamicIsland = dynamicIsland;
+        TabbedTerminal = tabbedTerminal;
 
         // Wire TerminalManager context and events
         TerminalManager.CurrentProject = null; // will be set on project switch
@@ -273,27 +273,6 @@ public partial class MainViewModel : ObservableObject
     {
         IsCommandPaletteOpen = true;
         CommandPalette.OpenCommand.Execute(null);
-    }
-
-    /// <summary>
-    /// Toggles the Dynamic Island overlay visibility (Ctrl+Shift+D).
-    /// </summary>
-    [RelayCommand]
-    private void ToggleDynamicIsland()
-        => DynamicIsland.ToggleVisibilityCommand.Execute(null);
-
-    /// <summary>
-    /// Navigates to the terminal session with the given session ID.
-    /// Called by DynamicIslandViewModel when the user clicks a session row.
-    /// </summary>
-    public void FocusSessionById(string sessionId)
-    {
-        var terminal = Terminals.FirstOrDefault(t => t.Session?.Id == sessionId);
-        if (terminal != null)
-        {
-            ActiveTerminal = terminal;
-            CurrentView = ViewType.Terminal;
-        }
     }
 
     /// <summary>
@@ -911,5 +890,6 @@ public enum ViewType
     Terminal,
     ProcessMonitor,
     Settings,
-    Browser
+    Browser,
+    TabbedTerminal
 }

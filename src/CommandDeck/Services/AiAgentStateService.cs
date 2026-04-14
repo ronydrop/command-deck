@@ -187,10 +187,7 @@ public sealed class AiAgentStateService : IAiAgentStateService, IDisposable
         var displayLabel = BuildDisplayLabel(tail, newState);
         var choices = BuildChoiceOptions(tail, newState);
         var actionDetail = BuildActionDetail(tail, newState);
-        var primarySnippet = DynamicIslandPresentationHelper.BuildPrimarySnippet(newState, displayLabel, actionDetail, choices);
-        var secondarySnippet = DynamicIslandPresentationHelper.BuildSecondarySnippet(newState, displayLabel, actionDetail, choices);
-        var supportsMarkdown = ContainsMarkdown(primarySnippet) || ContainsMarkdown(secondarySnippet);
-        var sig = $"{newState}|{displayLabel}|{actionDetail ?? ""}|{primarySnippet}|{secondarySnippet}|{string.Join("|", choices.Select(c => $"{c.Label}\u001f{c.SendText}"))}";
+        var sig = $"{newState}|{displayLabel}|{actionDetail ?? ""}|{string.Join("|", choices.Select(c => $"{c.Label}\u001f{c.SendText}"))}";
 
         if (buf.CurrentState == newState && buf.LastSignature == sig)
             return;
@@ -205,11 +202,7 @@ public sealed class AiAgentStateService : IAiAgentStateService, IDisposable
             Icon = AiAgentStateChangedArgs.GetIcon(newState),
             Label = displayLabel,
             ChoiceOptions = choices,
-            ActionDetail = actionDetail,
-            PrimarySnippet = primarySnippet,
-            SecondarySnippet = secondarySnippet,
-            SupportsMarkdown = supportsMarkdown,
-            CanJumpToExactContext = true
+            ActionDetail = actionDetail
         };
 
         _dispatcher.BeginInvoke(() => StateChanged?.Invoke(args));
@@ -314,16 +307,6 @@ public sealed class AiAgentStateService : IAiAgentStateService, IDisposable
         }
 
         return list.Count > 0 ? list.Take(8).ToList() : Array.Empty<AiAgentChoiceOption>();
-    }
-
-    private static bool ContainsMarkdown(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-            return false;
-
-        return text.Contains("**", StringComparison.Ordinal)
-               || text.Contains('`')
-               || text.Contains("- ", StringComparison.Ordinal);
     }
 
     public void Dispose()

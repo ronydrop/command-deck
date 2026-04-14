@@ -14,17 +14,29 @@ public class CanvasItemFactory
     private readonly IProcessMonitorService _processMonitorService;
     private readonly INotificationService _notificationService;
     private readonly Lazy<IWorkspaceService> _workspaceService;
+    private readonly IKanbanService _kanbanService;
+    private readonly IAssistantService _assistantService;
+    private readonly ITaskAutomationService _taskAutomationService;
+    private readonly IClaudeUsageService _claudeUsageService;
 
     public CanvasItemFactory(
         IGitService gitService,
         IProcessMonitorService processMonitorService,
         INotificationService notificationService,
-        Lazy<IWorkspaceService> workspaceService)
+        Lazy<IWorkspaceService> workspaceService,
+        IKanbanService kanbanService,
+        IAssistantService assistantService,
+        ITaskAutomationService taskAutomationService,
+        IClaudeUsageService claudeUsageService)
     {
         _gitService = gitService;
         _processMonitorService = processMonitorService;
         _notificationService = notificationService;
         _workspaceService = workspaceService;
+        _kanbanService = kanbanService;
+        _assistantService = assistantService;
+        _taskAutomationService = taskAutomationService;
+        _claudeUsageService = claudeUsageService;
     }
 
     // ─── Terminal ───────────────────────────────────────────────────────────────
@@ -79,11 +91,16 @@ public class CanvasItemFactory
     {
         var (w, h, canvasType) = type switch
         {
-            WidgetType.Git => (320.0, 280.0, CanvasItemType.GitWidget),
-            WidgetType.Process => (400.0, 350.0, CanvasItemType.ProcessWidget),
-            WidgetType.Note => (260.0, 260.0, CanvasItemType.NoteWidget),
-            WidgetType.Image => (400.0, 300.0, CanvasItemType.ImageWidget),
-            _ => (300.0, 200.0, CanvasItemType.ShortcutWidget)
+            WidgetType.Git           => (320.0, 280.0, CanvasItemType.GitWidget),
+            WidgetType.Process       => (400.0, 350.0, CanvasItemType.ProcessWidget),
+            WidgetType.Note          => (260.0, 260.0, CanvasItemType.NoteWidget),
+            WidgetType.Image         => (400.0, 300.0, CanvasItemType.ImageWidget),
+            WidgetType.Kanban        => (600.0, 440.0, CanvasItemType.KanbanWidget),
+            WidgetType.Chat          => (380.0, 500.0, CanvasItemType.ChatWidget),
+            WidgetType.SystemMonitor => (360.0, 260.0, CanvasItemType.SystemMonitorWidget),
+            WidgetType.TokenCounter  => (340.0, 320.0, CanvasItemType.TokenCounterWidget),
+            WidgetType.Pomodoro      => (280.0, 340.0, CanvasItemType.PomodoroWidget),
+            _                        => (300.0, 200.0, CanvasItemType.ShortcutWidget)
         };
 
         var model = new CanvasItemModel
@@ -100,6 +117,10 @@ public class CanvasItemFactory
             gitService: _gitService,
             processMonitorService: _processMonitorService,
             workspaceService: _workspaceService.Value,
-            notificationService: _notificationService);
+            notificationService: _notificationService,
+            kanbanService: _kanbanService,
+            assistantService: _assistantService,
+            taskAutomationService: _taskAutomationService,
+            claudeUsageService: _claudeUsageService);
     }
 }

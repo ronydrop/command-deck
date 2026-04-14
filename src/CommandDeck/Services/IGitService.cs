@@ -74,4 +74,26 @@ public interface IGitService
 
     /// <summary>Invalidates the cached git info for the given repository path.</summary>
     void InvalidateCache(string repositoryPath);
+
+    // ── Per-file staging ─────────────────────────────────────────────────────
+
+    /// <summary>Stages a single file (git add -- &lt;file&gt;).</summary>
+    Task<GitOperationResult> StageFileAsync(string repositoryPath, string filePath);
+
+    /// <summary>Unstages a single file (git restore --staged -- &lt;file&gt;).</summary>
+    Task<GitOperationResult> UnstageFileAsync(string repositoryPath, string filePath);
+
+    // ── Stash ────────────────────────────────────────────────────────────────
+
+    /// <summary>Saves the working directory changes to a new stash entry.</summary>
+    Task<GitOperationResult> StashSaveAsync(string repositoryPath, string? message = null);
+
+    /// <summary>Applies and drops the most recent stash entry (git stash pop).</summary>
+    Task<GitOperationResult> StashPopAsync(string repositoryPath);
+
+    /// <summary>Applies (but does not drop) a stash entry by its index string (e.g. "stash@{0}").</summary>
+    Task<GitOperationResult> StashApplyAsync(string repositoryPath, string stashIndex);
+
+    /// <summary>Returns all stash entries for the repository.</summary>
+    Task<List<Models.GitStashEntry>> GetStashListAsync(string repositoryPath);
 }

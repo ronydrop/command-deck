@@ -26,8 +26,9 @@ public class LocalAppSessionService : ILocalAppSessionService
         // Return the first available port in priority order
         for (int i = 0; i < CommonPorts.Length; i++)
         {
-            if (results[i].HasValue)
-                return results[i].Value;
+            var r = results[i];
+            if (r.HasValue)
+                return r.Value;
         }
 
         return null;

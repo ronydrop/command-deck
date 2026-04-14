@@ -3,15 +3,21 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:CommandDeck.ViewModels"
              mc:Ignorable="d"
-             d:DesignWidth="320" d:DesignHeight="280"
+             d:DataContext="{d:DesignInstance vm:WidgetCanvasItemViewModel}"
+             d:DesignWidth="360" d:DesignHeight="520"
              Background="Transparent"
              Padding="14,10,14,14">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel>
 
-            <!-- Header: branch info -->
+            <!-- ── Header: branch info ──────────────────────────────────────── -->
             <Border CornerRadius="8" Padding="10,8" Margin="0,0,0,12">
                 <Border.Background>
                     <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.4" />
@@ -34,7 +40,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- File stats cards -->
+            <!-- ── File stats cards ─────────────────────────────────────────── -->
             <Grid Margin="0,0,0,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -44,7 +50,6 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Modified -->
                 <Border Grid.Column="0" CornerRadius="8" Padding="8,10">
                     <Border.Background>
                         <SolidColorBrush Color="{DynamicResource AccentYellow}" Opacity="0.08" />
@@ -60,7 +65,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Staged -->
                 <Border Grid.Column="2" CornerRadius="8" Padding="8,10">
                     <Border.Background>
                         <SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.08" />
@@ -76,7 +80,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Untracked -->
                 <Border Grid.Column="4" CornerRadius="8" Padding="8,10">
                     <Border.Background>
                         <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.08" />
@@ -93,14 +96,207 @@
                 </Border>
             </Grid>
 
-            <!-- Last commit section -->
+            <!-- ── Changed files list ───────────────────────────────────────── -->
+            <TextBlock Text="ARQUIVOS ALTERADOS" FontSize="9" FontWeight="SemiBold"
+                       Foreground="{DynamicResource SubtextBrush}"
+                       Margin="0,0,0,6" />
+
+            <Border CornerRadius="6" BorderThickness="1"
+                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                    Margin="0,0,0,10" MaxHeight="140">
+                <Border.Background>
+                    <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.2" />
+                </Border.Background>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding GitChangedFiles}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:GitFileChangeViewModel}">
+                                <Grid Margin="8,3" x:Name="FileRow">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Stage checkbox -->
+                                    <CheckBox Grid.Column="0"
+                                              IsChecked="{Binding IsStaged}"
+                                              VerticalAlignment="Center" Margin="0,0,6,0"
+                                              Click="OnStageCheckboxClicked"
+                                              Tag="{Binding}" />
+
+                                    <!-- Status badge -->
+                                    <Border Grid.Column="1" CornerRadius="3" Padding="4,1"
+                                            Margin="0,0,6,0" VerticalAlignment="Center">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background">
+                                                    <Setter.Value>
+                                                        <SolidColorBrush Color="{DynamicResource AccentYellow}" Opacity="0.15" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding Status}" FontSize="10"
+                                                   FontFamily="{StaticResource MonoFont}"
+                                                   Foreground="{DynamicResource AccentYellowBrush}" />
+                                    </Border>
+
+                                    <!-- File path -->
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding FilePath}"
+                                               FontSize="11"
+                                               FontFamily="{StaticResource MonoFont}"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center"
+                                               ToolTip="{Binding FilePath}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <!-- ── Commit section ───────────────────────────────────────────── -->
+            <TextBlock Text="COMMIT" FontSize="9" FontWeight="SemiBold"
+                       Foreground="{DynamicResource SubtextBrush}"
+                       Margin="0,0,0,6" />
+
+            <Border CornerRadius="4" BorderThickness="1"
+                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                    Background="{DynamicResource Surface1Brush}"
+                    Margin="0,0,0,6">
+                <TextBox Text="{Binding CommitMessage, UpdateSourceTrigger=PropertyChanged}"
+                         AcceptsReturn="False"
+                         Background="Transparent" BorderThickness="0"
+                         Foreground="{DynamicResource TextBrush}"
+                         FontSize="11" Padding="8,6"
+                         VerticalContentAlignment="Center"
+                         x:Name="CommitMsgBox" />
+            </Border>
+
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Command="{Binding StageAllCommand}"
+                        Style="{DynamicResource GhostButton}"
+                        Padding="0,6" HorizontalContentAlignment="Center">
+                    <TextBlock Text="+ Stage All" FontSize="11" />
+                </Button>
+
+                <Button Grid.Column="2"
+                        Command="{Binding CommitChangesCommand}"
+                        Style="{DynamicResource AccentButton}"
+                        Padding="0,6" HorizontalContentAlignment="Center">
+                    <TextBlock Text="✓ Commit" FontSize="11" />
+                </Button>
+            </Grid>
+
+            <!-- ── Stash section (collapsible) ──────────────────────────────── -->
+            <Border CornerRadius="6" BorderThickness="1"
+                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                    Margin="0,0,0,12">
+                <Border.Background>
+                    <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.15" />
+                </Border.Background>
+                <StackPanel>
+                    <!-- Header toggle -->
+                    <Button Click="OnStashHeaderClicked"
+                            Style="{DynamicResource GhostButton}"
+                            Padding="10,8" HorizontalContentAlignment="Left">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="STASH" FontSize="9" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" FontSize="10"
+                                       Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="▶" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding StashSectionExpanded}" Value="True">
+                                                <Setter Property="Text" Value="▼" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Button>
+
+                    <!-- Collapsible content -->
+                    <StackPanel Visibility="{Binding StashSectionExpanded, Converter={StaticResource BoolToVis}}"
+                                Margin="10,0,10,10">
+                        <!-- Stash action buttons -->
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="6" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Button Grid.Column="0"
+                                    Command="{Binding StashChangesCommand}"
+                                    Style="{DynamicResource GhostButton}"
+                                    Padding="0,5" HorizontalContentAlignment="Center">
+                                <TextBlock Text="↓ Salvar" FontSize="11" />
+                            </Button>
+
+                            <Button Grid.Column="2"
+                                    Command="{Binding PopStashCommand}"
+                                    Style="{DynamicResource GhostButton}"
+                                    Padding="0,5" HorizontalContentAlignment="Center">
+                                <TextBlock Text="↑ Pop" FontSize="11" />
+                            </Button>
+                        </Grid>
+
+                        <!-- Stash list -->
+                        <ItemsControl ItemsSource="{Binding GitStashEntries}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0" Text="{Binding Index}"
+                                                   FontSize="10" FontFamily="{StaticResource MonoFont}"
+                                                   Foreground="{DynamicResource AccentBrush}"
+                                                   Margin="0,0,8,0" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Message}"
+                                                   FontSize="11" Foreground="{DynamicResource TextBrush}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{Binding RelativeTime}"
+                                                   FontSize="10" Foreground="{DynamicResource SubtextBrush}"
+                                                   Margin="8,0,0,0" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ── Last commit ──────────────────────────────────────────────── -->
             <Border CornerRadius="8" Padding="12,10">
                 <Border.Background>
                     <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.3" />
                 </Border.Background>
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                        <TextBlock Text="Ultimo commit" FontSize="10" FontWeight="SemiBold"
+                        <TextBlock Text="Último commit" FontSize="10" FontWeight="SemiBold"
                                    Foreground="{DynamicResource SubtextBrush}" Opacity="0.7"
                                    VerticalAlignment="Center" />
                         <TextBlock Text="{Binding GitInfo.RelativeTime, FallbackValue=''}"
@@ -113,7 +309,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- Bottom accent line -->
+            <!-- ── Bottom accent line ───────────────────────────────────────── -->
             <Border Height="2" CornerRadius="1" Margin="20,12,20,0">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">

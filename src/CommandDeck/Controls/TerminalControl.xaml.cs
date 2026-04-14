@@ -325,7 +325,7 @@ public partial class TerminalControl : UserControl
         }
 
         // Auto-focus after layout stabilizes so keystrokes reach HiddenInput
-        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, FocusInput);
+        _ = Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, (Action)FocusInput);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)

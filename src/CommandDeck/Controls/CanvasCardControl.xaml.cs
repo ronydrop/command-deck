@@ -7,6 +7,7 @@ using System.Windows.Media;
 using CommandDeck.Models;
 using CommandDeck.Services;
 using CommandDeck.ViewModels;
+using CDApp = CommandDeck.App;
 
 namespace CommandDeck.Controls;
 
@@ -67,6 +68,11 @@ public partial class CanvasCardControl : UserControl
     private Point _dragStart;
     private double _itemXAtDragStart;
     private double _itemYAtDragStart;
+
+    // ─── Resize state (for undo recording) ──────────────────────────────────
+
+    private double _widthAtResizeStart;
+    private double _heightAtResizeStart;
 
     // Cached canvas view reference — avoids walking visual tree on every MouseMove
     private Views.TerminalCanvasView? _cachedCanvasView;
@@ -151,9 +157,6 @@ public partial class CanvasCardControl : UserControl
         e.Handled = true;
     }
 
-    // Grid snap size in world units (Shift+drag)
-    private const double SnapGrid = 80;
-
     private void OnTitleBarMouseMove(object sender, MouseEventArgs e)
     {
         if (!_isDragging || DataContext is not CanvasItemViewModel vm) return;
@@ -167,15 +170,38 @@ public partial class CanvasCardControl : UserControl
         double rawX = _itemXAtDragStart + dx / zoom;
         double rawY = _itemYAtDragStart + dy / zoom;
 
-        // Shift held → snap to nearest grid multiple
-        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
+        // Apply snap-to-grid when enabled in settings (or when Shift is held as override)
+        var settings = TryGetSettings();
+        bool snap = (settings?.CanvasSnapEnabled ?? false)
+                    || (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
+
+        if (snap)
         {
-            rawX = Math.Round(rawX / SnapGrid) * SnapGrid;
-            rawY = Math.Round(rawY / SnapGrid) * SnapGrid;
+            double grid = settings?.CanvasSnapGridSize > 0 ? settings.CanvasSnapGridSize : 20;
+            rawX = Math.Round(rawX / grid) * grid;
+            rawY = Math.Round(rawY / grid) * grid;
         }
 
         vm.X = rawX;
         vm.Y = rawY;
+
+        // Show alignment guides when enabled
+        if (settings?.CanvasAlignmentGuidesEnabled == true)
+            _cachedCanvasView?.UpdateAlignmentGuides(vm, true);
+    }
+
+    private static AppSettings? TryGetSettings()
+    {
+        try
+        {
+            return CDApp.Services.GetService(typeof(ISettingsService)) is ISettingsService svc
+                ? svc.CurrentSettings
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private void OnTitleBarMouseUp(object sender, MouseButtonEventArgs e)
@@ -183,6 +209,22 @@ public partial class CanvasCardControl : UserControl
         if (!_isDragging) return;
         _isDragging = false;
         TitleBar.ReleaseMouseCapture();
+
+        // Hide alignment guides
+        if (DataContext is CanvasItemViewModel guideVm)
+            _cachedCanvasView?.UpdateAlignmentGuides(guideVm, false);
+
+        // Record the move in the undo history if the item actually moved
+        if (DataContext is CanvasItemViewModel vm)
+        {
+            double dX = vm.X - _itemXAtDragStart;
+            double dY = vm.Y - _itemYAtDragStart;
+            if (Math.Abs(dX) > 0.5 || Math.Abs(dY) > 0.5)
+            {
+                var canvasVm = (Window.GetWindow(this)?.DataContext as ViewModels.MainViewModel)?.CanvasViewModel;
+                canvasVm?.RecordMove(vm, _itemXAtDragStart, _itemYAtDragStart);
+            }
+        }
 
         // Return keyboard focus to the terminal so arrow keys work immediately after drag.
         var terminal = FindVisualChild<CommandDeck.Controls.TerminalControl>(this);
@@ -209,11 +251,30 @@ public partial class CanvasCardControl : UserControl
     private void OnResizeDragStarted(object sender, DragStartedEventArgs e)
     {
         SizeIndicator.Visibility = Visibility.Visible;
+
+        // Capture pre-resize dimensions for undo
+        if (DataContext is CanvasItemViewModel vm)
+        {
+            _widthAtResizeStart  = vm.Width;
+            _heightAtResizeStart = vm.Height;
+        }
     }
 
     private void OnResizeDragCompleted(object sender, DragCompletedEventArgs e)
     {
         SizeIndicator.Visibility = Visibility.Collapsed;
+
+        // Record the resize in the undo history if dimensions actually changed
+        if (DataContext is CanvasItemViewModel vm)
+        {
+            double dW = vm.Width  - _widthAtResizeStart;
+            double dH = vm.Height - _heightAtResizeStart;
+            if (Math.Abs(dW) > 0.5 || Math.Abs(dH) > 0.5)
+            {
+                var canvasVm = (Window.GetWindow(this)?.DataContext as ViewModels.MainViewModel)?.CanvasViewModel;
+                canvasVm?.RecordResize(vm, _widthAtResizeStart, _heightAtResizeStart);
+            }
+        }
     }
 
     private void UpdateSizeIndicator(double width, double height)

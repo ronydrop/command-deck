@@ -13,7 +13,12 @@ public enum CanvasItemType
     ProcessWidget,
     ShortcutWidget,
     NoteWidget,
-    ImageWidget
+    ImageWidget,
+    KanbanWidget,
+    ChatWidget,
+    SystemMonitorWidget,
+    TokenCounterWidget,
+    PomodoroWidget
 }
 
 /// <summary>Logical widget category used by CanvasItemFactory.</summary>
@@ -24,7 +29,12 @@ public enum WidgetType
     Process,
     Shortcut,
     Note,
-    Image
+    Image,
+    Kanban,
+    Chat,
+    SystemMonitor,
+    TokenCounter,
+    Pomodoro
 }
 
 /// <summary>

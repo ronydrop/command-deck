@@ -188,28 +188,6 @@ public partial class AppSettings : ObservableObject
     [ObservableProperty]
     private string _canvasWallpaperStretch = "UniformToFill";
 
-    // ─── Dynamic Island Settings ────────────────────────────────────────────
-
-    /// <summary>Whether the Dynamic Island overlay widget is visible.</summary>
-    [ObservableProperty]
-    private bool _isDynamicIslandEnabled = true;
-
-    /// <summary>Play a short system sound when the island surfaces a critical action (approval / question).</summary>
-    [ObservableProperty]
-    private bool _dynamicIslandSoundEnabled;
-
-    /// <summary>Maximum events kept in the island feed (oldest/lowest priority dropped when exceeded).</summary>
-    [ObservableProperty]
-    private int _dynamicIslandMaxFeedEvents = 30;
-
-    /// <summary>How many queued items show in the expanded island list before the &quot;e mais N&quot; hint.</summary>
-    [ObservableProperty]
-    private int _dynamicIslandQueueVisibleLimit = 5;
-
-    /// <summary>Seconds within which duplicate promoted notifications (same fingerprint) replace the previous entry.</summary>
-    [ObservableProperty]
-    private int _dynamicIslandNotificationDedupeWindowSeconds = 30;
-
     // ─── AI Orb Settings ────────────────────────────────────────────────────
 
     [ObservableProperty]
@@ -256,6 +234,20 @@ public partial class AppSettings : ObservableObject
 
     [ObservableProperty]
     private string _terminalWallpaperStretch = "UniformToFill";
+
+    // ─── Canvas Snap Settings ──────────────────────────────────────────
+
+    /// <summary>Whether canvas items snap to a grid when dragged.</summary>
+    [ObservableProperty]
+    private bool _canvasSnapEnabled = true;
+
+    /// <summary>Grid cell size in pixels for snap-to-grid.</summary>
+    [ObservableProperty]
+    private int _canvasSnapGridSize = 20;
+
+    /// <summary>Whether alignment guides appear when dragging near other items.</summary>
+    [ObservableProperty]
+    private bool _canvasAlignmentGuidesEnabled = true;
 }
 
 /// <summary>

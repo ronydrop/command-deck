@@ -1,0 +1,160 @@
+<UserControl x:Class="CommandDeck.Controls.SystemMonitorWidgetControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="360" d:DesignHeight="260"
+             Background="Transparent"
+             Padding="14,10,14,14">
+
+    <UserControl.Resources>
+        <!-- Custom ProgressBar style matching the glass theme -->
+        <Style x:Key="MetricProgressBar" TargetType="ProgressBar">
+            <Setter Property="Height" Value="6" />
+            <Setter Property="Minimum" Value="0" />
+            <Setter Property="Maximum" Value="100" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Border x:Name="PART_Track" CornerRadius="3" ClipToBounds="True">
+                            <Border.Background>
+                                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5" />
+                            </Border.Background>
+                            <Border x:Name="PART_Indicator"
+                                    HorizontalAlignment="Left"
+                                    CornerRadius="3"
+                                    Background="{TemplateBinding Foreground}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Header -->
+            <RowDefinition Height="Auto" />
+            <!-- CPU section -->
+            <RowDefinition Height="Auto" />
+            <!-- Separator -->
+            <RowDefinition Height="10" />
+            <!-- Memory section -->
+            <RowDefinition Height="Auto" />
+            <!-- Spacer -->
+            <RowDefinition Height="*" />
+            <!-- Bottom accent line -->
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ─── Header ───────────────────────────────────────────────────── -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,14">
+            <Border Width="28" Height="28" CornerRadius="7" VerticalAlignment="Center" Margin="0,0,10,0">
+                <Border.Background>
+                    <SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.15" />
+                </Border.Background>
+                <TextBlock Text="📊" FontSize="14"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="Monitor"
+                           FontSize="13" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextBrush}" />
+                <TextBlock Text="{Binding SystemHostname}"
+                           FontSize="10" FontFamily="{StaticResource MonoFont}"
+                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.7" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- ─── CPU section ──────────────────────────────────────────────── -->
+        <Border Grid.Row="1" CornerRadius="8" Padding="12,10">
+            <Border.Background>
+                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.35" />
+            </Border.Background>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="6" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- CPU label + value -->
+                <DockPanel Grid.Row="0">
+                    <TextBlock DockPanel.Dock="Left"
+                               Text="CPU"
+                               FontSize="10" FontWeight="Bold"
+                               Foreground="{DynamicResource SubtextBrush}"
+                               VerticalAlignment="Center" />
+                    <TextBlock DockPanel.Dock="Right"
+                               FontSize="22" FontWeight="Bold"
+                               FontFamily="{StaticResource MonoFont}"
+                               Foreground="{DynamicResource AccentGreenBrush}"
+                               HorizontalAlignment="Right"
+                               VerticalAlignment="Center">
+                        <Run Text="{Binding CpuUsage, StringFormat='{}{0:F1}', Mode=OneWay}" /><Run Text="%" />
+                    </TextBlock>
+                </DockPanel>
+
+                <!-- CPU progress bar -->
+                <ProgressBar Grid.Row="2"
+                             Style="{StaticResource MetricProgressBar}"
+                             Value="{Binding CpuUsage, Mode=OneWay}"
+                             Foreground="{DynamicResource AccentGreenBrush}" />
+            </Grid>
+        </Border>
+
+        <!-- ─── Memory section ───────────────────────────────────────────── -->
+        <Border Grid.Row="3" CornerRadius="8" Padding="12,10">
+            <Border.Background>
+                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.35" />
+            </Border.Background>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="6" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- RAM label + value -->
+                <DockPanel Grid.Row="0">
+                    <TextBlock DockPanel.Dock="Left"
+                               Text="RAM"
+                               FontSize="10" FontWeight="Bold"
+                               Foreground="{DynamicResource SubtextBrush}"
+                               VerticalAlignment="Center" />
+                    <!-- X.X / Y.Y GB -->
+                    <TextBlock DockPanel.Dock="Right"
+                               FontSize="16" FontWeight="Bold"
+                               FontFamily="{StaticResource MonoFont}"
+                               Foreground="{DynamicResource AccentBlueBrush}"
+                               HorizontalAlignment="Right"
+                               VerticalAlignment="Center">
+                        <Run Text="{Binding MemoryUsedGb, StringFormat='{}{0:F1}', Mode=OneWay}" />
+                        <Run Text=" / " Foreground="{DynamicResource SubtextBrush}" />
+                        <Run Text="{Binding MemoryTotalGb, StringFormat='{}{0:F1}', Mode=OneWay}" />
+                        <Run Text=" GB" Foreground="{DynamicResource SubtextBrush}" />
+                    </TextBlock>
+                </DockPanel>
+
+                <!-- RAM progress bar -->
+                <ProgressBar Grid.Row="2"
+                             Style="{StaticResource MetricProgressBar}"
+                             Value="{Binding MemoryPercent, Mode=OneWay}"
+                             Foreground="{DynamicResource AccentBlueBrush}" />
+            </Grid>
+        </Border>
+
+        <!-- ─── Bottom accent line ───────────────────────────────────────── -->
+        <Border Grid.Row="5" Height="2" CornerRadius="1" Margin="20,8,20,0">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="Transparent" Offset="0" />
+                    <GradientStop Color="{DynamicResource AccentGreen}" Offset="0.5" />
+                    <GradientStop Color="Transparent" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+    </Grid>
+</UserControl>

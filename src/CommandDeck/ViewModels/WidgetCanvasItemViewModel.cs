@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -22,6 +25,10 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
     private readonly IProcessMonitorService? _processMonitorService;
     private readonly IWorkspaceService? _workspaceService;
     private readonly INotificationService? _notificationService;
+    private readonly IKanbanService? _kanbanService;
+    private readonly IAssistantService? _assistantService;
+    private readonly ITaskAutomationService? _taskAutomationService;
+    private readonly IClaudeUsageService? _claudeUsageService;
 
     [ObservableProperty] private WidgetType _widgetType;
 
@@ -57,13 +64,37 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
     /// <summary>Image opacity (0.0–1.0), default fully opaque.</summary>
     [ObservableProperty] private double _imageOpacity = 1.0;
 
+    // ─── Kanban widget data ──────────────────────────────────────────────────
+    [ObservableProperty] private KanbanBoard? _kanbanBoard;
+    public ObservableCollection<KanbanColumn> KanbanColumns { get; } = new();
+    public ObservableCollection<KanbanCard> KanbanCards { get; } = new();
+
+    // ─── Chat widget data ────────────────────────────────────────────────────
+    [ObservableProperty] private string _chatInputText = string.Empty;
+    [ObservableProperty] private bool _chatIsLoading;
+    public ObservableCollection<ChatMessage> ChatMessages { get; } = new();
+    private CancellationTokenSource? _chatCts;
+
+    // ─── System Monitor widget data ──────────────────────────────────────────
+    [ObservableProperty] private double _cpuUsage;
+    [ObservableProperty] private double _memoryUsedGb;
+    [ObservableProperty] private double _memoryTotalGb;
+    [ObservableProperty] private string _systemHostname = Environment.MachineName;
+    private System.Windows.Threading.DispatcherTimer? _sysMonTimer;
+    private System.Diagnostics.PerformanceCounter? _cpuCounter;
+
     public override CanvasItemType ItemType => WidgetType switch
     {
-        WidgetType.Git => CanvasItemType.GitWidget,
-        WidgetType.Process => CanvasItemType.ProcessWidget,
-        WidgetType.Note => CanvasItemType.NoteWidget,
-        WidgetType.Image => CanvasItemType.ImageWidget,
-        _ => CanvasItemType.ShortcutWidget
+        WidgetType.Git           => CanvasItemType.GitWidget,
+        WidgetType.Process       => CanvasItemType.ProcessWidget,
+        WidgetType.Note          => CanvasItemType.NoteWidget,
+        WidgetType.Image         => CanvasItemType.ImageWidget,
+        WidgetType.Kanban        => CanvasItemType.KanbanWidget,
+        WidgetType.Chat          => CanvasItemType.ChatWidget,
+        WidgetType.SystemMonitor => CanvasItemType.SystemMonitorWidget,
+        WidgetType.TokenCounter  => CanvasItemType.TokenCounterWidget,
+        WidgetType.Pomodoro      => CanvasItemType.PomodoroWidget,
+        _                        => CanvasItemType.ShortcutWidget
     };
 
     // ─── Constructor ─────────────────────────────────────────────────────────
@@ -74,7 +105,11 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
         IGitService? gitService = null,
         IProcessMonitorService? processMonitorService = null,
         IWorkspaceService? workspaceService = null,
-        INotificationService? notificationService = null)
+        INotificationService? notificationService = null,
+        IKanbanService? kanbanService = null,
+        IAssistantService? assistantService = null,
+        ITaskAutomationService? taskAutomationService = null,
+        IClaudeUsageService? claudeUsageService = null)
         : base(model)
     {
         _widgetType = type;
@@ -82,6 +117,10 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
         _processMonitorService = processMonitorService;
         _workspaceService = workspaceService;
         _notificationService = notificationService;
+        _kanbanService = kanbanService;
+        _assistantService = assistantService;
+        _taskAutomationService = taskAutomationService;
+        _claudeUsageService = claudeUsageService;
 
         if (type == WidgetType.Process && processMonitorService is not null)
         {
@@ -130,6 +169,26 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
             }
 
             Shortcuts.CollectionChanged += OnShortcutsCollectionChanged;
+        }
+
+        if (type == WidgetType.Kanban && kanbanService is not null)
+        {
+            _ = LoadKanbanBoardAsync();
+        }
+
+        if (type == WidgetType.SystemMonitor)
+        {
+            StartSystemMonitor();
+        }
+
+        if (type == WidgetType.TokenCounter)
+        {
+            InitTokenCounter();
+        }
+
+        if (type == WidgetType.Pomodoro)
+        {
+            InitPomodoro();
         }
     }
 
@@ -274,5 +333,221 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
             NotificationType.Warning,
             NotificationSource.Terminal,
             "Abra um terminal antes de executar um atalho.");
+    }
+
+    // ─── Kanban board operations ──────────────────────────────────────────────
+
+    public async Task LoadKanbanBoardAsync()
+    {
+        if (_kanbanService is null) return;
+
+        var workspaceId = Model.Metadata.TryGetValue("workspaceId", out var wid) ? wid : "default";
+        var boardId = Model.Metadata.TryGetValue("boardId", out var bid) ? bid : null;
+
+        KanbanBoard? board;
+        if (boardId is not null)
+        {
+            // Board already known — just reload cards; keep existing KanbanBoard reference
+            board = KanbanBoard;
+        }
+        else
+        {
+            board = await _kanbanService.GetBoardForWorkspaceAsync(workspaceId).ConfigureAwait(false)
+                    ?? await _kanbanService.CreateBoardAsync(workspaceId).ConfigureAwait(false);
+            Model.Metadata["boardId"] = board.Id;
+        }
+
+        if (board is null) return;
+
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            KanbanBoard = board;
+            KanbanColumns.Clear();
+            foreach (var col in board.Columns) KanbanColumns.Add(col);
+        });
+
+        await RefreshKanbanCardsAsync(board.Id).ConfigureAwait(false);
+    }
+
+    public async Task RefreshKanbanCardsAsync(string boardId)
+    {
+        if (_kanbanService is null) return;
+        var cards = await _kanbanService.GetCardsForBoardAsync(boardId).ConfigureAwait(false);
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            KanbanCards.Clear();
+            foreach (var c in cards) KanbanCards.Add(c);
+        });
+    }
+
+    public async Task MoveCardAsync(string cardId, string columnId)
+    {
+        if (_kanbanService is null || KanbanBoard is null) return;
+        await _kanbanService.MoveCardAsync(cardId, columnId).ConfigureAwait(false);
+        await RefreshKanbanCardsAsync(KanbanBoard.Id).ConfigureAwait(false);
+    }
+
+    public async Task AddCardAsync(string title, string columnId)
+    {
+        if (_kanbanService is null || KanbanBoard is null) return;
+        var card = new KanbanCard
+        {
+            BoardId = KanbanBoard.Id,
+            ColumnId = columnId,
+            Title = title
+        };
+        await _kanbanService.CreateCardAsync(card).ConfigureAwait(false);
+        await RefreshKanbanCardsAsync(KanbanBoard.Id).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Checks dependencies and dispatches the card to an AI agent via TaskAutomationService.
+    /// Shows a notification on error.
+    /// </summary>
+    public async Task ExecuteCardAsync(string cardId)
+    {
+        if (_taskAutomationService is null || KanbanBoard is null) return;
+
+        try
+        {
+            // Working directory: not available from workspace model — pass null
+            string? workDir = null;
+
+            await _taskAutomationService.LaunchCardAsync(KanbanBoard.Id, cardId, workDir)
+                .ConfigureAwait(false);
+
+            // Refresh to show updated card state (moved to "running")
+            await RefreshKanbanCardsAsync(KanbanBoard.Id).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _notificationService?.Notify(
+                "Dependências não atendidas",
+                NotificationType.Warning,
+                NotificationSource.Terminal,
+                ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _notificationService?.Notify(
+                "Erro ao executar tarefa",
+                NotificationType.Error,
+                NotificationSource.Terminal,
+                ex.Message);
+        }
+    }
+
+    // ─── System Monitor ───────────────────────────────────────────────────────
+
+    private void StartSystemMonitor()
+    {
+        try
+        {
+            _cpuCounter = new System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total");
+            _cpuCounter.NextValue(); // First call always returns 0
+        }
+        catch { /* PerformanceCounter may not be available */ }
+
+        _sysMonTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(2)
+        };
+        _sysMonTimer.Tick += OnSysMonTick;
+        _sysMonTimer.Start();
+    }
+
+    private void OnSysMonTick(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (_cpuCounter is not null)
+                CpuUsage = Math.Round(_cpuCounter.NextValue(), 1);
+
+            var searcher = new System.Management.ManagementObjectSearcher(
+                "SELECT FreePhysicalMemory, TotalVisibleMemorySize FROM Win32_OperatingSystem");
+            foreach (System.Management.ManagementObject obj in searcher.Get())
+            {
+                var totalKb = Convert.ToDouble(obj["TotalVisibleMemorySize"]);
+                var freeKb = Convert.ToDouble(obj["FreePhysicalMemory"]);
+                MemoryTotalGb = Math.Round(totalKb / 1_048_576.0, 1);
+                MemoryUsedGb = Math.Round((totalKb - freeKb) / 1_048_576.0, 1);
+            }
+        }
+        catch { /* Silently skip on error */ }
+    }
+
+    private void StopSystemMonitor()
+    {
+        _sysMonTimer?.Stop();
+        _sysMonTimer = null;
+        _cpuCounter?.Dispose();
+        _cpuCounter = null;
+    }
+
+    // ─── Chat operations ──────────────────────────────────────────────────────
+
+    public async Task SendChatMessageAsync()
+    {
+        if (_assistantService is null || string.IsNullOrWhiteSpace(ChatInputText) || ChatIsLoading) return;
+
+        var userText = ChatInputText.Trim();
+        ChatInputText = string.Empty;
+        ChatIsLoading = true;
+
+        ChatMessages.Add(new ChatMessage { Role = "user", Content = userText, Timestamp = DateTime.Now });
+
+        var assistantMsg = new ChatMessage { Role = "assistant", Content = string.Empty, Timestamp = DateTime.Now };
+        ChatMessages.Add(assistantMsg);
+
+        _chatCts = new CancellationTokenSource();
+        try
+        {
+            var history = ChatMessages
+                .Where(m => m.Role != "assistant" || m != assistantMsg)
+                .Select(m => m.Role == "user"
+                    ? AssistantMessage.User(m.Content)
+                    : AssistantMessage.Assistant(m.Content))
+                .ToList();
+
+            await foreach (var chunk in _assistantService.StreamChatAsync(history, _chatCts.Token)
+                               .ConfigureAwait(false))
+            {
+                if (!string.IsNullOrEmpty(chunk.Content))
+                    assistantMsg.Content += chunk.Content;
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            assistantMsg.Content = $"Erro: {ex.Message}";
+        }
+        finally
+        {
+            ChatIsLoading = false;
+            _chatCts?.Dispose();
+            _chatCts = null;
+        }
+    }
+
+    // ─── System Monitor computed ──────────────────────────────────────────────
+
+    /// <summary>Memory usage as a 0–100 percentage for progress bar binding.</summary>
+    public double MemoryPercent =>
+        MemoryTotalGb > 0 ? Math.Round(MemoryUsedGb / MemoryTotalGb * 100.0, 1) : 0;
+
+    partial void OnMemoryUsedGbChanged(double value) => OnPropertyChanged(nameof(MemoryPercent));
+    partial void OnMemoryTotalGbChanged(double value) => OnPropertyChanged(nameof(MemoryPercent));
+
+    // ─── Cleanup ──────────────────────────────────────────────────────────────
+
+    public void Cleanup()
+    {
+        StopSystemMonitor();
+        StopTokenCounter();
+        StopPomodoro();
+        _chatCts?.Cancel();
+        _chatCts?.Dispose();
+        if (WidgetType == WidgetType.Process && _processMonitorService is not null)
+            _processMonitorService.ProcessesUpdated -= OnProcessesUpdated;
     }
 }

@@ -40,8 +40,9 @@
         <KeyBinding Key="C" Modifiers="Ctrl+Shift" Command="{Binding LaunchClaudeCommand}" />
         <KeyBinding Key="Tab" Modifiers="Shift" Command="{Binding NextProjectCommand}" />
         <KeyBinding Key="L" Modifiers="Ctrl+Shift" Command="{Binding CanvasViewModel.ToggleLayoutModeCommand}" />
+        <KeyBinding Key="Z" Modifiers="Ctrl"       Command="{Binding CanvasViewModel.UndoActionCommand}" />
+        <KeyBinding Key="Z" Modifiers="Ctrl+Shift" Command="{Binding CanvasViewModel.RedoActionCommand}" />
         <KeyBinding Key="G" Modifiers="Ctrl+Shift" Command="{Binding OpenBranchSelectorCommand}" />
-        <KeyBinding Key="D" Modifiers="Ctrl+Shift" Command="{Binding ToggleDynamicIslandCommand}" />
         <!-- AI Orb shortcuts -->
         <KeyBinding Key="A" Modifiers="Ctrl+Alt" Command="{Binding AiOrb.ToggleRadialMenuCommand}" />
         <KeyBinding Key="I" Modifiers="Ctrl+Shift" Command="{Binding AiOrb.ImprovePromptCommand}" />
@@ -75,6 +76,7 @@
                 Padding="8,0">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -143,6 +145,30 @@
                     </StackPanel>
                 </Button>
 
+                <!-- Tabbed Terminal -->
+                <Button Grid.Column="3"
+                        Command="{Binding NavigateToCommand}"
+                        CommandParameter="{x:Static vm:ViewType.TabbedTerminal}"
+                        VerticalAlignment="Center"
+                        Margin="0,0,4,0"
+                        Padding="10,6">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentView}" Value="{x:Static vm:ViewType.TabbedTerminal}">
+                                    <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="{StaticResource TerminalIcon}"
+                              Style="{StaticResource IconPathSmall}"
+                              Margin="0,0,6,0" />
+                        <TextBlock Text="Abas" VerticalAlignment="Center" FontSize="13" />
+                    </StackPanel>
+                </Button>
 
             </Grid>
         </Border>
@@ -354,6 +380,12 @@
                 DataContext="{Binding Browser}"
                 Visibility="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window},
                              Converter={StaticResource ViewTypeToVis}, ConverterParameter=Browser}" />
+
+            <!-- Tabbed Terminal View -->
+            <views:TabbedTerminalView
+                DataContext="{Binding TabbedTerminal}"
+                Visibility="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window},
+                             Converter={StaticResource ViewTypeToVis}, ConverterParameter=TabbedTerminal}" />
         </Grid>
 
         <!-- ═══════════════════════════════════════════════════════════════
@@ -625,6 +657,8 @@
         <Grid Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="1"
               Panel.ZIndex="999"
               Visibility="{Binding IsCommandPaletteOpen, Converter={StaticResource BoolToVis}}">
+            <!-- Frosted glass backdrop (static snapshot, see BackdropBlurControl) -->
+            <controls:BackdropBlurControl />
             <views:CommandPaletteOverlay DataContext="{Binding CommandPalette}" />
         </Grid>
 

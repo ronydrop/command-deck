@@ -631,6 +631,7 @@
                   MouseDown="OnViewportMouseDown"
                   MouseMove="OnViewportMouseMove"
                   MouseUp="OnViewportMouseUp"
+                  MouseLeave="OnViewportMouseLeave"
                   MouseWheel="OnViewportMouseWheel"
                   AllowDrop="True"
                   Drop="OnViewportDrop"
@@ -654,73 +655,6 @@
                     </Image.Style>
                 </Image>
 
-                <!-- ── Dot-grid overlay — always visible on top of wallpaper (hidden in tiled mode) ── -->
-                <Canvas IsHitTestVisible="False">
-                    <Canvas.Style>
-                        <Style TargetType="Canvas">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding CanvasViewModel.IsTiledMode}" Value="True">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Canvas.Style>
-                    <Canvas.Background>
-                        <DrawingBrush TileMode="Tile"
-                                      ViewportUnits="Absolute"
-                                      Viewport="0,0,32,32">
-                            <DrawingBrush.Drawing>
-                                <DrawingGroup>
-
-                                    <!-- Layer 1: dot at each tile origin -->
-                                    <GeometryDrawing>
-                                        <GeometryDrawing.Brush>
-                                            <SolidColorBrush Color="#FFFFFF"
-                                                             Opacity="0.18" />
-                                        </GeometryDrawing.Brush>
-                                        <GeometryDrawing.Geometry>
-                                            <EllipseGeometry Center="2,2"
-                                                             RadiusX="1.2"
-                                                             RadiusY="1.2" />
-                                        </GeometryDrawing.Geometry>
-                                    </GeometryDrawing>
-
-                                    <!-- Layer 2a: faint horizontal hairline -->
-                                    <GeometryDrawing>
-                                        <GeometryDrawing.Pen>
-                                            <Pen Thickness="0.5">
-                                                <Pen.Brush>
-                                                    <SolidColorBrush Color="#FFFFFF"
-                                                                     Opacity="0.06" />
-                                                </Pen.Brush>
-                                            </Pen>
-                                        </GeometryDrawing.Pen>
-                                        <GeometryDrawing.Geometry>
-                                            <LineGeometry StartPoint="0,0" EndPoint="32,0" />
-                                        </GeometryDrawing.Geometry>
-                                    </GeometryDrawing>
-
-                                    <!-- Layer 2b: faint vertical hairline -->
-                                    <GeometryDrawing>
-                                        <GeometryDrawing.Pen>
-                                            <Pen Thickness="0.5">
-                                                <Pen.Brush>
-                                                    <SolidColorBrush Color="#FFFFFF"
-                                                                     Opacity="0.06" />
-                                                </Pen.Brush>
-                                            </Pen>
-                                        </GeometryDrawing.Pen>
-                                        <GeometryDrawing.Geometry>
-                                            <LineGeometry StartPoint="0,0" EndPoint="0,32" />
-                                        </GeometryDrawing.Geometry>
-                                    </GeometryDrawing>
-
-                                </DrawingGroup>
-                            </DrawingBrush.Drawing>
-                        </DrawingBrush>
-                    </Canvas.Background>
-                </Canvas>
-
                 <!-- World canvas: holds all items, panned + zoomed via RenderTransform -->
                 <Canvas x:Name="WorldCanvas"
                         HorizontalAlignment="Left"
@@ -733,6 +667,68 @@
                             <TranslateTransform x:Name="CanvasTranslate" X="40" Y="40" />
                         </TransformGroup>
                     </Canvas.RenderTransform>
+
+                    <!-- World-space dot grid — moves and scales with the canvas (pan/zoom) -->
+                    <Canvas x:Name="WorldGrid"
+                            Width="20000" Height="20000"
+                            Canvas.Left="-10000" Canvas.Top="-10000"
+                            IsHitTestVisible="False"
+                            Panel.ZIndex="-1">
+                        <Canvas.Style>
+                            <Style TargetType="Canvas">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CanvasViewModel.IsTiledMode}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Canvas.Style>
+                        <Canvas.Background>
+                            <DrawingBrush TileMode="Tile"
+                                          ViewportUnits="Absolute"
+                                          Viewport="0,0,32,32">
+                                <DrawingBrush.Drawing>
+                                    <DrawingGroup>
+                                        <!-- Dot at each tile origin -->
+                                        <GeometryDrawing>
+                                            <GeometryDrawing.Brush>
+                                                <SolidColorBrush Color="#FFFFFF" Opacity="0.18" />
+                                            </GeometryDrawing.Brush>
+                                            <GeometryDrawing.Geometry>
+                                                <EllipseGeometry Center="2,2" RadiusX="1.2" RadiusY="1.2" />
+                                            </GeometryDrawing.Geometry>
+                                        </GeometryDrawing>
+                                        <!-- Faint horizontal hairline -->
+                                        <GeometryDrawing>
+                                            <GeometryDrawing.Pen>
+                                                <Pen Thickness="0.5">
+                                                    <Pen.Brush>
+                                                        <SolidColorBrush Color="#FFFFFF" Opacity="0.06" />
+                                                    </Pen.Brush>
+                                                </Pen>
+                                            </GeometryDrawing.Pen>
+                                            <GeometryDrawing.Geometry>
+                                                <LineGeometry StartPoint="0,0" EndPoint="32,0" />
+                                            </GeometryDrawing.Geometry>
+                                        </GeometryDrawing>
+                                        <!-- Faint vertical hairline -->
+                                        <GeometryDrawing>
+                                            <GeometryDrawing.Pen>
+                                                <Pen Thickness="0.5">
+                                                    <Pen.Brush>
+                                                        <SolidColorBrush Color="#FFFFFF" Opacity="0.06" />
+                                                    </Pen.Brush>
+                                                </Pen>
+                                            </GeometryDrawing.Pen>
+                                            <GeometryDrawing.Geometry>
+                                                <LineGeometry StartPoint="0,0" EndPoint="0,32" />
+                                            </GeometryDrawing.Geometry>
+                                        </GeometryDrawing>
+                                    </DrawingGroup>
+                                </DrawingBrush.Drawing>
+                            </DrawingBrush>
+                        </Canvas.Background>
+                    </Canvas>
 
                     <!-- ItemsControl: binds to TerminalCanvasViewModel.Items
                          Each item is positioned absolutely via Canvas.Left/Top bindings -->
@@ -764,6 +760,26 @@
                     </ItemsControl>
                 </Canvas>
 
+                <!-- Proximity glow — radial soft light that follows the cursor (viewport-space) -->
+                <Canvas x:Name="ProximityGlowCanvas"
+                        IsHitTestVisible="False"
+                        Panel.ZIndex="1">
+                    <Ellipse x:Name="ProximityGlowEllipse"
+                             Width="300" Height="300"
+                             Opacity="0"
+                             IsHitTestVisible="False">
+                        <Ellipse.Fill>
+                            <RadialGradientBrush>
+                                <GradientStop Color="{DynamicResource AccentPurple}" Offset="0" />
+                                <GradientStop Color="Transparent" Offset="1" />
+                            </RadialGradientBrush>
+                        </Ellipse.Fill>
+                        <Ellipse.Effect>
+                            <BlurEffect Radius="24" />
+                        </Ellipse.Effect>
+                    </Ellipse>
+                </Canvas>
+
                 <!-- Rubber-band selection rectangle (viewport-space, drawn above cards) -->
                 <Canvas x:Name="SelectionCanvas"
                         IsHitTestVisible="False"
@@ -774,6 +790,24 @@
                                StrokeDashArray="5 3"
                                Fill="#2200A8E0"
                                Visibility="Collapsed" />
+
+                    <!-- Horizontal alignment guide (appears during drag when aligned with another item's edge) -->
+                    <Line x:Name="AlignGuideH"
+                          X1="0" Y1="0" X2="10000" Y2="0"
+                          Stroke="{DynamicResource AccentBrush}"
+                          StrokeThickness="1"
+                          StrokeDashArray="4 3"
+                          Opacity="0.7"
+                          Visibility="Collapsed" />
+
+                    <!-- Vertical alignment guide -->
+                    <Line x:Name="AlignGuideV"
+                          X1="0" Y1="0" X2="0" Y2="10000"
+                          Stroke="{DynamicResource AccentBrush}"
+                          StrokeThickness="1"
+                          StrokeDashArray="4 3"
+                          Opacity="0.7"
+                          Visibility="Collapsed" />
                 </Canvas>
 
                 <!-- Mini-map overlay -->
@@ -1066,6 +1100,78 @@
                             <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
                                     VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
                                     ToolTip="Cria um bloco de notas rapido no canvas. Ideal para lembretes, TODOs e anotacoes durante o desenvolvimento."
+                                    Background="Transparent">
+                                <TextBlock Text="?" FontSize="9" FontWeight="Bold"
+                                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
+                        <!-- Widget Kanban -->
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Style="{StaticResource GhostButton}"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,5" FontSize="11"
+                                    Click="OnAddKanbanWidgetClick">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#x1F5C2;" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Widget Kanban" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
+                                    VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
+                                    ToolTip="Board kanban com colunas e cards. Suporta dispatch de tarefas para agentes AI."
+                                    Background="Transparent">
+                                <TextBlock Text="?" FontSize="9" FontWeight="Bold"
+                                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
+                        <!-- Widget Chat AI -->
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Style="{StaticResource GhostButton}"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,5" FontSize="11"
+                                    Click="OnAddChatWidgetClick">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#x1F4AC;" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Widget Chat AI" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
+                                    VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
+                                    ToolTip="Chat AI independente no canvas. Multiplas conversas simultaneas."
+                                    Background="Transparent">
+                                <TextBlock Text="?" FontSize="9" FontWeight="Bold"
+                                           Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
+                        <!-- Widget Monitor -->
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Style="{StaticResource GhostButton}"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,5" FontSize="11"
+                                    Click="OnAddSystemMonitorWidgetClick">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#x1F4CA;" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Monitor do Sistema" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8"
+                                    VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Help"
+                                    ToolTip="CPU e memoria em tempo real."
                                     Background="Transparent">
                                 <TextBlock Text="?" FontSize="9" FontWeight="Bold"
                                            Foreground="{DynamicResource SubtextBrush}" Opacity="0.6"

@@ -93,6 +93,31 @@
                     <ctrl:ImageWidgetControl DataContext="{Binding}" />
                 </DataTemplate>
             </ctrl:CanvasItemContentTemplateSelector.ImageWidgetTemplate>
+            <ctrl:CanvasItemContentTemplateSelector.KanbanWidgetTemplate>
+                <DataTemplate DataType="{x:Type vm:WidgetCanvasItemViewModel}">
+                    <ctrl:KanbanBoardControl DataContext="{Binding}" />
+                </DataTemplate>
+            </ctrl:CanvasItemContentTemplateSelector.KanbanWidgetTemplate>
+            <ctrl:CanvasItemContentTemplateSelector.ChatWidgetTemplate>
+                <DataTemplate DataType="{x:Type vm:WidgetCanvasItemViewModel}">
+                    <ctrl:ChatWidgetControl DataContext="{Binding}" />
+                </DataTemplate>
+            </ctrl:CanvasItemContentTemplateSelector.ChatWidgetTemplate>
+            <ctrl:CanvasItemContentTemplateSelector.SystemMonitorWidgetTemplate>
+                <DataTemplate DataType="{x:Type vm:WidgetCanvasItemViewModel}">
+                    <ctrl:SystemMonitorWidgetControl DataContext="{Binding}" />
+                </DataTemplate>
+            </ctrl:CanvasItemContentTemplateSelector.SystemMonitorWidgetTemplate>
+            <ctrl:CanvasItemContentTemplateSelector.TokenCounterWidgetTemplate>
+                <DataTemplate DataType="{x:Type vm:WidgetCanvasItemViewModel}">
+                    <ctrl:TokenCounterWidgetControl DataContext="{Binding}" />
+                </DataTemplate>
+            </ctrl:CanvasItemContentTemplateSelector.TokenCounterWidgetTemplate>
+            <ctrl:CanvasItemContentTemplateSelector.PomodoroWidgetTemplate>
+                <DataTemplate DataType="{x:Type vm:WidgetCanvasItemViewModel}">
+                    <ctrl:PomodoroWidgetControl DataContext="{Binding}" />
+                </DataTemplate>
+            </ctrl:CanvasItemContentTemplateSelector.PomodoroWidgetTemplate>
         </ctrl:CanvasItemContentTemplateSelector>
 
     </UserControl.Resources>
@@ -129,6 +154,51 @@
             </Border.Style>
             <Border.Effect>
                 <BlurEffect Radius="6" />
+            </Border.Effect>
+        </Border>
+
+        <!-- Selection glow — purple drop-shadow visible only when IsSelected=True.
+             Fades in over 200 ms on selection and out over 150 ms on deselection. -->
+        <Border x:Name="SelectionGlowBorder"
+                BorderThickness="0"
+                Background="Transparent"
+                Opacity="0"
+                IsHitTestVisible="False">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="CornerRadius" Value="8" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsTiledMode}" Value="True">
+                            <Setter Property="CornerRadius" Value="0" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                         To="1" Duration="0:0:0.200">
+                                            <DoubleAnimation.EasingFunction>
+                                                <QuadraticEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.EnterActions>
+                            <DataTrigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                         To="0" Duration="0:0:0.150" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.ExitActions>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Border.Effect>
+                <DropShadowEffect Color="{DynamicResource AccentPurple}"
+                                  ShadowDepth="0" BlurRadius="18" Opacity="0.6" />
             </Border.Effect>
         </Border>
 

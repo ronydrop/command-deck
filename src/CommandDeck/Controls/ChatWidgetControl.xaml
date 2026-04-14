@@ -1,0 +1,270 @@
+<UserControl x:Class="CommandDeck.Controls.ChatWidgetControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="380" d:DesignHeight="500"
+             Background="Transparent">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <ctrl:InverseBoolToVisibilityConverter x:Key="InvBoolToVis"
+            xmlns:ctrl="clr-namespace:CommandDeck.Controls" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Header -->
+            <RowDefinition Height="36" />
+            <!-- Messages list -->
+            <RowDefinition Height="*" />
+            <!-- Shimmer loading bar (3 px, visible only when ChatIsLoading=True) -->
+            <RowDefinition Height="3" />
+            <!-- Input area -->
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ─── Header ───────────────────────────────────────────────────── -->
+        <Border Grid.Row="0"
+                Padding="12,0"
+                BorderThickness="0,0,0,1">
+            <Border.BorderBrush>
+                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5" />
+            </Border.BorderBrush>
+            <DockPanel VerticalAlignment="Center">
+
+                <!-- Icon + title -->
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                    <Border Width="22" Height="22" CornerRadius="5" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <Border.Background>
+                            <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.15" />
+                        </Border.Background>
+                        <TextBlock Text="💬" FontSize="11"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="Chat AI"
+                               FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextBrush}"
+                               VerticalAlignment="Center" />
+                    <!-- Provider label -->
+                    <TextBlock Text="Claude"
+                               FontSize="10" Margin="6,0,0,0"
+                               Foreground="{DynamicResource AccentBrush}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Clear button -->
+                <Button DockPanel.Dock="Right"
+                        Width="24" Height="24"
+                        Background="Transparent" BorderThickness="0"
+                        Cursor="Hand"
+                        Click="OnClearMessages"
+                        ToolTip="Limpar conversa"
+                        VerticalAlignment="Center">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bg" CornerRadius="4" Background="Transparent" Width="24" Height="24">
+                                <TextBlock Text="🗑" FontSize="11"
+                                           Foreground="{DynamicResource SubtextBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bg" Property="Background">
+                                        <Setter.Value>
+                                            <SolidColorBrush Color="{DynamicResource AccentRed}" Opacity="0.2" />
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </DockPanel>
+        </Border>
+
+        <!-- ─── Messages list ────────────────────────────────────────────── -->
+        <ScrollViewer Grid.Row="1"
+                      x:Name="MessagesScrollViewer"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Padding="10,8">
+            <ItemsControl x:Name="MessagesList"
+                          ItemsSource="{Binding ChatMessages}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <!-- Message bubble wrapper — flip alignment based on role -->
+                        <Grid Margin="0,4">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="HorizontalAlignment" Value="Left" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsUser}" Value="True">
+                                            <Setter Property="HorizontalAlignment" Value="Right" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+
+                            <!-- Loading indicator (3 dots) — only on streaming messages -->
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="10,8"
+                                        Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVis}}">
+                                <Ellipse x:Name="Dot1" Width="6" Height="6" Margin="2,0"
+                                         Fill="{DynamicResource SubtextBrush}" Opacity="0.6" />
+                                <Ellipse x:Name="Dot2" Width="6" Height="6" Margin="2,0"
+                                         Fill="{DynamicResource SubtextBrush}" Opacity="0.4" />
+                                <Ellipse x:Name="Dot3" Width="6" Height="6" Margin="2,0"
+                                         Fill="{DynamicResource SubtextBrush}" Opacity="0.2" />
+                                <StackPanel.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimation Storyboard.TargetName="Dot1"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 From="0.2" To="1" Duration="0:0:0.5"
+                                                                 AutoReverse="True" />
+                                                <DoubleAnimation Storyboard.TargetName="Dot2"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 From="0.2" To="1" Duration="0:0:0.5"
+                                                                 BeginTime="0:0:0.17"
+                                                                 AutoReverse="True" />
+                                                <DoubleAnimation Storyboard.TargetName="Dot3"
+                                                                 Storyboard.TargetProperty="Opacity"
+                                                                 From="0.2" To="1" Duration="0:0:0.5"
+                                                                 BeginTime="0:0:0.34"
+                                                                 AutoReverse="True" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </StackPanel.Triggers>
+                            </StackPanel>
+
+                            <!-- Message bubble (hidden while streaming) -->
+                            <Border MaxWidth="300" Padding="10,7"
+                                    Visibility="{Binding IsStreaming, Converter={StaticResource InvBoolToVis}}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <!-- Default: assistant bubble (left) -->
+                                        <Setter Property="CornerRadius" Value="2,10,10,10" />
+                                        <Setter Property="Background">
+                                            <Setter.Value>
+                                                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.7" />
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Style.Triggers>
+                                            <!-- User bubble (right) -->
+                                            <DataTrigger Binding="{Binding IsUser}" Value="True">
+                                                <Setter Property="CornerRadius" Value="10,10,2,10" />
+                                                <Setter Property="Background">
+                                                    <Setter.Value>
+                                                        <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.22" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding Content}"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           TextWrapping="Wrap"
+                                           MaxWidth="280" />
+                            </Border>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- ─── Shimmer loading bar ─────────────────────────────────────── -->
+        <!-- Visible only when the AI is streaming a response (ChatIsLoading=True).
+             A TranslateTransform moves a highlight gradient left→right via ShimmerAnimation. -->
+        <Grid Grid.Row="2" ClipToBounds="True"
+              Visibility="{Binding ChatIsLoading, Converter={StaticResource BoolToVis}}">
+            <Rectangle Fill="{DynamicResource Surface1Brush}" />
+            <Rectangle x:Name="ShimmerHighlight" Width="200" HorizontalAlignment="Left">
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="Transparent" Offset="0" />
+                        <GradientStop Color="{DynamicResource AccentPurple}" Offset="0.5" />
+                        <GradientStop Color="Transparent" Offset="1" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+                <Rectangle.RenderTransform>
+                    <TranslateTransform X="-200" />
+                </Rectangle.RenderTransform>
+                <Rectangle.Triggers>
+                    <EventTrigger RoutedEvent="Loaded">
+                        <BeginStoryboard Storyboard="{StaticResource ShimmerAnimation}" />
+                    </EventTrigger>
+                </Rectangle.Triggers>
+            </Rectangle>
+        </Grid>
+
+        <!-- ─── Input area ───────────────────────────────────────────────── -->
+        <Border Grid.Row="3"
+                Padding="10,8"
+                BorderThickness="0,1,0,0">
+            <Border.BorderBrush>
+                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.4" />
+            </Border.BorderBrush>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBox Grid.Column="0"
+                         x:Name="ChatInput"
+                         Text="{Binding ChatInputText, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource DarkTextBox}"
+                         Tag="Pergunte algo..."
+                         AcceptsReturn="False"
+                         Padding="10,6"
+                         MinHeight="34"
+                         MaxHeight="90"
+                         FontSize="12"
+                         TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"
+                         VerticalContentAlignment="Center"
+                         IsEnabled="{Binding ChatIsLoading, Converter={StaticResource InvBoolToVis},
+                             ConverterParameter=BoolToEnabled}"
+                         KeyDown="OnChatInputKeyDown" />
+
+                <!-- Send button -->
+                <Button Grid.Column="2"
+                        Width="34" Height="34"
+                        Style="{StaticResource AccentButton}"
+                        Click="OnSendClicked"
+                        ToolTip="Enviar (Ctrl+Enter)"
+                        IsEnabled="{Binding ChatIsLoading, Converter={StaticResource InvBoolToVis},
+                            ConverterParameter=BoolToEnabled}">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="SendBg" CornerRadius="8" Width="34" Height="34">
+                                <Border.Background>
+                                    <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.7" />
+                                </Border.Background>
+                                <TextBlock Text="➤" FontSize="13"
+                                           Foreground="White"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="SendBg" Property="Opacity" Value="0.85" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="SendBg" Property="Opacity" Value="0.35" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -249,7 +249,7 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
             AssistantMessage.User($"Explain this terminal output:\n```\n{terminalOutput}\n```")
         };
         var result = await ChatAsync(messages);
-        return result.IsError ? result.Error : result.Content ?? string.Empty;
+        return result.IsError ? result.Error ?? string.Empty : result.Content ?? string.Empty;
     }
 
     public async Task<string> SuggestCommandAsync(string description, string? shellHint = null, CancellationToken ct = default)
@@ -261,7 +261,7 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
             AssistantMessage.User($"Suggest a shell command to accomplish: {description}{shellPart}")
         };
         var result = await ChatAsync(messages);
-        return result.IsError ? result.Error : result.Content ?? string.Empty;
+        return result.IsError ? result.Error ?? string.Empty : result.Content ?? string.Empty;
     }
 
     public void CancelCurrentRequest()

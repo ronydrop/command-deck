@@ -66,7 +66,6 @@ Canvas-based terminal layout with draggable cards.
 
 ## UI Components
 - `AiOrbControl` — floating AI assistant orb with glow animation
-- `DynamicIslandWindow` — macOS-style dynamic island for notifications
 - `CanvasCardControl` — terminal card with rounded corners and shadow
 - `RadialMenuControl` — radial context menu for quick actions
 - `NumericUpDownControl` — numeric spinner for settings

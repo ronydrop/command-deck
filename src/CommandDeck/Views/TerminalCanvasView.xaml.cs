@@ -77,6 +77,10 @@ public partial class TerminalCanvasView : UserControl
     private double _preFocusTransX;
     private double _preFocusTransY;
 
+    // ─── Proximity glow throttle ──────────────────────────────────────────
+
+    private DateTime _lastGlowTime;
+
     // ─── ViewModels ──────────────────────────────────────────────────────
 
     private MainViewModel?           _mainVm;
@@ -84,6 +88,108 @@ public partial class TerminalCanvasView : UserControl
 
     /// <summary>Current zoom level — exposed for CanvasCardControl drag scaling.</summary>
     public double CurrentZoom => CanvasScale.ScaleX;
+
+    // ─── Alignment guides ────────────────────────────────────────────────
+
+    private const double AlignThreshold = 5.0; // pixels, viewport-space
+
+    /// <summary>
+    /// Shows or hides alignment guide lines while a card is being dragged.
+    /// Called from <see cref="CanvasCardControl"/> code-behind.
+    /// Guides are only shown when <c>CanvasAlignmentGuidesEnabled</c> is true in settings.
+    /// </summary>
+    public void UpdateAlignmentGuides(CanvasItemViewModel activeItem, bool show)
+    {
+        if (!show || _canvasVm is null)
+        {
+            AlignGuideH.Visibility = Visibility.Collapsed;
+            AlignGuideV.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        double zoom  = CanvasScale.ScaleX;
+        double tx    = CanvasTranslate.X;
+        double ty    = CanvasTranslate.Y;
+
+        // Active item's world-space edges
+        double aLeft   = activeItem.X;
+        double aRight  = activeItem.X + activeItem.Width;
+        double aTop    = activeItem.Y;
+        double aBottom = activeItem.Y + activeItem.Height;
+        double aCx     = activeItem.X + activeItem.Width  / 2;
+        double aCy     = activeItem.Y + activeItem.Height / 2;
+
+        double? snapY = null;
+        double? snapX = null;
+
+        foreach (var item in _canvasVm.Items)
+        {
+            if (item == activeItem) continue;
+
+            double iLeft   = item.X;
+            double iRight  = item.X + item.Width;
+            double iTop    = item.Y;
+            double iBottom = item.Y + item.Height;
+            double iCx     = item.X + item.Width  / 2;
+            double iCy     = item.Y + item.Height / 2;
+
+            // Horizontal guides: compare top/bottom/center-y edges
+            foreach (double ay in new[] { aTop, aBottom, aCy })
+            {
+                foreach (double iy in new[] { iTop, iBottom, iCy })
+                {
+                    double dyVp = Math.Abs(ay - iy) * zoom;
+                    if (dyVp < AlignThreshold)
+                    {
+                        snapY = iy;
+                        break;
+                    }
+                }
+                if (snapY.HasValue) break;
+            }
+
+            // Vertical guides: compare left/right/center-x edges
+            foreach (double ax in new[] { aLeft, aRight, aCx })
+            {
+                foreach (double ix in new[] { iLeft, iRight, iCx })
+                {
+                    double dxVp = Math.Abs(ax - ix) * zoom;
+                    if (dxVp < AlignThreshold)
+                    {
+                        snapX = ix;
+                        break;
+                    }
+                }
+                if (snapX.HasValue) break;
+            }
+
+            if (snapX.HasValue && snapY.HasValue) break;
+        }
+
+        // Horizontal guide (constant Y position)
+        if (snapY.HasValue)
+        {
+            double vpY = snapY.Value * zoom + ty;
+            Canvas.SetTop(AlignGuideH, vpY);
+            AlignGuideH.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            AlignGuideH.Visibility = Visibility.Collapsed;
+        }
+
+        // Vertical guide (constant X position)
+        if (snapX.HasValue)
+        {
+            double vpX = snapX.Value * zoom + tx;
+            Canvas.SetLeft(AlignGuideV, vpX);
+            AlignGuideV.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            AlignGuideV.Visibility = Visibility.Collapsed;
+        }
+    }
 
     // ─── Constructor ─────────────────────────────────────────────────────
 
@@ -329,6 +435,21 @@ public partial class TerminalCanvasView : UserControl
 
     private void OnViewportMouseMove(object sender, MouseEventArgs e)
     {
+        // ── Proximity glow (throttled to ~30 fps) ─────────────────────
+        var glowNow = DateTime.UtcNow;
+        if ((glowNow - _lastGlowTime).TotalMilliseconds >= 33)
+        {
+            _lastGlowTime = glowNow;
+            var glowPos = e.GetPosition(ProximityGlowCanvas);
+            Canvas.SetLeft(ProximityGlowEllipse, glowPos.X - 150); // center on cursor (300/2)
+            Canvas.SetTop(ProximityGlowEllipse,  glowPos.Y - 150);
+            if (ProximityGlowEllipse.Opacity < 0.08)
+            {
+                var fadeIn = new DoubleAnimation(0.08, TimeSpan.FromMilliseconds(200));
+                ProximityGlowEllipse.BeginAnimation(OpacityProperty, fadeIn);
+            }
+        }
+
         // ── Rubber-band ────────────────────────────────────────────────
         if (_rubberBandPending || _isRubberBanding)
         {
@@ -408,6 +529,13 @@ public partial class TerminalCanvasView : UserControl
         _canvasVm?.SyncCamera(CanvasTranslate.X, CanvasTranslate.Y, CanvasScale.ScaleX);
         _momentumVelX = 0;
         _momentumVelY = 0;
+    }
+
+    /// <summary>Fades out the proximity glow when the cursor leaves the viewport.</summary>
+    private void OnViewportMouseLeave(object sender, MouseEventArgs e)
+    {
+        var fadeOut = new DoubleAnimation(0.0, TimeSpan.FromMilliseconds(200));
+        ProximityGlowEllipse.BeginAnimation(OpacityProperty, fadeOut);
     }
 
     /// <summary>Updates the visual position and size of the rubber-band rectangle.</summary>
@@ -868,6 +996,48 @@ public partial class TerminalCanvasView : UserControl
         double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
 
         _canvasVm.AddNoteWidget(canvasX, canvasY);
+    }
+
+    private void OnAddKanbanWidgetClick(object sender, RoutedEventArgs e)
+    {
+        if (_canvasVm is null) return;
+
+        const double margin = 20;
+        double vpX = margin + 60;
+        double vpY = ViewportArea.ActualHeight - 260 - margin;
+
+        double canvasX = (vpX - CanvasTranslate.X) / CanvasScale.ScaleX;
+        double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
+
+        _canvasVm.AddKanbanWidget(canvasX, canvasY);
+    }
+
+    private void OnAddChatWidgetClick(object sender, RoutedEventArgs e)
+    {
+        if (_canvasVm is null) return;
+
+        const double margin = 20;
+        double vpX = margin + 60;
+        double vpY = ViewportArea.ActualHeight - 260 - margin;
+
+        double canvasX = (vpX - CanvasTranslate.X) / CanvasScale.ScaleX;
+        double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
+
+        _canvasVm.AddChatWidget(canvasX, canvasY);
+    }
+
+    private void OnAddSystemMonitorWidgetClick(object sender, RoutedEventArgs e)
+    {
+        if (_canvasVm is null) return;
+
+        const double margin = 20;
+        double vpX = margin + 60;
+        double vpY = ViewportArea.ActualHeight - 260 - margin;
+
+        double canvasX = (vpX - CanvasTranslate.X) / CanvasScale.ScaleX;
+        double canvasY = (vpY - CanvasTranslate.Y) / CanvasScale.ScaleY;
+
+        _canvasVm.AddSystemMonitorWidget(canvasX, canvasY);
     }
 
     // ─── Image paste / drop ─────────────────────────────────────────────

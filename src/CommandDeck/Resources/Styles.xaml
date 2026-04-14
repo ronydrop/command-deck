@@ -34,19 +34,6 @@
     <ExponentialEase x:Key="EaseOutExpo" EasingMode="EaseOut" Exponent="4" />
 
     <!-- ═══════════════════════════════════════════════════════════════════════
-         ORB / RADIAL MENU BRUSHES (Catppuccin Mocha)
-         Centralised here so theme overrides only touch this section.
-         ═══════════════════════════════════════════════════════════════════════ -->
-    <SolidColorBrush x:Key="OrbTooltipBackgroundBrush" Color="#CC1E1E2E"/>
-    <SolidColorBrush x:Key="OrbTooltipBorderBrush"     Color="#44CBA6F7"/>
-    <SolidColorBrush x:Key="OrbTooltipForegroundBrush" Color="#CDD6F4"/>
-    <SolidColorBrush x:Key="RadialBtnFillBrush"        Color="#331E1E2E"/>
-    <SolidColorBrush x:Key="RadialBtnStrokeBrush"      Color="#33CBA6F7"/>
-    <SolidColorBrush x:Key="RadialBtnFillHoverBrush"   Color="#441E1E2E"/>
-    <SolidColorBrush x:Key="RadialBtnStrokeHoverBrush" Color="#55CBA6F7"/>
-    <SolidColorBrush x:Key="RadialBtnFillPressBrush"   Color="#661E1E2E"/>
-
-    <!-- ═══════════════════════════════════════════════════════════════════════
          FONTS
          ═══════════════════════════════════════════════════════════════════════ -->
 
@@ -284,10 +271,11 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Grid Background="Transparent"
+                    <Grid x:Name="RootGrid"
+                          Background="Transparent"
                           RenderTransformOrigin="0.5,0.5">
                         <Grid.RenderTransform>
-                            <ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1"/>
+                            <ScaleTransform ScaleX="1" ScaleY="1"/>
                         </Grid.RenderTransform>
                         <Ellipse x:Name="ButtonEllipse"
                                  Width="40" Height="40"
@@ -303,10 +291,44 @@
                             <Setter TargetName="ButtonEllipse" Property="Stroke" Value="{StaticResource RadialBtnStrokeHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="PressScale" Property="ScaleX" Value="0.92"/>
-                            <Setter TargetName="PressScale" Property="ScaleY" Value="0.92"/>
                             <Setter TargetName="ButtonEllipse" Property="Fill" Value="{StaticResource RadialBtnFillPressBrush}"/>
                         </Trigger>
+                        <EventTrigger RoutedEvent="Button.PreviewMouseLeftButtonDown">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="RootGrid"
+                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                     To="0.92" Duration="0:0:0.05"/>
+                                    <DoubleAnimation Storyboard.TargetName="RootGrid"
+                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                     To="0.92" Duration="0:0:0.05"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="Button.PreviewMouseLeftButtonUp">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="RootGrid"
+                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                     To="1" Duration="0:0:0.1"/>
+                                    <DoubleAnimation Storyboard.TargetName="RootGrid"
+                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                     To="1" Duration="0:0:0.1"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="Button.MouseLeave">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="RootGrid"
+                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                     To="1" Duration="0:0:0.1"/>
+                                    <DoubleAnimation Storyboard.TargetName="RootGrid"
+                                                     Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                     To="1" Duration="0:0:0.1"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.3"/>
                             <Setter Property="Cursor" Value="Arrow"/>
@@ -959,6 +981,50 @@
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ── Animation resources ──────────────────────────────────────────────
+         ShimmerAnimation: sweeps a highlight gradient left-to-right. Bind to
+         a Rectangle's RenderTransform offset when ChatIsLoading = True.
+         PulseAnimation:   breathes an element's Opacity 0.4↔1.0 forever.
+         ─────────────────────────────────────────────────────────────────── -->
+
+    <Storyboard x:Key="ShimmerAnimation" RepeatBehavior="Forever">
+        <DoubleAnimation
+            Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+            From="-200" To="400"
+            Duration="0:0:1.5">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseInOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="PulseAnimation" RepeatBehavior="Forever">
+        <DoubleAnimation
+            Storyboard.TargetProperty="Opacity"
+            From="0.35" To="1.0"
+            Duration="0:0:1.0"
+            AutoReverse="True">
+            <DoubleAnimation.EasingFunction>
+                <SineEase EasingMode="EaseInOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <!-- ─── GlassOverlayStyle ──────────────────────────────────────────────────
+         Semi-transparent glass card style for overlays and modal dialogs.
+         Pairs well with BackdropBlurControl placed behind the content. -->
+    <Style x:Key="GlassOverlayStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource GlassBgBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect ShadowDepth="0" BlurRadius="40" Opacity="0.55" Color="#000000" />
             </Setter.Value>
         </Setter>
     </Style>
