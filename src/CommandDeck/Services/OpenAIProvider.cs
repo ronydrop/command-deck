@@ -353,6 +353,7 @@ public class OpenAIProvider : IAssistantProvider
                 var data = line["data: ".Length..];
                 if (data == "[DONE]") break;
 
+                AssistantResponse? pending = null;
                 try
                 {
                     using var doc = JsonDocument.Parse(data);
@@ -381,7 +382,7 @@ public class OpenAIProvider : IAssistantProvider
                         if (!string.IsNullOrEmpty(text))
                         {
                             textSb.Append(text);
-                            yield return AssistantResponse.Success(text);
+                            pending = AssistantResponse.Success(text);
                         }
                     }
 
@@ -411,6 +412,8 @@ public class OpenAIProvider : IAssistantProvider
                     }
                 }
                 catch (JsonException) { /* skip malformed chunks */ }
+
+                if (pending is not null) yield return pending;
             }
         }
 

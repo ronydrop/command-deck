@@ -22,7 +22,6 @@ public static class KanbanToolsRegistrar
         var registry  = services.GetRequiredService<IToolRegistry>();
         var kanban    = services.GetRequiredService<IKanbanService>();
         var lifecycle = services.GetRequiredService<IWorkspaceLifecycleService>();
-        var logger    = services.GetService<ILogger<object>>() ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance as ILogger<object> ?? new Microsoft.Extensions.Logging.Abstractions.NullLogger<object>();
 
         // ── kanban_create_card ────────────────────────────────────────────────
         registry.Register(

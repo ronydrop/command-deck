@@ -223,13 +223,18 @@ public sealed class OllamaProvider : IAssistantProvider, IDisposable
         };
 
         HttpResponseMessage? response = null;
+        string? requestError = null;
         try
         {
             response = await _http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
         }
         catch (Exception ex)
         {
-            yield return AssistantResponse.Failed($"Ollama request failed: {ex.Message}");
+            requestError = ex.Message;
+        }
+        if (requestError is not null)
+        {
+            yield return AssistantResponse.Failed($"Ollama request failed: {requestError}");
             yield break;
         }
 
@@ -253,24 +258,23 @@ public sealed class OllamaProvider : IAssistantProvider, IDisposable
                 var line = await reader.ReadLineAsync(ct);
                 if (string.IsNullOrWhiteSpace(line)) continue;
 
+                string? contentText = null;
+                bool done = false;
                 try
                 {
-                    using var doc   = JsonDocument.Parse(line);
-                    var root        = doc.RootElement;
-                    var done        = root.TryGetProperty("done", out var doneEl) && doneEl.GetBoolean();
-                    var contentText = root.TryGetProperty("message", out var msgEl) && msgEl.TryGetProperty("content", out var cEl)
+                    using var doc = JsonDocument.Parse(line);
+                    var root      = doc.RootElement;
+                    done          = root.TryGetProperty("done", out var doneEl) && doneEl.GetBoolean();
+                    contentText   = root.TryGetProperty("message", out var msgEl) && msgEl.TryGetProperty("content", out var cEl)
                         ? cEl.GetString() : null;
-
-                    if (!string.IsNullOrEmpty(contentText))
-                        yield return AssistantResponse.Success(contentText);
-
-                    if (done)
-                    {
-                        finalChunkJson = line;
-                        break;
-                    }
+                    if (done) finalChunkJson = line;
                 }
                 catch (JsonException) { /* skip malformed lines */ }
+
+                if (!string.IsNullOrEmpty(contentText))
+                    yield return AssistantResponse.Success(contentText);
+
+                if (done) break;
             }
 
             // Parse tool_calls from the final done=true chunk

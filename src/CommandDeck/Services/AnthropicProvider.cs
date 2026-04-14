@@ -222,6 +222,7 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
                 var data = line["data: ".Length..];
                 if (data == "[DONE]") break;
 
+                AssistantResponse? pending = null;
                 try
                 {
                     using var doc = JsonDocument.Parse(data);
@@ -257,7 +258,7 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
                             {
                                 var chunk = textEl.GetString();
                                 if (!string.IsNullOrEmpty(chunk))
-                                    yield return AssistantResponse.Success(chunk);
+                                    pending = AssistantResponse.Success(chunk);
                             }
                             else if (deltaType == "input_json_delta" &&
                                      root.TryGetProperty("index", out var idxEl) &&
@@ -290,6 +291,8 @@ public sealed class AnthropicProvider : IAssistantProvider, IDisposable
                 {
                     // Skip malformed SSE lines
                 }
+
+                if (pending is not null) yield return pending;
             }
 
             done:

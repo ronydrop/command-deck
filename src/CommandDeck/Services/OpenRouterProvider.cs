@@ -280,6 +280,7 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
                 var data = line["data: ".Length..];
                 if (data == "[DONE]") break;
 
+                AssistantResponse? pending = null;
                 try
                 {
                     using var doc = JsonDocument.Parse(data);
@@ -305,7 +306,7 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
                         if (!string.IsNullOrEmpty(text))
                         {
                             textSb.Append(text);
-                            yield return AssistantResponse.Success(text);
+                            pending = AssistantResponse.Success(text);
                         }
                     }
 
@@ -331,6 +332,8 @@ public sealed class OpenRouterProvider : IAssistantProvider, IDisposable
                     }
                 }
                 catch (JsonException) { /* skip malformed chunks */ }
+
+                if (pending is not null) yield return pending;
             }
         }
 
