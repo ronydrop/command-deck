@@ -35,7 +35,6 @@
         <KeyBinding Key="OemBackslash" Modifiers="Ctrl" Command="{Binding ToggleAllPanelsCommand}" />
         <KeyBinding Key="OemQuestion" Modifiers="Ctrl" Command="{Binding OpenShortcutsOverlayCommand}" />
         <KeyBinding Key="K" Modifiers="Ctrl" Command="{Binding OpenCommandPaletteCommand}" />
-        <KeyBinding Key="I" Modifiers="Ctrl" Command="{Binding ToggleAIPanelCommand}" />
         <KeyBinding Key="B" Modifiers="Ctrl+Shift" Command="{Binding ToggleTerminalPanelCommand}" />
         <KeyBinding Key="C" Modifiers="Ctrl+Shift" Command="{Binding LaunchClaudeCommand}" />
         <KeyBinding Key="Tab" Modifiers="Shift" Command="{Binding NextProjectCommand}" />
@@ -259,41 +258,266 @@
                     <views:ProjectListView Grid.Row="3"
                                            DataContext="{Binding ProjectList}" />
 
-                    <!-- Bottom menu items -->
-                    <StackPanel Grid.Row="4" Margin="8,4,8,8">
+                    <!-- ─── Grouped navigation sections ─── -->
+                    <StackPanel Grid.Row="4" Margin="0,4,0,8">
                         <Separator Style="{StaticResource DarkSeparator}"
-                                   Margin="4,0,4,4" />
+                                   Margin="16,0,16,4" />
 
-                        <!-- Monitor de Processos -->
-                        <Button Style="{StaticResource GhostButton}"
-                                Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                CommandParameter="{x:Static vm:ViewType.ProcessMonitor}"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Left"
-                                Padding="8,6"
-                                Margin="0,1">
-                            <StackPanel Orientation="Horizontal">
-                                <Path Data="{StaticResource ProcessIcon}"
-                                      Style="{StaticResource IconPathSmall}"
-                                      Margin="0,0,8,0" />
-                                <TextBlock Text="Monitor de Processos" VerticalAlignment="Center" FontSize="13" />
-                            </StackPanel>
-                        </Button>
+                        <!-- ══ Group: NAVEGAÇÃO ══ -->
+                        <ToggleButton x:Name="NavGroupToggle"
+                                      IsChecked="True"
+                                      Style="{StaticResource SidebarGroupHeader}"
+                                      Margin="8,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="NAVEGAÇÃO"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SubtextBrush}"
+                                           Opacity="0.7"
+                                           VerticalAlignment="Center" />
+                                <Path Grid.Column="1" Data="{StaticResource ChevronDownIcon}">
+                                    <Path.Style>
+                                        <Style TargetType="Path" BasedOn="{StaticResource IconPathSmall}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=NavGroupToggle}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                                <Path Grid.Column="1" Data="{StaticResource ChevronRightIcon}">
+                                    <Path.Style>
+                                        <Style TargetType="Path" BasedOn="{StaticResource IconPathSmall}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=NavGroupToggle}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                            </Grid>
+                        </ToggleButton>
 
-                        <!-- Configurações -->
-                        <Button Style="{StaticResource GhostButton}"
-                                Command="{Binding DataContext.OpenSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Left"
-                                Padding="8,6"
-                                Margin="0,1">
-                            <StackPanel Orientation="Horizontal">
-                                <Path Data="{StaticResource SettingsIcon}"
-                                      Style="{StaticResource IconPathSmall}"
-                                      Margin="0,0,8,0" />
-                                <TextBlock Text="Configurações" VerticalAlignment="Center" FontSize="13" />
-                            </StackPanel>
-                        </Button>
+                        <!-- Items: NAVEGAÇÃO -->
+                        <StackPanel Margin="8,2,8,0">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsChecked, ElementName=NavGroupToggle}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+
+                            <!-- Painel -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{x:Static vm:ViewType.Dashboard}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                         Value="{x:Static vm:ViewType.Dashboard}">
+                                                <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource DashboardIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Painel" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Terminal -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{x:Static vm:ViewType.Terminal}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                         Value="{x:Static vm:ViewType.Terminal}">
+                                                <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource TerminalIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Terminal" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Terminal com Abas -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{x:Static vm:ViewType.TabbedTerminal}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                         Value="{x:Static vm:ViewType.TabbedTerminal}">
+                                                <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource TerminalIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Terminal com Abas" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Browser -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{x:Static vm:ViewType.Browser}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                         Value="{x:Static vm:ViewType.Browser}">
+                                                <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource BrowserIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Browser" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <Separator Style="{StaticResource DarkSeparator}"
+                                   Margin="16,2,16,2" />
+
+                        <!-- ══ Group: FERRAMENTAS ══ -->
+                        <ToggleButton x:Name="ToolsGroupToggle"
+                                      IsChecked="True"
+                                      Style="{StaticResource SidebarGroupHeader}"
+                                      Margin="8,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="FERRAMENTAS"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SubtextBrush}"
+                                           Opacity="0.7"
+                                           VerticalAlignment="Center" />
+                                <Path Grid.Column="1" Data="{StaticResource ChevronDownIcon}">
+                                    <Path.Style>
+                                        <Style TargetType="Path" BasedOn="{StaticResource IconPathSmall}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=ToolsGroupToggle}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                                <Path Grid.Column="1" Data="{StaticResource ChevronRightIcon}">
+                                    <Path.Style>
+                                        <Style TargetType="Path" BasedOn="{StaticResource IconPathSmall}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=ToolsGroupToggle}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                            </Grid>
+                        </ToggleButton>
+
+                        <!-- Items: FERRAMENTAS -->
+                        <StackPanel Margin="8,2,8,0">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsChecked, ElementName=ToolsGroupToggle}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+
+                            <!-- Monitor de Processos -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{x:Static vm:ViewType.ProcessMonitor}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                         Value="{x:Static vm:ViewType.ProcessMonitor}">
+                                                <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource ProcessIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Monitor de Processos" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Configurações -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.OpenSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}" />
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource SettingsIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Configurações" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
 
@@ -524,18 +748,15 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Alternar Sidebar" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
                                 <Border Grid.Row="0" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+B" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Alternar Chat IA" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
-                                <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+I" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Expandir/Fechar Painéis" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
-                                <Border Grid.Row="2" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+\" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Paleta de Comandos" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
-                                <Border Grid.Row="3" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+K" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
-                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Ver Atalhos" Foreground="{DynamicResource SubtextBrush}" FontSize="13" VerticalAlignment="Center"/>
-                                <Border Grid.Row="4" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3"><TextBlock Text="Ctrl+/" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Expandir/Fechar Painéis" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
+                                <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+\" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Paleta de Comandos" Foreground="{DynamicResource SubtextBrush}" FontSize="13" Margin="0,0,0,8" VerticalAlignment="Center"/>
+                                <Border Grid.Row="2" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3" Margin="0,0,0,8"><TextBlock Text="Ctrl+K" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Ver Atalhos" Foreground="{DynamicResource SubtextBrush}" FontSize="13" VerticalAlignment="Center"/>
+                                <Border Grid.Row="3" Grid.Column="1" Background="{DynamicResource Surface0Brush}" CornerRadius="5" Padding="8,3"><TextBlock Text="Ctrl+/" Foreground="{DynamicResource TextBrush}" FontSize="12" FontFamily="{StaticResource MonoFont}"/></Border>
                             </Grid>
 
                             <!-- Git & Projetos -->

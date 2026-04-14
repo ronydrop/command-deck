@@ -117,7 +117,7 @@ public partial class FileExplorerCanvasItemViewModel : CanvasItemViewModel
             _ = OpenDirectoryAsync(rp);
         }
 
-        // Auto-open project path if available
+        // Auto-open project path if available (future writes)
         _tileContext.Subscribe(TileContextKeys.ProjectPath, args =>
         {
             if (args.Entry?.Value is string path && !string.IsNullOrEmpty(path)
@@ -127,6 +127,14 @@ public partial class FileExplorerCanvasItemViewModel : CanvasItemViewModel
                     () => _ = OpenDirectoryAsync(path));
             }
         });
+
+        // Fallback: read the current value in case it was already set before this widget was created
+        if (string.IsNullOrEmpty(RootPath))
+        {
+            var current = _tileContext.Get(TileContextKeys.ProjectPath)?.Value as string;
+            if (!string.IsNullOrEmpty(current) && Directory.Exists(current))
+                _ = OpenDirectoryAsync(current);
+        }
     }
 
     // ─── Commands ────────────────────────────────────────────────────────────

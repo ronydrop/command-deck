@@ -195,8 +195,9 @@
                            HorizontalAlignment="Center" Margin="0,8,0,0"/>
             </StackPanel>
 
-            <!-- WebView2 -->
-            <wv2:WebView2 x:Name="WebView"
+            <!-- WebView2 (Composition variant: participates in WPF visual tree,
+                 respects ClipToBounds, RenderTransform and zoom transforms) -->
+            <wv2:WebView2CompositionControl x:Name="WebView"
                           Visibility="{Binding IsBrowserReady, Converter={StaticResource BoolToVisibility}}"
                           NavigationStarting="OnNavigationStarting"
                           NavigationCompleted="OnNavigationCompleted"

@@ -20,6 +20,9 @@ public partial class BrowserCanvasItemViewModel : CanvasItemViewModel
 
     public override CanvasItemType ItemType => CanvasItemType.BrowserWidget;
 
+    /// <summary>Browser card stays at its original size when the canvas is zoomed.</summary>
+    public override bool IsZoomImmune => true;
+
     // ─── Observable state ────────────────────────────────────────────────────
 
     [ObservableProperty] private string _url = "about:blank";

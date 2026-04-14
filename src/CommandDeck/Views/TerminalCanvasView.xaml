@@ -568,59 +568,6 @@
                 </StackPanel>
             </DockPanel>
 
-            <!-- ── FAR-RIGHT: AI chat button at the screen edge ── -->
-            <Button Grid.Column="1"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Margin="0,0,10,0"
-                    Padding="8,5"
-                    Height="30"
-                    Command="{Binding DataContext.ToggleAIPanelCommand,
-                              RelativeSource={RelativeSource AncestorType=Window}}"
-                    ToolTip="Assistente IA (Ctrl+I)"
-                    Cursor="Hand">
-                <Button.Style>
-                    <Style TargetType="Button">
-                        <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
-                        <Setter Property="BorderThickness" Value="0" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Button">
-                                    <Border x:Name="bg"
-                                            Background="{TemplateBinding Background}"
-                                            CornerRadius="8"
-                                            Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter HorizontalAlignment="Center"
-                                                          VerticalAlignment="Center" />
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="bg" Property="Background" Value="#3388AAFF" />
-                                        </Trigger>
-                                        <Trigger Property="IsPressed" Value="True">
-                                            <Setter TargetName="bg" Property="Background" Value="#2266AAFF" />
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </Button.Style>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Path Data="{StaticResource ChatIcon}"
-                          Stroke="White" StrokeThickness="1.6"
-                          StrokeLineJoin="Round" StrokeStartLineCap="Round"
-                          StrokeEndLineCap="Round" Fill="Transparent"
-                          Width="14" Height="14" Stretch="Uniform"
-                          VerticalAlignment="Center" Margin="0,0,4,0" />
-                    <Path Data="{StaticResource BotIcon}"
-                          Stroke="White" StrokeThickness="1.6"
-                          StrokeLineJoin="Round" StrokeStartLineCap="Round"
-                          StrokeEndLineCap="Round" Fill="Transparent"
-                          Width="13" Height="13" Stretch="Uniform"
-                          VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
             </Grid>
         </Border>
 
@@ -1114,23 +1061,6 @@
                            Fill="#000000"
                            Opacity="0"
                            IsHitTestVisible="False" />
-
-                <!-- Zoom indicator — bottom-left corner, canvas mode only -->
-                <Border HorizontalAlignment="Left"
-                        VerticalAlignment="Bottom"
-                        Margin="12,0,0,12"
-                        Panel.ZIndex="100"
-                        CornerRadius="4"
-                        Padding="8,4"
-                        Background="{DynamicResource Surface0Brush}"
-                        IsHitTestVisible="False"
-                        Visibility="{Binding CanvasViewModel.IsCanvasMode, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="100%"
-                               FontFamily="{StaticResource MonoFont}"
-                               FontSize="11"
-                               Foreground="{DynamicResource SubtextBrush}"
-                               VerticalAlignment="Center" />
-                </Border>
             </Grid>
 
             <!-- ═══════════════════════════════════════════════════════════

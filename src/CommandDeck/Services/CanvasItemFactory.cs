@@ -1,3 +1,4 @@
+using System.IO;
 using CommandDeck.Models;
 using CommandDeck.ViewModels;
 
@@ -115,7 +116,7 @@ public class CanvasItemFactory
     {
         var (w, h, canvasType) = type switch
         {
-            WidgetType.Git           => (320.0, 280.0, CanvasItemType.GitWidget),
+            WidgetType.Git           => (340.0, 460.0, CanvasItemType.GitWidget),
             WidgetType.Process       => (400.0, 350.0, CanvasItemType.ProcessWidget),
             WidgetType.Note          => (260.0, 260.0, CanvasItemType.NoteWidget),
             WidgetType.Image         => (400.0, 300.0, CanvasItemType.ImageWidget),
@@ -222,6 +223,12 @@ public class CanvasItemFactory
             X = x, Y = y,
             Width = 300, Height = 480
         };
+
+        // Auto-seed with the currently active project path so the widget opens immediately.
+        var activePath = _tileContext.Get(TileContextKeys.ProjectPath)?.Value as string;
+        if (!string.IsNullOrEmpty(activePath) && Directory.Exists(activePath))
+            model.Metadata["rootPath"] = activePath;
+
         return new FileExplorerCanvasItemViewModel(model, _notificationService, _eventBus, _tileContext);
     }
 

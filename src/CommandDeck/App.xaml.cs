@@ -1,6 +1,8 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using CommandDeck.Extensions;
+using CommandDeck.Helpers;
+using CommandDeck.Models;
 using CommandDeck.Services;
 using CommandDeck.ViewModels;
 using CommandDeck.Views;
@@ -104,6 +106,43 @@ public partial class App : Application
             ThemeApplied?.Invoke(baseBg);
     }
 
+    /// <summary>
+    /// Applies a theme resolving the effective mode first.
+    /// For <see cref="ThemeMode.System"/>, queries the OS appearance setting.
+    /// If <paramref name="themeId"/> is incompatible with the resolved mode, falls back
+    /// to <see cref="ThemeCatalog.DefaultThemeForMode"/>.
+    /// </summary>
+    public static void ApplyTheme(ThemeMode mode, string? themeId)
+    {
+        var effectiveMode = mode == ThemeMode.System
+            ? SystemThemeDetector.GetSystemMode()
+            : mode;
+
+        var effectiveId = !string.IsNullOrEmpty(themeId) && ThemeCatalog.IsCompatible(themeId, effectiveMode)
+            ? themeId
+            : ThemeCatalog.DefaultThemeForMode(effectiveMode);
+
+        ApplyTheme(effectiveId);
+    }
+
+    /// <summary>
+    /// Re-applies the currently saved theme when the OS appearance changes while
+    /// the app is running in <see cref="ThemeMode.System"/> mode.
+    /// </summary>
+    private static void OnSystemThemeModeChanged(object? sender, EventArgs e)
+    {
+        var settingsService = Services.GetService<ISettingsService>();
+        var settings = settingsService?.CurrentSettings;
+        if (settings?.ThemeMode != ThemeMode.System) return;
+
+        var effectiveMode = SystemThemeDetector.GetSystemMode();
+        var themeId = effectiveMode == ThemeMode.Light
+            ? settings.LastLightTheme
+            : settings.LastDarkTheme;
+
+        Current.Dispatcher.Invoke(() => ApplyTheme(themeId));
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -135,12 +174,14 @@ public partial class App : Application
                 if (settingsTask.Wait(TimeSpan.FromSeconds(5)))
                 {
                     var settings = settingsTask.Result;
-                    if (!string.IsNullOrEmpty(settings.ThemeName))
-                        ApplyTheme(settings.ThemeName);
+                    ApplyTheme(settings.ThemeMode, settings.ThemeName);
                 }
             }
         }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[App.OnStartup] Theme load failed: {ex.Message}"); }
+
+        // Subscribe to OS theme changes so System mode re-applies when Windows switches dark ↔ light.
+        SystemThemeDetector.SystemModeChanged += OnSystemThemeModeChanged;
 
         // Resolve and show the main window
         try

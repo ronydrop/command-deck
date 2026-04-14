@@ -15,7 +15,11 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <!-- Header with title + provider/model -->
+            <!-- Accent color strip -->
+            <RowDefinition Height="3" />
+            <!-- Toolbar: icon + title + action buttons -->
+            <RowDefinition Height="36" />
+            <!-- Provider / model / agent selectors -->
             <RowDefinition Height="Auto" />
             <!-- Messages list -->
             <RowDefinition Height="*" />
@@ -27,37 +31,41 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- ─── Header ───────────────────────────────────────────────────── -->
-        <Border Grid.Row="0" Padding="10,6,10,6" BorderThickness="0,0,0,1">
-            <Border.BorderBrush>
-                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5" />
-            </Border.BorderBrush>
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+        <!-- ─── Accent strip ─────────────────────────────────────────────── -->
+        <Border Grid.Row="0" CornerRadius="0">
+            <Border.Background>
+                <SolidColorBrush Color="{DynamicResource AccentPurple}" />
+            </Border.Background>
+        </Border>
 
-                <!-- Title row -->
-                <DockPanel Grid.Row="0" VerticalAlignment="Center">
-                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="20" Height="20" CornerRadius="5" Margin="0,0,6,0" VerticalAlignment="Center">
-                            <Border.Background>
-                                <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.18" />
-                            </Border.Background>
-                            <TextBlock Text="💬" FontSize="10"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <TextBlock Text="{Binding ChatTitle, FallbackValue='Chat AI'}"
-                                   FontSize="12" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextBrush}"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
+        <!-- ─── Toolbar ──────────────────────────────────────────────────── -->
+        <Border Grid.Row="1">
+            <Border.Background>
+                <SolidColorBrush Color="{DynamicResource Surface0}" Opacity="0.85" />
+            </Border.Background>
+            <Grid Margin="8,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Icon + title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="💬" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ChatTitle, FallbackValue='Chat AI'}"
+                               FontSize="12" FontWeight="Medium"
+                               Foreground="{DynamicResource TextBrush}"
+                               VerticalAlignment="Center"
+                               MaxWidth="160" TextTrimming="CharacterEllipsis"
+                               Margin="6,0,0,0" />
+                </StackPanel>
+
+                <!-- Right-side actions -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
 
                     <!-- Provider availability indicator -->
-                    <Ellipse DockPanel.Dock="Right"
-                             Width="7" Height="7" Margin="4,0,0,0" VerticalAlignment="Center">
+                    <Ellipse Width="7" Height="7" Margin="0,0,4,0" VerticalAlignment="Center">
                         <Ellipse.Style>
                             <Style TargetType="Ellipse">
                                 <Setter Property="Fill" Value="#A6E3A1" />
@@ -71,15 +79,14 @@
                     </Ellipse>
 
                     <!-- Cancel button (visible when loading) -->
-                    <Button DockPanel.Dock="Right"
-                            Width="22" Height="22" Margin="4,0,0,0"
+                    <Button Width="26" Height="26" Margin="2,0,0,0"
                             Background="Transparent" BorderThickness="0" Cursor="Hand"
                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
                             Command="{Binding CancelRequestCommand}"
                             ToolTip="Cancelar">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border x:Name="Bg" CornerRadius="4" Background="Transparent" Width="22" Height="22">
+                                <Border x:Name="Bg" CornerRadius="4" Background="Transparent" Width="26" Height="26">
                                     <TextBlock Text="⏹" FontSize="9"
                                                Foreground="{DynamicResource SubtextBrush}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -96,15 +103,14 @@
                     </Button>
 
                     <!-- Clear history button -->
-                    <Button DockPanel.Dock="Right"
-                            Width="22" Height="22"
+                    <Button Width="26" Height="26" Margin="2,0,0,0"
                             Background="Transparent" BorderThickness="0" Cursor="Hand"
                             Command="{Binding ClearHistoryCommand}"
                             ToolTip="Limpar conversa"
                             VerticalAlignment="Center">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border x:Name="Bg" CornerRadius="4" Background="Transparent" Width="22" Height="22">
+                                <Border x:Name="Bg" CornerRadius="4" Background="Transparent" Width="26" Height="26">
                                     <TextBlock Text="🗑" FontSize="10"
                                                Foreground="{DynamicResource SubtextBrush}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -119,17 +125,29 @@
                             </ControlTemplate>
                         </Button.Template>
                     </Button>
-                </DockPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
 
-                <!-- Provider + Model selectors row -->
-                <Grid Grid.Row="1" Margin="0,5,0,0">
+        <!-- ─── Provider / Model / Agent selectors ──────────────────────── -->
+        <Border Grid.Row="2" Padding="8,5,8,6" BorderThickness="0,0,0,1">
+            <Border.BorderBrush>
+                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5" />
+            </Border.BorderBrush>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Provider + Model selectors -->
+                <Grid Grid.Row="0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="6" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- Provider selector -->
                     <ComboBox Grid.Column="0"
                               x:Name="ProviderCombo"
                               Height="24" FontSize="10"
@@ -142,7 +160,6 @@
                         </ComboBox.Style>
                     </ComboBox>
 
-                    <!-- Model selector -->
                     <ComboBox Grid.Column="2"
                               Height="24" FontSize="10"
                               ItemsSource="{Binding AvailableModels}"
@@ -154,8 +171,8 @@
                     </ComboBox>
                 </Grid>
 
-                <!-- Agent Mode selector row -->
-                <Grid Grid.Row="2" Margin="0,4,0,0">
+                <!-- Agent Mode selector -->
+                <Grid Grid.Row="1" Margin="0,4,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -187,7 +204,7 @@
         </Border>
 
         <!-- ─── Messages list ────────────────────────────────────────────── -->
-        <ScrollViewer Grid.Row="1"
+        <ScrollViewer Grid.Row="3"
                       x:Name="MessagesScrollViewer"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled"
@@ -374,7 +391,7 @@
         </ScrollViewer>
 
         <!-- ─── Shimmer loading bar ─────────────────────────────────────── -->
-        <Grid Grid.Row="2" ClipToBounds="True"
+        <Grid Grid.Row="4" ClipToBounds="True"
               Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
             <Rectangle Fill="{DynamicResource Surface1Brush}" />
             <Rectangle x:Name="ShimmerHighlight" Width="200" HorizontalAlignment="Left">
@@ -397,7 +414,7 @@
         </Grid>
 
         <!-- ─── Status bar ──────────────────────────────────────────────── -->
-        <Border Grid.Row="3"
+        <Border Grid.Row="5"
                 Padding="10,3,10,3"
                 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
             <TextBlock Text="{Binding StatusText}"
@@ -408,7 +425,7 @@
         </Border>
 
         <!-- ─── Input area ───────────────────────────────────────────────── -->
-        <Border Grid.Row="4"
+        <Border Grid.Row="6"
                 Padding="10,8"
                 BorderThickness="0,1,0,0">
             <Border.BorderBrush>

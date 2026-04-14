@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommandDeck.Helpers;
 using CommandDeck.Models;
 using CommandDeck.Services;
 
@@ -33,17 +34,70 @@ public partial class SettingsViewModel : ObservableObject
 
     // ─── Aparência ────────────────────────────────────────────────────────────
 
-    private string _originalTheme = "LiquidGlassDark";
+    private string _originalTheme = ThemeCatalog.DefaultDark;
+    private ThemeMode _originalMode = ThemeMode.Dark;
+
+    // In-memory per-mode last selection — persisted to settings on Save
+    private string _lastDarkTheme  = ThemeCatalog.DefaultDark;
+    private string _lastLightTheme = ThemeCatalog.DefaultLight;
 
     [ObservableProperty]
     private int _selectedTabIndex;
 
     [ObservableProperty]
-    private string _selectedTheme = "LiquidGlassDark";
+    private string _selectedTheme = ThemeCatalog.DefaultDark;
+
+    [ObservableProperty]
+    private ThemeMode _selectedMode = ThemeMode.Dark;
+
+    /// <summary>Themes available for the currently selected mode, used by the Theme ComboBox.</summary>
+    public ObservableCollection<ThemeOption> FilteredThemes { get; } = new();
 
     partial void OnSelectedThemeChanged(string value)
     {
-        App.ApplyTheme(value);
+        // Track the choice per mode so we can restore it when switching modes
+        var themeMode = ThemeCatalog.GetModeForTheme(value);
+        if (themeMode == ThemeMode.Light) _lastLightTheme = value;
+        else _lastDarkTheme = value;
+
+        App.ApplyTheme(SelectedMode, value);
+    }
+
+    partial void OnSelectedModeChanged(ThemeMode value)
+    {
+        RefreshFilteredThemes(value);
+
+        // If the current theme is incompatible with the new mode, auto-switch to the
+        // remembered theme for that mode (or the catalog default if nothing was remembered).
+        var effectiveMode = value == ThemeMode.System
+            ? SystemThemeDetector.GetSystemMode()
+            : value;
+
+        if (!ThemeCatalog.IsCompatible(SelectedTheme, effectiveMode))
+        {
+            var remembered = effectiveMode == ThemeMode.Light ? _lastLightTheme : _lastDarkTheme;
+            SelectedTheme = ThemeCatalog.IsCompatible(remembered, effectiveMode)
+                ? remembered
+                : ThemeCatalog.DefaultThemeForMode(effectiveMode);
+            // SelectedTheme setter fires OnSelectedThemeChanged → ApplyTheme
+        }
+        else
+        {
+            // Current theme is already valid for the new mode — just re-apply so the
+            // System mode resolution is updated correctly.
+            App.ApplyTheme(value, SelectedTheme);
+        }
+    }
+
+    private void RefreshFilteredThemes(ThemeMode mode)
+    {
+        var effectiveMode = mode == ThemeMode.System
+            ? SystemThemeDetector.GetSystemMode()
+            : mode;
+
+        FilteredThemes.Clear();
+        foreach (var t in ThemeCatalog.GetThemesForMode(effectiveMode))
+            FilteredThemes.Add(t);
     }
 
     // ─── Terminal ─────────────────────────────────────────────────────────────
@@ -416,10 +470,8 @@ public partial class SettingsViewModel : ObservableObject
     public IReadOnlyList<ShellType> AvailableShells { get; } =
         Enum.GetValues<ShellType>().Distinct().ToList();
 
-    public IReadOnlyList<string> AvailableThemes { get; } = new[]
-    {
-        "CatppuccinMocha", "VSCodeDark", "VSCodeLight", "Dracula", "LiquidGlass", "LiquidGlassDark"
-    };
+    // Themes are now exposed through FilteredThemes (ObservableCollection filtered by SelectedMode).
+    // See ThemeCatalog for the full list and mode classification.
 
     public IReadOnlyList<string> AvailableResizeBehaviors { get; } = new[]
     {
@@ -567,9 +619,18 @@ public partial class SettingsViewModel : ObservableObject
     {
         var settings = await _settingsService.GetSettingsAsync();
 
-        // Aparência
-        _originalTheme = settings.ThemeName;
-        SelectedTheme = settings.ThemeName;
+        // Aparência — load mode first, populate FilteredThemes, then set theme
+        _originalTheme  = settings.ThemeName;
+        _originalMode   = settings.ThemeMode;
+        _lastDarkTheme  = settings.LastDarkTheme;
+        _lastLightTheme = settings.LastLightTheme;
+
+        // Set backing field directly to avoid firing OnSelectedModeChanged prematurely
+        _selectedMode = settings.ThemeMode;
+        RefreshFilteredThemes(settings.ThemeMode);
+        OnPropertyChanged(nameof(SelectedMode)); // notify UI for the segmented buttons
+
+        SelectedTheme = settings.ThemeName; // fires OnSelectedThemeChanged → re-applies theme (harmless)
 
         // Terminal
         TerminalFontFamily = settings.TerminalFontFamily;
@@ -694,7 +755,10 @@ public partial class SettingsViewModel : ObservableObject
         var settings = await _settingsService.GetSettingsAsync();
 
         // Aparência
-        settings.ThemeName = SelectedTheme;
+        settings.ThemeName      = SelectedTheme;
+        settings.ThemeMode      = SelectedMode;
+        settings.LastDarkTheme  = _lastDarkTheme;
+        settings.LastLightTheme = _lastLightTheme;
 
         // Terminal
         settings.TerminalFontFamily = string.IsNullOrWhiteSpace(TerminalFontFamily)
@@ -805,7 +869,7 @@ public partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex) { Debug.WriteLine($"[SettingsViewModel] Secret store failed: {ex.Message}"); }
 
-        App.ApplyTheme(SelectedTheme);
+        App.ApplyTheme(SelectedMode, SelectedTheme);
 
         // Propagate AI settings to the AssistantService BEFORE saving so that when
         // SettingsChanged fires the assistant is already configured with the new values.
@@ -828,7 +892,7 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private void Cancel()
     {
-        App.ApplyTheme(_originalTheme);
+        App.ApplyTheme(_originalMode, _originalTheme);
         CloseRequested?.Invoke(false);
     }
 

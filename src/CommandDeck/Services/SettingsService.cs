@@ -76,7 +76,18 @@ public partial class AppSettings : ObservableObject
     private string _focusTerminalShortcut = "Ctrl+`";
 
     [ObservableProperty]
-    private string _themeName = "LiquidGlassDark";
+    private string _themeName = "MorphDark";
+
+    [ObservableProperty]
+    private ThemeMode _themeMode = ThemeMode.Dark;
+
+    /// <summary>Last dark theme selected — restored when switching back to dark or system-dark.</summary>
+    [ObservableProperty]
+    private string _lastDarkTheme = "MorphDark";
+
+    /// <summary>Last light theme selected — restored when switching back to light or system-light.</summary>
+    [ObservableProperty]
+    private string _lastLightTheme = "LiquidGlass";
 
     // ─── AI Assistant Settings ────────────────────────────────────────────
 

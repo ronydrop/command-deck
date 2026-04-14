@@ -1,0 +1,169 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════
+         MORPH DARK — Deep charcoal with olive-green accents
+         Inspired by morph.so / codesurf theme: src/renderer/src/theme.ts lines 660-768
+         Accent base: #C8D64E (olive-lime) — all borders are this accent at low alpha
+         ═══════════════════════════════════════════════════════════════════════════ -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         A. BASE COLORS — Deep charcoal with warm undertone
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- App shell: outermost background — deep charcoal, slightly warm black -->
+    <Color x:Key="BaseBg">#131316</Color>
+    <!-- Canvas / secondary panels: canvas background where terminals float -->
+    <Color x:Key="MantelBg">#18181C</Color>
+    <!-- Terminal background: deepest layer inside terminal cards -->
+    <Color x:Key="CrustBg">#141417</Color>
+    <!-- Card/panel body: clearly above MantelBg at +2 luminance steps -->
+    <Color x:Key="Surface0">#1A1A1E</Color>
+    <!-- Muted panels / secondary raised surface -->
+    <Color x:Key="Surface1">#1F1F24</Color>
+    <!-- Elevated panels, modals, dropdowns, hover backgrounds -->
+    <Color x:Key="Surface2">#24242A</Color>
+    <!-- Disabled text, inactive decorations -->
+    <Color x:Key="Overlay0">#6A6760</Color>
+    <!-- Primary text: warm off-white (not cold blue) -->
+    <Color x:Key="TextColor">#E8E6E0</Color>
+    <!-- Muted text: captions, metadata -->
+    <Color x:Key="SubtextColor">#AAA69C</Color>
+    <!-- Secondary text: slightly brighter than SubtextColor -->
+    <Color x:Key="Subtext0Color">#D4D0C8</Color>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         B. ACCENT COLORS — Olive-lime family + ANSI terminal palette
+         Primary: #C8D64E — olive/lime-yellow-green, RGB(200,214,78)
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Primary accent: olive-lime — the defining color of Morph -->
+    <Color x:Key="AccentPurple">#C8D64E</Color>
+    <!-- Blue: terminal ANSI blue, link color -->
+    <Color x:Key="AccentBlue">#6898D0</Color>
+    <!-- Green: success, ANSI green -->
+    <Color x:Key="AccentGreen">#A0C850</Color>
+    <!-- Yellow/Warning: ANSI yellow, amber warning -->
+    <Color x:Key="AccentYellow">#E8A838</Color>
+    <!-- Red/Danger: ANSI red, error, danger -->
+    <Color x:Key="AccentRed">#F06868</Color>
+    <!-- Pink: reuses danger (Morph has no distinct pink) -->
+    <Color x:Key="AccentPink">#F06868</Color>
+    <!-- Cyan: ANSI cyan, teal -->
+    <Color x:Key="AccentCyan">#58B8B0</Color>
+    <!-- Mauve: ANSI magenta, purple decorations -->
+    <Color x:Key="AccentMauve">#C080D8</Color>
+
+    <!-- Search highlights: amber tint for results, olive for current match -->
+    <Color x:Key="SearchHighlight">#66E8A838</Color>
+    <Color x:Key="SearchCurrentHighlight">#99C8D64E</Color>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         C. GLASS DESIGN TOKENS — Morph is "flat" charcoal, no blue glass
+         All border tokens carry the olive-lime accent at ultra-low alpha
+         instead of the white semi-transparency used by LiquidGlass themes
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Card gradient stops: near-flat to maintain "clean charcoal" feel -->
+    <Color x:Key="GlassTop">#1F1F24</Color>
+    <Color x:Key="GlassMid">#1A1A1E</Color>
+    <Color x:Key="GlassBottom">#18181C</Color>
+    <!-- Inner top edge highlight: olive tint instead of white (Morph signature) -->
+    <Color x:Key="GlassHighlight">#0FC8D64E</Color>
+    <!-- Card/panel border: olive 10% — the universal border tone -->
+    <Color x:Key="GlassBorder">#1AC8D64E</Color>
+    <!-- Subtle inner borders: olive 6% -->
+    <Color x:Key="GlassBorderSubtle">#0FC8D64E</Color>
+    <!-- Card shadow: strong black shadow (0.48 opacity) -->
+    <Color x:Key="ElevatedShadow">#7A000000</Color>
+    <!-- Sidebar tint: olive 8% — warm tint on sidebar background -->
+    <Color x:Key="GlassTintBlue">#14C8D64E</Color>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         D. STANDARD BRUSHES
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <SolidColorBrush x:Key="BaseBgBrush"       Color="{StaticResource BaseBg}" />
+    <SolidColorBrush x:Key="MantelBgBrush"     Color="{StaticResource MantelBg}" />
+    <SolidColorBrush x:Key="CrustBgBrush"      Color="{StaticResource CrustBg}" />
+    <SolidColorBrush x:Key="Surface0Brush"     Color="{StaticResource Surface0}" />
+    <SolidColorBrush x:Key="Surface1Brush"     Color="{StaticResource Surface1}" />
+    <SolidColorBrush x:Key="Surface2Brush"     Color="{StaticResource Surface2}" />
+    <SolidColorBrush x:Key="Overlay0Brush"     Color="{StaticResource Overlay0}" />
+    <SolidColorBrush x:Key="TextBrush"         Color="{StaticResource TextColor}" />
+    <SolidColorBrush x:Key="SubtextBrush"      Color="{StaticResource SubtextColor}" />
+    <SolidColorBrush x:Key="AccentBrush"       Color="{StaticResource AccentPurple}" />
+    <SolidColorBrush x:Key="AccentBlueBrush"   Color="{StaticResource AccentBlue}" />
+    <SolidColorBrush x:Key="AccentGreenBrush"  Color="{StaticResource AccentGreen}" />
+    <SolidColorBrush x:Key="AccentYellowBrush" Color="{StaticResource AccentYellow}" />
+    <SolidColorBrush x:Key="AccentRedBrush"    Color="{StaticResource AccentRed}" />
+    <SolidColorBrush x:Key="AccentMauveBrush"  Color="{StaticResource AccentMauve}" />
+
+    <SolidColorBrush x:Key="SearchHighlightBrush"        Color="{StaticResource SearchHighlight}" />
+    <SolidColorBrush x:Key="SearchCurrentHighlightBrush" Color="{StaticResource SearchCurrentHighlight}" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         E. GLASS BRUSHES — Morph-style flat charcoal surface system
+         Near-flat gradients (3 close stops) simulate subtle depth without
+         the diagonal glass-light effect of LiquidGlass themes
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- PRIMARY SURFACE (cards, panels): subtle top-to-bottom depth, flat charcoal -->
+    <LinearGradientBrush x:Key="GlassBgBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{StaticResource GlassTop}"    Offset="0" />
+        <GradientStop Color="{StaticResource GlassMid}"    Offset="0.5" />
+        <GradientStop Color="{StaticResource GlassBottom}" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- GLASS BORDER: olive-tinted, ultra-subtle -->
+    <SolidColorBrush x:Key="GlassBorderBrush"   Color="{StaticResource GlassBorder}" />
+
+    <!-- GLASS HIGHLIGHT: olive inner-edge glow (tiny, used on card top border) -->
+    <SolidColorBrush x:Key="GlassHighlightBrush" Color="{StaticResource GlassHighlight}" />
+
+    <!-- SHADOW BRUSH -->
+    <SolidColorBrush x:Key="ElevatedShadowBrush" Color="{StaticResource ElevatedShadow}" />
+
+    <!-- SIDEBAR: flat dark charcoal, slightly below MantelBg -->
+    <LinearGradientBrush x:Key="GlassSidebarBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#151518" Offset="0" />
+        <GradientStop Color="#151518" Offset="0.5" />
+        <GradientStop Color="#131316" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- CANVAS BACKGROUND: very subtle radial depth — simulates the Morph dot-grid glow -->
+    <RadialGradientBrush x:Key="CanvasDepthBrush"
+                         GradientOrigin="0.5,0.3"
+                         Center="0.5,0.3"
+                         RadiusX="0.7"
+                         RadiusY="0.7">
+        <GradientStop Color="#1C1C20" Offset="0" />
+        <GradientStop Color="#18181C" Offset="0.55" />
+        <GradientStop Color="{StaticResource CrustBg}" Offset="1" />
+    </RadialGradientBrush>
+
+    <!-- TOOLBAR/TITLEBAR GLASS: header area — slightly elevated from MantelBg -->
+    <LinearGradientBrush x:Key="GlassToolbarBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#1E1E23" Offset="0" />
+        <GradientStop Color="#1A1A1E" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- CARD TITLE BAR: top section of terminal/panel cards -->
+    <LinearGradientBrush x:Key="GlassTitleBarBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#1E1E23" Offset="0" />
+        <GradientStop Color="#1A1A1E" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         F. ELEVATION SHADOW — tuned for deep charcoal backgrounds
+         Morph uses a strong shadow (0.48) to float cards above the canvas
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <DropShadowEffect x:Key="CardShadow"
+                      ShadowDepth="10"
+                      BlurRadius="36"
+                      Opacity="0.48"
+                      Color="#000000"
+                      Direction="270" />
+
+</ResourceDictionary>

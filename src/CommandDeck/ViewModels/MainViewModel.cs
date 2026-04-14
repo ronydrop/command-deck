@@ -62,9 +62,6 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isCommandPaletteOpen;
     [ObservableProperty] private bool _isBranchSelectorOpen;
 
-    /// <summary>True when the AI assistant side-panel is open.</summary>
-    [ObservableProperty] private bool _isAIPanelOpen;
-
     // ─── Observable Properties ───────────────────────────────────────────────
 
     // Delegating wrappers — keep XAML bindings working without changes
@@ -282,13 +279,6 @@ public partial class MainViewModel : ObservableObject
         IsBranchSelectorOpen = true;
         await BranchSelector.OpenAsync(CurrentProject.Path);
     }
-
-    /// <summary>
-    /// Adds a new AI Chat tile to the canvas (Ctrl+I).
-    /// Replaces the old sidebar AI panel — chat now lives as canvas tiles.
-    /// </summary>
-    [RelayCommand]
-    private void ToggleAIPanel() => CanvasViewModel.AddChatWidget();
 
     /// <summary>
     /// Toggles the sidebar panel (Ctrl+\).

@@ -257,18 +257,6 @@
                               Width="12" Height="12"
                               Stretch="Uniform" />
                     </Button>
-                    <!-- Close panel -->
-                    <Button Style="{StaticResource IconButton}"
-                            Width="26" Height="26"
-                            Command="{Binding DataContext.ToggleAIPanelCommand,
-                                      RelativeSource={RelativeSource AncestorType=Window}}"
-                            ToolTip="Fechar painel (Ctrl+I)">
-                        <Path Data="{StaticResource CloseIcon}"
-                              Stroke="{DynamicResource SubtextBrush}"
-                              StrokeThickness="1.5"
-                              Width="10" Height="10"
-                              Stretch="Uniform" />
-                    </Button>
                 </StackPanel>
             </Grid>
         </Border>

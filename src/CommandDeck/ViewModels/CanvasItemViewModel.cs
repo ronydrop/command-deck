@@ -127,4 +127,11 @@ public abstract partial class CanvasItemViewModel : ObservableObject
     partial void OnTileBorderRadiusChanged(double value) => Model.TileBorderRadius = value;
 
     public abstract CanvasItemType ItemType { get; }
+
+    /// <summary>
+    /// When true the item's container applies an inverse ScaleTransform so it
+    /// keeps its original on-screen size regardless of canvas zoom level.
+    /// Useful for HwndHost-based controls (browser) that don't benefit from zoom.
+    /// </summary>
+    public virtual bool IsZoomImmune => false;
 }
