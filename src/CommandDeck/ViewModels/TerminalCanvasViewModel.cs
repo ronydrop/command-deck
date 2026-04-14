@@ -479,9 +479,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
     /// <summary>Adds a Chat AI widget to the canvas at the given position.</summary>
     public void AddChatWidget(double canvasX = 40, double canvasY = 40)
     {
-        var item = _workspaceService.AddWidgetItem(WidgetType.Chat);
-        item.X = canvasX;
-        item.Y = canvasY;
+        _workspaceService.AddChatTile(canvasX, canvasY);
     }
 
     /// <summary>Adds a System Monitor widget to the canvas at the given position.</summary>
@@ -527,6 +525,14 @@ public partial class TerminalCanvasViewModel : ObservableObject
         ActiveTerminal = item;
         _workspaceService.BringToFront(item.Model.Id);
         _workspaceService.ActiveTerminal = item;
+    }
+
+    /// <summary>
+    /// Brings any canvas item to the front (highest ZIndex) without changing active terminal.
+    /// </summary>
+    public void BringToFront(CanvasItemViewModel item)
+    {
+        _workspaceService.BringToFront(item.Model.Id);
     }
 
     /// <summary>

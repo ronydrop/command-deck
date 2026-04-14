@@ -30,6 +30,9 @@ public interface ICanvasItemsService
     /// <summary>Creates and registers a widget item of the given type.</summary>
     WidgetCanvasItemViewModel AddWidgetItem(WidgetType type);
 
+    /// <summary>Creates and registers a dedicated chat tile (supports multiple instances).</summary>
+    ChatCanvasItemViewModel AddChatTile(double x = 40, double y = 40);
+
     /// <summary>Toggles a singleton widget: removes it if it exists, adds it if it doesn't.</summary>
     void ToggleWidgetItem(WidgetType type, double? fixedX = null, double? fixedY = null);
 

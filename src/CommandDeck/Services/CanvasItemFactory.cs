@@ -18,6 +18,11 @@ public class CanvasItemFactory
     private readonly IAssistantService _assistantService;
     private readonly ITaskAutomationService _taskAutomationService;
     private readonly IClaudeUsageService _claudeUsageService;
+    private readonly ISettingsService _settingsService;
+    private readonly ISecretStorageService _secretStorageService;
+    private readonly IClaudeOAuthService _claudeOAuthService;
+    private readonly IDatabaseService _db;
+    private readonly AssistantSettings _assistantSettings;
 
     public CanvasItemFactory(
         IGitService gitService,
@@ -27,7 +32,12 @@ public class CanvasItemFactory
         IKanbanService kanbanService,
         IAssistantService assistantService,
         ITaskAutomationService taskAutomationService,
-        IClaudeUsageService claudeUsageService)
+        IClaudeUsageService claudeUsageService,
+        ISettingsService settingsService,
+        ISecretStorageService secretStorageService,
+        IClaudeOAuthService claudeOAuthService,
+        IDatabaseService db,
+        AssistantSettings assistantSettings)
     {
         _gitService = gitService;
         _processMonitorService = processMonitorService;
@@ -37,6 +47,11 @@ public class CanvasItemFactory
         _assistantService = assistantService;
         _taskAutomationService = taskAutomationService;
         _claudeUsageService = claudeUsageService;
+        _settingsService = settingsService;
+        _secretStorageService = secretStorageService;
+        _claudeOAuthService = claudeOAuthService;
+        _db = db;
+        _assistantSettings = assistantSettings;
     }
 
     // ─── Terminal ───────────────────────────────────────────────────────────────
@@ -122,5 +137,50 @@ public class CanvasItemFactory
             assistantService: _assistantService,
             taskAutomationService: _taskAutomationService,
             claudeUsageService: _claudeUsageService);
+    }
+
+    // ─── Chat Tile ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Creates a dedicated <see cref="ChatCanvasItemViewModel"/> tile with full chat functionality.
+    /// Each instance has its own conversation history and can be placed multiple times on the canvas.
+    /// </summary>
+    public ChatCanvasItemViewModel CreateChatTileItem(double x = 40, double y = 40)
+    {
+        var model = new CanvasItemModel
+        {
+            Type = CanvasItemType.ChatWidget,
+            X = x,
+            Y = y,
+            Width = 400,
+            Height = 540
+        };
+
+        return new ChatCanvasItemViewModel(
+            model,
+            _assistantService,
+            _notificationService,
+            _settingsService,
+            _secretStorageService,
+            _claudeOAuthService,
+            _db,
+            _assistantSettings);
+    }
+
+    /// <summary>
+    /// Creates a <see cref="ChatCanvasItemViewModel"/> from a pre-existing
+    /// <see cref="CanvasItemModel"/> (for layout restoration).
+    /// </summary>
+    public ChatCanvasItemViewModel CreateChatTileItemFromModel(CanvasItemModel model)
+    {
+        return new ChatCanvasItemViewModel(
+            model,
+            _assistantService,
+            _notificationService,
+            _settingsService,
+            _secretStorageService,
+            _claudeOAuthService,
+            _db,
+            _assistantSettings);
     }
 }

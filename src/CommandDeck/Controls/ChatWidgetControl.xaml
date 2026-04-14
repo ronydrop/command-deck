@@ -3,85 +3,158 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:ctrl="clr-namespace:CommandDeck.Controls"
              mc:Ignorable="d"
-             d:DesignWidth="380" d:DesignHeight="500"
+             d:DesignWidth="400" d:DesignHeight="540"
              Background="Transparent">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
-        <ctrl:InverseBoolToVisibilityConverter x:Key="InvBoolToVis"
-            xmlns:ctrl="clr-namespace:CommandDeck.Controls" />
+        <ctrl:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <!-- Header -->
-            <RowDefinition Height="36" />
+            <!-- Header with title + provider/model -->
+            <RowDefinition Height="Auto" />
             <!-- Messages list -->
             <RowDefinition Height="*" />
-            <!-- Shimmer loading bar (3 px, visible only when ChatIsLoading=True) -->
+            <!-- Shimmer loading bar -->
             <RowDefinition Height="3" />
+            <!-- Status text -->
+            <RowDefinition Height="Auto" />
             <!-- Input area -->
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ─── Header ───────────────────────────────────────────────────── -->
-        <Border Grid.Row="0"
-                Padding="12,0"
-                BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Padding="10,6,10,6" BorderThickness="0,0,0,1">
             <Border.BorderBrush>
                 <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5" />
             </Border.BorderBrush>
-            <DockPanel VerticalAlignment="Center">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                <!-- Icon + title -->
-                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-                    <Border Width="22" Height="22" CornerRadius="5" Margin="0,0,8,0" VerticalAlignment="Center">
-                        <Border.Background>
-                            <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.15" />
-                        </Border.Background>
-                        <TextBlock Text="💬" FontSize="11"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <TextBlock Text="Chat AI"
-                               FontSize="12" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextBrush}"
-                               VerticalAlignment="Center" />
-                    <!-- Provider label -->
-                    <TextBlock Text="Claude"
-                               FontSize="10" Margin="6,0,0,0"
-                               Foreground="{DynamicResource AccentBrush}"
-                               VerticalAlignment="Center" />
-                </StackPanel>
+                <!-- Title row -->
+                <DockPanel Grid.Row="0" VerticalAlignment="Center">
+                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="20" Height="20" CornerRadius="5" Margin="0,0,6,0" VerticalAlignment="Center">
+                            <Border.Background>
+                                <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.18" />
+                            </Border.Background>
+                            <TextBlock Text="💬" FontSize="10"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="{Binding ChatTitle, FallbackValue='Chat AI'}"
+                                   FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
 
-                <!-- Clear button -->
-                <Button DockPanel.Dock="Right"
-                        Width="24" Height="24"
-                        Background="Transparent" BorderThickness="0"
-                        Cursor="Hand"
-                        Click="OnClearMessages"
-                        ToolTip="Limpar conversa"
-                        VerticalAlignment="Center">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="Bg" CornerRadius="4" Background="Transparent" Width="24" Height="24">
-                                <TextBlock Text="🗑" FontSize="11"
-                                           Foreground="{DynamicResource SubtextBrush}"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bg" Property="Background">
-                                        <Setter.Value>
-                                            <SolidColorBrush Color="{DynamicResource AccentRed}" Opacity="0.2" />
-                                        </Setter.Value>
-                                    </Setter>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
-            </DockPanel>
+                    <!-- Provider availability indicator -->
+                    <Ellipse DockPanel.Dock="Right"
+                             Width="7" Height="7" Margin="4,0,0,0" VerticalAlignment="Center">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="#A6E3A1" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsProviderAvailable}" Value="False">
+                                        <Setter Property="Fill" Value="#F38BA8" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+
+                    <!-- Cancel button (visible when loading) -->
+                    <Button DockPanel.Dock="Right"
+                            Width="22" Height="22" Margin="4,0,0,0"
+                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                            Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
+                            Command="{Binding CancelRequestCommand}"
+                            ToolTip="Cancelar">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bg" CornerRadius="4" Background="Transparent" Width="22" Height="22">
+                                    <TextBlock Text="⏹" FontSize="9"
+                                               Foreground="{DynamicResource SubtextBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bg" Property="Background">
+                                            <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" /></Setter.Value>
+                                        </Setter>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <!-- Clear history button -->
+                    <Button DockPanel.Dock="Right"
+                            Width="22" Height="22"
+                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                            Command="{Binding ClearHistoryCommand}"
+                            ToolTip="Limpar conversa"
+                            VerticalAlignment="Center">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bg" CornerRadius="4" Background="Transparent" Width="22" Height="22">
+                                    <TextBlock Text="🗑" FontSize="10"
+                                               Foreground="{DynamicResource SubtextBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bg" Property="Background">
+                                            <Setter.Value><SolidColorBrush Color="{DynamicResource AccentRed}" Opacity="0.2" /></Setter.Value>
+                                        </Setter>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </DockPanel>
+
+                <!-- Provider + Model selectors row -->
+                <Grid Grid.Row="1" Margin="0,5,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Provider selector -->
+                    <ComboBox Grid.Column="0"
+                              Height="24" FontSize="10"
+                              SelectedItem="{Binding SelectedProviderLabel, Mode=OneWay}"
+                              SelectionChanged="OnProviderSelected"
+                              ToolTip="Selecionar provider de IA">
+                        <ComboBox.Style>
+                            <Style TargetType="ComboBox" BasedOn="{StaticResource DarkComboBox}" />
+                        </ComboBox.Style>
+                        <ComboBoxItem Content="Claude" />
+                        <ComboBoxItem Content="OpenAI" />
+                        <ComboBoxItem Content="OpenRouter" />
+                        <ComboBoxItem Content="Local (Ollama)" />
+                    </ComboBox>
+
+                    <!-- Model selector -->
+                    <ComboBox Grid.Column="2"
+                              Height="24" FontSize="10"
+                              ItemsSource="{Binding AvailableModels}"
+                              SelectedItem="{Binding SelectedModel, Mode=TwoWay}"
+                              ToolTip="Selecionar modelo">
+                        <ComboBox.Style>
+                            <Style TargetType="ComboBox" BasedOn="{StaticResource DarkComboBox}" />
+                        </ComboBox.Style>
+                    </ComboBox>
+                </Grid>
+            </Grid>
         </Border>
 
         <!-- ─── Messages list ────────────────────────────────────────────── -->
@@ -91,11 +164,10 @@
                       HorizontalScrollBarVisibility="Disabled"
                       Padding="10,8">
             <ItemsControl x:Name="MessagesList"
-                          ItemsSource="{Binding ChatMessages}">
+                          ItemsSource="{Binding Messages}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <!-- Message bubble wrapper — flip alignment based on role -->
-                        <Grid Margin="0,4">
+                        <Grid Margin="0,3">
                             <Grid.Style>
                                 <Style TargetType="Grid">
                                     <Setter Property="HorizontalAlignment" Value="Left" />
@@ -107,7 +179,7 @@
                                 </Style>
                             </Grid.Style>
 
-                            <!-- Loading indicator (3 dots) — only on streaming messages -->
+                            <!-- Streaming dots -->
                             <StackPanel Orientation="Horizontal"
                                         Margin="10,8"
                                         Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVis}}">
@@ -141,37 +213,72 @@
                                 </StackPanel.Triggers>
                             </StackPanel>
 
-                            <!-- Message bubble (hidden while streaming) -->
-                            <Border MaxWidth="300" Padding="10,7"
-                                    Visibility="{Binding IsStreaming, Converter={StaticResource InvBoolToVis}}">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <!-- Default: assistant bubble (left) -->
-                                        <Setter Property="CornerRadius" Value="2,10,10,10" />
-                                        <Setter Property="Background">
-                                            <Setter.Value>
-                                                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.7" />
-                                            </Setter.Value>
-                                        </Setter>
-                                        <Style.Triggers>
-                                            <!-- User bubble (right) -->
-                                            <DataTrigger Binding="{Binding IsUser}" Value="True">
-                                                <Setter Property="CornerRadius" Value="10,10,2,10" />
-                                                <Setter Property="Background">
-                                                    <Setter.Value>
-                                                        <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.22" />
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                                <TextBlock Text="{Binding Content}"
-                                           FontSize="12"
-                                           Foreground="{DynamicResource TextBrush}"
-                                           TextWrapping="Wrap"
-                                           MaxWidth="280" />
-                            </Border>
+                            <!-- Message bubble (not streaming) -->
+                            <Grid MaxWidth="320"
+                                  Visibility="{Binding IsStreaming, Converter={StaticResource InvBoolToVis}}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0" Padding="10,7">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="CornerRadius" Value="2,10,10,10" />
+                                            <Setter Property="Background">
+                                                <Setter.Value>
+                                                    <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.7" />
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsUser}" Value="True">
+                                                    <Setter Property="CornerRadius" Value="10,10,2,10" />
+                                                    <Setter Property="Background">
+                                                        <Setter.Value>
+                                                            <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.22" />
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding HasError}" Value="True">
+                                                    <Setter Property="Background">
+                                                        <Setter.Value>
+                                                            <SolidColorBrush Color="{DynamicResource AccentRed}" Opacity="0.15" />
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding Content}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextBrush}"
+                                               TextWrapping="Wrap" />
+                                </Border>
+
+                                <!-- Copy button (only for assistant messages) -->
+                                <StackPanel Grid.Row="1" Orientation="Horizontal"
+                                            Margin="4,2,0,4"
+                                            Visibility="{Binding IsUser, Converter={StaticResource InvBoolToVis}}">
+                                    <Button Width="20" Height="16"
+                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                            Click="OnCopyMessage"
+                                            ToolTip="Copiar mensagem">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <TextBlock Text="📋" FontSize="9"
+                                                           Foreground="{DynamicResource SubtextBrush}"
+                                                           Opacity="0.5"
+                                                           VerticalAlignment="Center" />
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Opacity" Value="1" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
                         </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -179,10 +286,8 @@
         </ScrollViewer>
 
         <!-- ─── Shimmer loading bar ─────────────────────────────────────── -->
-        <!-- Visible only when the AI is streaming a response (ChatIsLoading=True).
-             A TranslateTransform moves a highlight gradient left→right via ShimmerAnimation. -->
         <Grid Grid.Row="2" ClipToBounds="True"
-              Visibility="{Binding ChatIsLoading, Converter={StaticResource BoolToVis}}">
+              Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
             <Rectangle Fill="{DynamicResource Surface1Brush}" />
             <Rectangle x:Name="ShimmerHighlight" Width="200" HorizontalAlignment="Left">
                 <Rectangle.Fill>
@@ -203,8 +308,19 @@
             </Rectangle>
         </Grid>
 
-        <!-- ─── Input area ───────────────────────────────────────────────── -->
+        <!-- ─── Status bar ──────────────────────────────────────────────── -->
         <Border Grid.Row="3"
+                Padding="10,3,10,3"
+                Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding StatusText}"
+                       FontSize="10"
+                       Foreground="{DynamicResource SubtextBrush}"
+                       Opacity="0.7"
+                       TextTrimming="CharacterEllipsis" />
+        </Border>
+
+        <!-- ─── Input area ───────────────────────────────────────────────── -->
+        <Border Grid.Row="4"
                 Padding="10,8"
                 BorderThickness="0,1,0,0">
             <Border.BorderBrush>
@@ -219,7 +335,7 @@
 
                 <TextBox Grid.Column="0"
                          x:Name="ChatInput"
-                         Text="{Binding ChatInputText, UpdateSourceTrigger=PropertyChanged}"
+                         Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
                          Style="{StaticResource DarkTextBox}"
                          Tag="Pergunte algo..."
                          AcceptsReturn="False"
@@ -230,17 +346,15 @@
                          TextWrapping="Wrap"
                          VerticalScrollBarVisibility="Auto"
                          VerticalContentAlignment="Center"
-                         IsEnabled="{Binding ChatIsLoading, Converter={StaticResource InvBoolToVis},
+                         IsEnabled="{Binding IsLoading, Converter={StaticResource InvBoolToVis},
                              ConverterParameter=BoolToEnabled}"
                          KeyDown="OnChatInputKeyDown" />
 
-                <!-- Send button -->
                 <Button Grid.Column="2"
                         Width="34" Height="34"
-                        Style="{StaticResource AccentButton}"
                         Click="OnSendClicked"
                         ToolTip="Enviar (Ctrl+Enter)"
-                        IsEnabled="{Binding ChatIsLoading, Converter={StaticResource InvBoolToVis},
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InvBoolToVis},
                             ConverterParameter=BoolToEnabled}">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">

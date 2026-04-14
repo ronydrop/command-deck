@@ -55,8 +55,6 @@
             <ColumnDefinition Width="Auto" />
             <!-- Main content -->
             <ColumnDefinition Width="*" />
-            <!-- AI Panel (320px when open, 0 when closed) -->
-            <ColumnDefinition Width="{Binding IsAIPanelOpen, Converter={StaticResource BoolToGridLength}}" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <!-- Top nav bar -->
@@ -387,17 +385,6 @@
                 Visibility="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window},
                              Converter={StaticResource ViewTypeToVis}, ConverterParameter=TabbedTerminal}" />
         </Grid>
-
-        <!-- ═══════════════════════════════════════════════════════════════
-             AI ASSISTANT SIDE PANEL (Column 2, collapsible)
-             ═══════════════════════════════════════════════════════════════ -->
-        <Border Grid.Column="2" Grid.Row="1"
-                BorderBrush="{DynamicResource GlassBorderBrush}"
-                BorderThickness="1,0,0,0"
-                Visibility="{Binding IsAIPanelOpen, Converter={StaticResource BoolToVis}}">
-            <views:AssistantPanelView DataContext="{Binding AssistantPanel}"
-                                      Width="320" />
-        </Border>
 
         <!-- ═══════════════════════════════════════════════════════════════
              PROJECT EDIT DIALOG OVERLAY

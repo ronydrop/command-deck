@@ -1,6 +1,7 @@
 using System;
 using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
+using CommandDeck.Helpers;
 using CommandDeck.Models;
 using CommandDeck.Services;
 using CommandDeck.Services.Browser;
@@ -166,7 +167,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<BranchSelectorViewModel>();
         services.AddSingleton<WorktreeSelectorViewModel>();
         services.AddSingleton<TerminalCanvasViewModel>();
-        services.AddSingleton<AssistantPanelViewModel>();
         services.AddSingleton<TerminalManagerViewModel>();
         services.AddSingleton<TabbedTerminalViewModel>();
         services.AddSingleton<MainViewModel>();
@@ -176,6 +176,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<BrowserViewModel>();
         services.AddSingleton<AiOrbViewModel>();
         services.AddSingleton<AgentSelectorViewModel>();
+
+        // Chat tile router — routes quick-action messages to canvas chat tiles
+        services.AddSingleton<ChatTileRouter>();
 
         // Transient: each request gets a fresh instance
         services.AddTransient<TerminalViewModel>();

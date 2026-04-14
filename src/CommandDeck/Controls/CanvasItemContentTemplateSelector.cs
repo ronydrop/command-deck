@@ -29,6 +29,7 @@ public class CanvasItemContentTemplateSelector : DataTemplateSelector
         return item switch
         {
             TerminalCanvasItemViewModel => TerminalTemplate,
+            ChatCanvasItemViewModel => ChatWidgetTemplate,
             WidgetCanvasItemViewModel w => w.WidgetType switch
             {
                 WidgetType.Git           => GitWidgetTemplate,

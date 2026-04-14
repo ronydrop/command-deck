@@ -220,6 +220,7 @@ public static class CommandPaletteRegistrar
         var aiHistory = serviceProvider.GetRequiredService<IAiSessionHistoryService>();
         var aiLauncher = serviceProvider.GetRequiredService<IAiTerminalLauncher>();
         var aiCommandExecutor = serviceProvider.GetRequiredService<IAiCommandExecutor>();
+        var chatTileRouter = serviceProvider.GetRequiredService<ChatTileRouter>();
 
         commandService.RegisterCommand(new CommandDefinition
         {
@@ -300,26 +301,23 @@ public static class CommandPaletteRegistrar
             Category = "AI",
             Icon = "\uE946",
             IsEnabled = () => mainViewModel.ActiveTerminal is not null,
-            Action = () =>
+            Action = async () =>
             {
                 var sourceSessionId = mainViewModel.ActiveTerminal?.Session?.Id ?? "";
                 var correlationId = Guid.NewGuid().ToString("N")[..12];
 
-                mainViewModel.IsAIPanelOpen = true;
-                mainViewModel.AssistantPanel.ExplainOutputCommand.Execute(null);
+                await chatTileRouter.RouteUserMessageAsync("Explique o output do terminal ativo.");
 
                 aiHistory.Record(new AiSessionHistoryEntry
                 {
                     SessionId = sourceSessionId,
                     Intent = AiPromptIntent.ExplainOutput,
                     ModelUsed = "default",
-                    PromptSent = "(panel explain)",
+                    PromptSent = "(explain output)",
                     Source = AiActionSource.CommandPalette,
                     CorrelationId = correlationId,
                     ExecutionStatus = AiExecutionStatus.Running
                 });
-
-                return Task.CompletedTask;
             },
             Keywords = "ai explicar erro output terminal explain"
         });
@@ -366,11 +364,11 @@ public static class CommandPaletteRegistrar
                 var sourceSessionId = mainViewModel.ActiveTerminal?.Session?.Id ?? "";
                 var correlationId = Guid.NewGuid().ToString("N")[..12];
                 var prompt = await aiContextService.BuildPromptAsync(AiPromptIntent.SuggestCommand);
-                if (!string.IsNullOrWhiteSpace(prompt))
-                    mainViewModel.AssistantPanel.InputText = prompt;
 
-                mainViewModel.IsAIPanelOpen = true;
-                mainViewModel.AssistantPanel.SuggestCommandCommand.Execute(null);
+                var routePrompt = !string.IsNullOrWhiteSpace(prompt)
+                    ? $"Sugira um comando para: {prompt}"
+                    : "Sugira um comando shell útil para a situação atual.";
+                await chatTileRouter.RouteMessageAsync(routePrompt, autoSend: false);
 
                 aiHistory.Record(new AiSessionHistoryEntry
                 {

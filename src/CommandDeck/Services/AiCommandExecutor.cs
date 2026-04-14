@@ -1,3 +1,4 @@
+using CommandDeck.Helpers;
 using CommandDeck.Models;
 using CommandDeck.ViewModels;
 
@@ -21,6 +22,7 @@ public sealed class AiCommandExecutor : IAiCommandExecutor
     private readonly IAiSessionHistoryService _aiHistory;
     private readonly ITerminalSessionService _terminalSessionService;
     private readonly Lazy<MainViewModel> _mainViewModel;
+    private readonly ChatTileRouter _chatTileRouter;
 
     public AiCommandExecutor(
         IAiContextService aiContextService,
@@ -28,7 +30,8 @@ public sealed class AiCommandExecutor : IAiCommandExecutor
         IAiTerminalLauncher aiTerminalLauncher,
         IAiSessionHistoryService aiHistory,
         ITerminalSessionService terminalSessionService,
-        Lazy<MainViewModel> mainViewModel)
+        Lazy<MainViewModel> mainViewModel,
+        ChatTileRouter chatTileRouter)
     {
         _aiContextService = aiContextService;
         _aiTerminalService = aiTerminalService;
@@ -36,6 +39,7 @@ public sealed class AiCommandExecutor : IAiCommandExecutor
         _aiHistory = aiHistory;
         _terminalSessionService = terminalSessionService;
         _mainViewModel = mainViewModel;
+        _chatTileRouter = chatTileRouter;
     }
 
     /// <inheritdoc/>
@@ -69,10 +73,8 @@ public sealed class AiCommandExecutor : IAiCommandExecutor
             }
             else
             {
-                var vm = _mainViewModel.Value;
-                vm.IsAIPanelOpen = true;
-                vm.AssistantPanel.InputText = prompt;
-                vm.AssistantPanel.SendMessageCommand.Execute(null);
+                // Route to chat tile instead of the removed AssistantPanel
+                await _chatTileRouter.RouteMessageAsync(prompt, autoSend: true);
             }
             _aiHistory.UpdateStatus(sessionId, correlationId, AiExecutionStatus.Completed);
         }

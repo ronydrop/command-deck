@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommandDeck.Helpers;
 using CommandDeck.Models;
 using CommandDeck.Models.Browser;
 using CommandDeck.Services;
@@ -17,7 +18,7 @@ public partial class BrowserViewModel : ObservableObject, IDisposable
     private readonly INotificationService _notificationService;
     private readonly IDomSelectionService _domSelection;
     private readonly IAiContextRouter _contextRouter;
-    private readonly AssistantPanelViewModel _assistantPanel;
+    private readonly ChatTileRouter _chatTileRouter;
 
     // ─── Per-project browser session state ────────────────────────────────
     private readonly Dictionary<string, ProjectBrowserState> _projectSessions = new();
@@ -91,7 +92,7 @@ public partial class BrowserViewModel : ObservableObject, IDisposable
         INotificationService notificationService,
         IDomSelectionService domSelection,
         IAiContextRouter contextRouter,
-        AssistantPanelViewModel assistantPanel)
+        ChatTileRouter chatTileRouter)
     {
         _browserRuntime = browserRuntime;
         _localAppSession = localAppSession;
@@ -99,7 +100,7 @@ public partial class BrowserViewModel : ObservableObject, IDisposable
         _notificationService = notificationService;
         _domSelection = domSelection;
         _contextRouter = contextRouter;
-        _assistantPanel = assistantPanel;
+        _chatTileRouter = chatTileRouter;
 
         var runtime = (BrowserRuntimeService)_browserRuntime;
         runtime.StateChanged += OnStateChanged;
@@ -348,7 +349,7 @@ public partial class BrowserViewModel : ObservableObject, IDisposable
 
         if (target.Type == AgentTargetType.Assistant)
         {
-            _assistantPanel.ReceiveElementContext(context);
+            _ = _chatTileRouter.RouteMessageAsync($"[🔍 Elemento capturado do browser]\n\n{context}\n\nAnalise este elemento e identifique possíveis melhorias.", autoSend: false);
             _notificationService.Notify(
                 "Contexto enviado para Assistant AI",
                 NotificationType.Success,
@@ -369,9 +370,9 @@ public partial class BrowserViewModel : ObservableObject, IDisposable
     {
         if (SelectedElement == null) return;
         var context = FormatContextForAgent();
-        _assistantPanel.ReceiveElementContext(context);
+        await _chatTileRouter.RouteMessageAsync($"[🔍 Elemento capturado do browser]\n\n{context}\n\nAnalise este elemento e identifique possíveis melhorias.", autoSend: false);
         _notificationService.Notify(
-            "Contexto enviado para Assistant AI",
+            "Contexto enviado para Chat AI",
             NotificationType.Success,
             NotificationSource.System);
     }

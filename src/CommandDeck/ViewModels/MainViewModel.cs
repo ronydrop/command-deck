@@ -51,7 +51,6 @@ public partial class MainViewModel : ObservableObject
     public WorkspaceTreeViewModel WorkspaceTree { get; }
 
     /// <summary>AI Assistant side-panel ViewModel.</summary>
-    public AssistantPanelViewModel AssistantPanel { get; }
     public BrowserViewModel Browser { get; }
 
     /// <summary>Tabbed terminal layout ViewModel.</summary>
@@ -179,7 +178,6 @@ public partial class MainViewModel : ObservableObject
         ProjectListViewModel projectList,
         DashboardViewModel dashboard,
         ProcessMonitorViewModel processMonitor,
-        AssistantPanelViewModel assistantPanel,
         BrowserViewModel browserViewModel,
         CanvasItemFactory canvasItemFactory,
         IAiTerminalLauncher aiLauncher,
@@ -228,7 +226,6 @@ public partial class MainViewModel : ObservableObject
         CanvasViewModel = canvasViewModel;
         CommandPalette = commandPalette;
         WorkspaceTree = workspaceTree;
-        AssistantPanel = assistantPanel;
         Browser = browserViewModel;
         BranchSelector = branchSelector;
         AiOrb = aiOrb;
@@ -287,21 +284,19 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Toggles the AI Assistant side-panel open/closed (Ctrl+I).
+    /// Adds a new AI Chat tile to the canvas (Ctrl+I).
+    /// Replaces the old sidebar AI panel — chat now lives as canvas tiles.
     /// </summary>
     [RelayCommand]
-    private void ToggleAIPanel() => IsAIPanelOpen = !IsAIPanelOpen;
+    private void ToggleAIPanel() => CanvasViewModel.AddChatWidget();
 
     /// <summary>
-    /// Toggles both side panels (sidebar + AI chat) simultaneously (Ctrl+\).
-    /// Expands both if either is hidden; collapses both if both are open.
+    /// Toggles the sidebar panel (Ctrl+\).
     /// </summary>
     [RelayCommand]
     private void ToggleAllPanels()
     {
-        bool expand = IsSidebarCollapsed || !IsAIPanelOpen;
-        IsSidebarCollapsed = !expand;
-        IsAIPanelOpen = expand;
+        IsSidebarCollapsed = !IsSidebarCollapsed;
     }
 
     /// <summary>Opens the keyboard shortcuts cheat-sheet overlay (Ctrl+/).</summary>
@@ -853,14 +848,6 @@ public partial class MainViewModel : ObservableObject
         TerminalManager.CurrentProject = CurrentProject;
         await TerminalManager.RunCommandInNewTerminalAsync(command);
         CurrentView = ViewType.Terminal;
-    }
-
-    partial void OnIsAIPanelOpenChanged(bool value)
-    {
-        if (value)
-            _ = AssistantPanel.OnPanelOpenedAsync();
-        else
-            AssistantPanel.OnPanelClosed();
     }
 
     partial void OnCurrentViewChanged(ViewType oldValue, ViewType newValue)
