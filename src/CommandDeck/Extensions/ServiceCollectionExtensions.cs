@@ -102,6 +102,10 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddCanvasServices(this IServiceCollection services)
     {
+        // Event bus and tile context must be registered first (canvas items use them)
+        services.AddSingleton<IEventBusService, EventBusService>();
+        services.AddSingleton<ITileContextService, TileContextService>();
+
         services.AddSingleton<ICanvasCameraService, CanvasCameraService>();
         services.AddSingleton<ILayoutPersistenceService, LayoutPersistenceService>();
         services.AddSingleton<CanvasItemFactory>();

@@ -23,6 +23,8 @@ public class CanvasItemFactory
     private readonly IClaudeOAuthService _claudeOAuthService;
     private readonly IDatabaseService _db;
     private readonly AssistantSettings _assistantSettings;
+    private readonly IEventBusService _eventBus;
+    private readonly ITileContextService _tileContext;
 
     public CanvasItemFactory(
         IGitService gitService,
@@ -37,7 +39,9 @@ public class CanvasItemFactory
         ISecretStorageService secretStorageService,
         IClaudeOAuthService claudeOAuthService,
         IDatabaseService db,
-        AssistantSettings assistantSettings)
+        AssistantSettings assistantSettings,
+        IEventBusService eventBus,
+        ITileContextService tileContext)
     {
         _gitService = gitService;
         _processMonitorService = processMonitorService;
@@ -52,6 +56,8 @@ public class CanvasItemFactory
         _claudeOAuthService = claudeOAuthService;
         _db = db;
         _assistantSettings = assistantSettings;
+        _eventBus = eventBus;
+        _tileContext = tileContext;
     }
 
     // ─── Terminal ───────────────────────────────────────────────────────────────
@@ -183,4 +189,40 @@ public class CanvasItemFactory
             _db,
             _assistantSettings);
     }
+
+    // ─── Code Editor ────────────────────────────────────────────────────────────
+
+    /// <summary>Creates a new Code Editor canvas tile at the given position.</summary>
+    public CodeEditorCanvasItemViewModel CreateCodeEditorItem(double x = 40, double y = 40)
+    {
+        var model = new CanvasItemModel
+        {
+            Type = CanvasItemType.CodeEditorWidget,
+            X = x, Y = y,
+            Width = 680, Height = 500
+        };
+        return new CodeEditorCanvasItemViewModel(model, _notificationService, _eventBus, _tileContext);
+    }
+
+    /// <summary>Restores a Code Editor tile from a persisted <see cref="CanvasItemModel"/>.</summary>
+    public CodeEditorCanvasItemViewModel CreateCodeEditorItemFromModel(CanvasItemModel model)
+        => new(model, _notificationService, _eventBus, _tileContext);
+
+    // ─── File Explorer ───────────────────────────────────────────────────────────
+
+    /// <summary>Creates a new File Explorer canvas tile at the given position.</summary>
+    public FileExplorerCanvasItemViewModel CreateFileExplorerItem(double x = 40, double y = 40)
+    {
+        var model = new CanvasItemModel
+        {
+            Type = CanvasItemType.FileExplorerWidget,
+            X = x, Y = y,
+            Width = 300, Height = 480
+        };
+        return new FileExplorerCanvasItemViewModel(model, _notificationService, _eventBus, _tileContext);
+    }
+
+    /// <summary>Restores a File Explorer tile from a persisted <see cref="CanvasItemModel"/>.</summary>
+    public FileExplorerCanvasItemViewModel CreateFileExplorerItemFromModel(CanvasItemModel model)
+        => new(model, _notificationService, _eventBus, _tileContext);
 }

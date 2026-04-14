@@ -1,0 +1,352 @@
+<UserControl x:Class="CommandDeck.Controls.FileExplorerWidgetControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:CommandDeck.ViewModels"
+             xmlns:ctrl="clr-namespace:CommandDeck.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="280" d:DesignHeight="480">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <ctrl:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
+        <Style x:Key="IconToggleBtn" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bg" CornerRadius="5" Background="Transparent"
+                                Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background">
+                                    <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5"/></Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bg" Property="Background">
+                                    <Setter.Value><SolidColorBrush Color="{DynamicResource Blue}" Opacity="0.25"/></Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="PrimaryBtn" TargetType="Button">
+            <Setter Property="Background">
+                <Setter.Value><SolidColorBrush Color="{DynamicResource Blue}" Opacity="0.85"/></Setter.Value>
+            </Setter>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="6"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Recursive TreeView item template -->
+        <HierarchicalDataTemplate DataType="{x:Type vm:FileTreeNode}"
+                                  ItemsSource="{Binding Children}">
+            <StackPanel Orientation="Horizontal" 
+                        MouseLeftButtonDown="OnNodeClick">
+                <TextBlock Text="{Binding Icon}" FontSize="12" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Name}" FontSize="12"
+                           Foreground="{DynamicResource TextBrush}"
+                           VerticalAlignment="Center"/>
+                <!-- Loading spinner for directories being expanded -->
+                <TextBlock Text="⏳" FontSize="10" VerticalAlignment="Center"
+                           Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"/>
+            </StackPanel>
+        </HierarchicalDataTemplate>
+
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Color strip -->
+            <RowDefinition Height="3"/>
+            <!-- Toolbar -->
+            <RowDefinition Height="36"/>
+            <!-- Search -->
+            <RowDefinition Height="Auto"/>
+            <!-- Tree / results -->
+            <RowDefinition Height="*"/>
+            <!-- Status bar -->
+            <RowDefinition Height="22"/>
+        </Grid.RowDefinitions>
+
+        <!-- Accent strip -->
+        <Border Grid.Row="0" Background="#a6e3a1" CornerRadius="0"/>
+
+        <!-- ── Toolbar ─────────────────────────────────────────────────────── -->
+        <Border Grid.Row="1">
+            <Border.Background>
+                <SolidColorBrush Color="{DynamicResource Surface0}" Opacity="0.85"/>
+            </Border.Background>
+
+            <Grid Margin="8,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Icon + title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal"  VerticalAlignment="Center">
+                    <TextBlock Text="📁" FontSize="14" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Title}"
+                               FontSize="12" FontWeight="Medium"
+                               Foreground="{DynamicResource TextBrush}"
+                               VerticalAlignment="Center"
+                               MaxWidth="130" TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding RootPath}"/>
+                </StackPanel>
+
+                <!-- Actions -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal"  VerticalAlignment="Center">
+                    <Button Content="📂" ToolTip="Abrir pasta"
+                            Command="{Binding OpenFolderCommand}"
+                            Width="26" Height="26" Cursor="Hand"
+                            Style="{StaticResource IconButton}"/>
+                    <Button Content="🔄" ToolTip="Atualizar"
+                            Command="{Binding RefreshCommand}"
+                            Width="26" Height="26" Cursor="Hand"
+                            Style="{StaticResource IconButton}"/>
+                    <ToggleButton Content="👁" ToolTip="Mostrar arquivos ocultos"
+                                  IsChecked="{Binding ShowHiddenFiles}"
+                                  Width="26" Height="26" Cursor="Hand"
+                                  Style="{StaticResource IconToggleBtn}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ── Search bar ─────────────────────────────────────────────────── -->
+        <Border Grid.Row="2" Margin="8,4">
+            <Border CornerRadius="6" Padding="8,0"
+                    BorderThickness="1">
+                <Border.Background>
+                    <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5"/>
+                </Border.Background>
+                <Border.BorderBrush>
+                    <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.4"/>
+                </Border.BorderBrush>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="🔍" FontSize="11"
+                               VerticalAlignment="Center" Margin="0,0,6,0"
+                               Foreground="{DynamicResource SubtextBrush}"/>
+                    <TextBox Grid.Column="1"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="12" Height="28"
+                             Foreground="{DynamicResource TextBrush}"
+                             CaretBrush="{DynamicResource TextBrush}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             VerticalContentAlignment="Center">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="TextBox">
+                                            <Grid>
+                                                <TextBlock x:Name="placeholder"
+                                                           Text="Buscar arquivo..."
+                                                           FontSize="12"
+                                                           Foreground="{DynamicResource SubtextBrush}"
+                                                           VerticalAlignment="Center"
+                                                           Visibility="Collapsed"
+                                                           IsHitTestVisible="False"/>
+                                                <ScrollViewer x:Name="PART_ContentHost"
+                                                              VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="Text" Value="">
+                                                    <Setter TargetName="placeholder" Property="Visibility" Value="Visible"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- ── Tree view ──────────────────────────────────────────────────── -->
+        <Grid Grid.Row="3">
+
+            <!-- Loading overlay -->
+            <Border x:Name="LoadingOverlay"
+                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
+                <Border.Background>
+                    <SolidColorBrush Color="{DynamicResource Base}" Opacity="0.7"/>
+                </Border.Background>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" >
+                    <TextBlock Text="📁" FontSize="24" HorizontalAlignment="Center" Opacity="0.4"/>
+                    <TextBlock Text="Carregando..." FontSize="12"
+                               Foreground="{DynamicResource SubtextBrush}" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Empty state -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" 
+                        Visibility="{Binding IsLoading, Converter={StaticResource InverseBoolToVisibility}}">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding RootPath}" Value="">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock Text="📁" FontSize="32" HorizontalAlignment="Center" Opacity="0.3"/>
+                <TextBlock Text="Nenhuma pasta aberta" FontSize="12"
+                           Foreground="{DynamicResource SubtextBrush}" HorizontalAlignment="Center"/>
+                <Button Content="Abrir pasta" Command="{Binding OpenFolderCommand}"
+                        Margin="0,4,0,0" Padding="12,4" Cursor="Hand"
+                        Style="{StaticResource PrimaryBtn}"/>
+            </StackPanel>
+
+            <!-- Normal TreeView -->
+            <TreeView x:Name="FileTree"
+                      ItemsSource="{Binding RootNodes}"
+                      Background="Transparent"
+                      BorderThickness="0"
+                      Padding="4"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      TreeViewItem.Expanded="OnTreeItemExpanded"
+                      Visibility="{Binding IsSearching, Converter={StaticResource InverseBoolToVisibility}}">
+                <TreeView.Style>
+                    <Style TargetType="TreeView">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TreeView">
+                                    <ScrollViewer Focusable="False" VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Auto">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </TreeView.Style>
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                        <Setter Property="Padding" Value="2,1"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="{DynamicResource Blue}" Opacity="0.18"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.4"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </TreeView.ItemContainerStyle>
+            </TreeView>
+
+            <!-- Search results list -->
+            <ListBox x:Name="SearchList"
+                     ItemsSource="{Binding SearchResults}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     Padding="4"
+                     Visibility="{Binding IsSearching, Converter={StaticResource BoolToVisibility}}"
+                     MouseDoubleClick="OnSearchItemDoubleClick">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:FileTreeNode}">
+                        <StackPanel Orientation="Horizontal"  Margin="2,2">
+                            <TextBlock Text="{Binding Icon}" FontSize="12" VerticalAlignment="Center"/>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Name}" FontSize="12"
+                                           Foreground="{DynamicResource TextBrush}"/>
+                                <TextBlock Text="{Binding FullPath}" FontSize="10"
+                                           Foreground="{DynamicResource SubtextBrush}"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Padding" Value="4,2"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="{DynamicResource Blue}" Opacity="0.18"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.4"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+            </ListBox>
+
+        </Grid>
+
+        <!-- ── Status bar ─────────────────────────────────────────────────── -->
+        <Border Grid.Row="4">
+            <Border.Background>
+                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.9"/>
+            </Border.Background>
+            <TextBlock Text="{Binding StatusText}"
+                       FontSize="11"
+                       Foreground="{DynamicResource SubtextBrush}"
+                       VerticalAlignment="Center"
+                       Margin="8,0"
+                       TextTrimming="CharacterEllipsis"/>
+        </Border>
+
+    </Grid>
+</UserControl>
+

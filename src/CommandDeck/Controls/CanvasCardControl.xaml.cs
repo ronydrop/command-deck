@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -69,6 +70,9 @@ public partial class CanvasCardControl : UserControl
     private double _itemXAtDragStart;
     private double _itemYAtDragStart;
 
+    // Multi-drag: snapshot of all selected items' positions at drag start
+    private System.Collections.Generic.List<(CanvasItemViewModel Vm, double X0, double Y0)>? _multiDragSnapshot;
+
     // ─── Resize state (for undo recording) ──────────────────────────────────
 
     private double _widthAtResizeStart;
@@ -103,13 +107,57 @@ public partial class CanvasCardControl : UserControl
         _trackedVm = e.NewValue as CanvasItemViewModel;
 
         if (_trackedVm is not null)
+        {
             _trackedVm.PropertyChanged += OnVmPropertyChanged;
+            ApplyAccentColor(_trackedVm.AccentColor);
+            ApplyHideTitlebar(_trackedVm.HideTitlebar);
+        }
     }
 
     private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(CanvasItemViewModel.IsTiledMode))
             RefreshContentGridClip();
+        else if (e.PropertyName == nameof(CanvasItemViewModel.AccentColor))
+            ApplyAccentColor(_trackedVm?.AccentColor);
+        else if (e.PropertyName == nameof(CanvasItemViewModel.HideTitlebar))
+            ApplyHideTitlebar(_trackedVm?.HideTitlebar ?? false);
+    }
+
+    // ─── Tile customization: AccentColor + HideTitlebar ──────────────────────
+
+    private void ApplyAccentColor(string? hex)
+    {
+        if (AccentStrip is null) return;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(hex))
+            {
+                // Reset to dynamic accent
+                AccentStrip.ClearValue(System.Windows.Controls.Border.BackgroundProperty);
+            }
+            else
+            {
+                var color = (Color)ColorConverter.ConvertFromString(hex);
+                AccentStrip.Background = new SolidColorBrush(color);
+            }
+        }
+        catch { /* ignore invalid hex */ }
+    }
+
+    private void ApplyHideTitlebar(bool hide)
+    {
+        if (TitleBarRow is null || TitleBar is null) return;
+        if (hide)
+        {
+            TitleBarRow.Height = new GridLength(0);
+            TitleBar.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            TitleBarRow.Height = new GridLength(32);
+            TitleBar.Visibility = Visibility.Visible;
+        }
     }
 
     private void CacheCanvasView()
@@ -153,6 +201,19 @@ public partial class CanvasCardControl : UserControl
         _itemXAtDragStart = vm.X;
         _itemYAtDragStart = vm.Y;
 
+        // Multi-drag snapshot: capture positions of ALL selected items
+        var canvasVm = (Window.GetWindow(this)?.DataContext as ViewModels.MainViewModel)?.CanvasViewModel;
+        if (canvasVm is not null && vm.IsSelected && canvasVm.SelectedItems.Count > 1)
+        {
+            _multiDragSnapshot = canvasVm.SelectedItems
+                .Select(s => (Vm: s, X0: s.X, Y0: s.Y))
+                .ToList();
+        }
+        else
+        {
+            _multiDragSnapshot = null;
+        }
+
         TitleBar.CaptureMouse();
         e.Handled = true;
     }
@@ -166,24 +227,35 @@ public partial class CanvasCardControl : UserControl
         double dy = current.Y - _dragStart.Y;
 
         double zoom = GetCanvasZoom();
-
-        double rawX = _itemXAtDragStart + dx / zoom;
-        double rawY = _itemYAtDragStart + dy / zoom;
+        double dxCanvas = dx / zoom;
+        double dyCanvas = dy / zoom;
 
         // Apply snap-to-grid when enabled in settings (or when Shift is held as override)
         var settings = TryGetSettings();
         bool snap = (settings?.CanvasSnapEnabled ?? false)
                     || (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
+        double grid = settings?.CanvasSnapGridSize > 0 ? settings.CanvasSnapGridSize : 20;
 
-        if (snap)
+        if (_multiDragSnapshot is not null)
         {
-            double grid = settings?.CanvasSnapGridSize > 0 ? settings.CanvasSnapGridSize : 20;
-            rawX = Math.Round(rawX / grid) * grid;
-            rawY = Math.Round(rawY / grid) * grid;
+            // Move ALL selected items keeping relative offsets
+            foreach (var (selVm, x0, y0) in _multiDragSnapshot)
+            {
+                double rawX = x0 + dxCanvas;
+                double rawY = y0 + dyCanvas;
+                if (snap) { rawX = Math.Round(rawX / grid) * grid; rawY = Math.Round(rawY / grid) * grid; }
+                selVm.X = rawX;
+                selVm.Y = rawY;
+            }
         }
-
-        vm.X = rawX;
-        vm.Y = rawY;
+        else
+        {
+            double rawX = _itemXAtDragStart + dxCanvas;
+            double rawY = _itemYAtDragStart + dyCanvas;
+            if (snap) { rawX = Math.Round(rawX / grid) * grid; rawY = Math.Round(rawY / grid) * grid; }
+            vm.X = rawX;
+            vm.Y = rawY;
+        }
 
         // Show alignment guides when enabled
         if (settings?.CanvasAlignmentGuidesEnabled == true)

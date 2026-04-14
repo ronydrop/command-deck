@@ -23,6 +23,8 @@ public class ProjectSwitchService : IProjectSwitchService
     private readonly IWorkspaceService _workspaceService;
     private readonly INotificationService _notificationService;
     private readonly CanvasItemFactory _canvasItemFactory;
+    private readonly IEventBusService _eventBus;
+    private readonly ITileContextService _tileContext;
 
     // ViewModels injected lazily to break circular DI chains.
     private readonly Lazy<TerminalCanvasViewModel> _canvasVm;
@@ -38,6 +40,8 @@ public class ProjectSwitchService : IProjectSwitchService
         IWorkspaceService workspaceService,
         INotificationService notificationService,
         CanvasItemFactory canvasItemFactory,
+        IEventBusService eventBus,
+        ITileContextService tileContext,
         Lazy<TerminalCanvasViewModel> canvasVm,
         Lazy<DashboardViewModel> dashboardVm,
         Lazy<BrowserViewModel> browserVm,
@@ -47,6 +51,8 @@ public class ProjectSwitchService : IProjectSwitchService
         _workspaceService = workspaceService;
         _notificationService = notificationService;
         _canvasItemFactory = canvasItemFactory;
+        _eventBus = eventBus;
+        _tileContext = tileContext;
         _canvasVm = canvasVm;
         _dashboardVm = dashboardVm;
         _browserVm = browserVm;
@@ -179,6 +185,28 @@ public class ProjectSwitchService : IProjectSwitchService
 
                 activeTerminal = restoredTerminals.FirstOrDefault();
 
+                // Restore non-terminal canvas items (Chat, CodeEditor, FileExplorer, Widgets)
+                var nonTerminalItems = saved.Items
+                    .Where(i => i.Type != CanvasItemType.Terminal)
+                    .ToList();
+
+                foreach (var itemModel in nonTerminalItems)
+                {
+                    CanvasItemViewModel? restored = itemModel.Type switch
+                    {
+                        CanvasItemType.ChatWidget =>
+                            _canvasItemFactory.CreateChatTileItemFromModel(itemModel),
+                        CanvasItemType.CodeEditorWidget =>
+                            _canvasItemFactory.CreateCodeEditorItemFromModel(itemModel),
+                        CanvasItemType.FileExplorerWidget =>
+                            _canvasItemFactory.CreateFileExplorerItemFromModel(itemModel),
+                        _ => null  // WidgetCanvasItemViewModel types are handled by AddWidgetItem
+                    };
+
+                    if (restored is not null)
+                        _workspaceService.AddRestoredItem(restored);
+                }
+
                 // Yield at Background priority (4) which is LOWER than Loaded (6)
                 // and Render (7). By the time this runs, all TerminalControl.OnLoaded
                 // events have fired, StartSessionAsync has created the ConPTY sessions,
@@ -200,6 +228,12 @@ public class ProjectSwitchService : IProjectSwitchService
                 GitBranchDisplay = gitBranchDisplay,
                 Success = true
             });
+
+            // Publish on event bus and update shared context
+            _eventBus.Publish(BusEventType.Project_Switched, project, source: "ProjectSwitchService");
+            _tileContext.Set(TileContextKeys.ProjectId, project.Id, sourceLabel: "Project");
+            _tileContext.Set(TileContextKeys.ProjectName, project.Name, sourceLabel: "Project");
+            _tileContext.Set(TileContextKeys.ProjectPath, project.Path, sourceLabel: "Project");
         }
         catch (Exception ex)
         {

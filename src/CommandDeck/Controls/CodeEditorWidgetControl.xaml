@@ -1,0 +1,185 @@
+<UserControl x:Class="CommandDeck.Controls.CodeEditorWidgetControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+             xmlns:ctrl="clr-namespace:CommandDeck.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="640" d:DesignHeight="480">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <ctrl:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
+        <Style x:Key="IconToggleBtn" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bg" CornerRadius="5" Background="Transparent"
+                                Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background">
+                                    <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5"/></Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bg" Property="Background">
+                                    <Setter.Value><SolidColorBrush Color="{DynamicResource Blue}" Opacity="0.25"/></Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Color strip -->
+            <RowDefinition Height="3"/>
+            <!-- Toolbar -->
+            <RowDefinition Height="36"/>
+            <!-- Editor -->
+            <RowDefinition Height="*"/>
+            <!-- Status bar -->
+            <RowDefinition Height="22"/>
+        </Grid.RowDefinitions>
+
+        <!-- Accent strip -->
+        <Border Grid.Row="0" Background="#89b4fa" CornerRadius="0"/>
+
+        <!-- ── Toolbar ─────────────────────────────────────────────────────── -->
+        <Border Grid.Row="1">
+            <Border.Background>
+                <SolidColorBrush Color="{DynamicResource Surface0}" Opacity="0.85"/>
+            </Border.Background>
+
+            <Grid Margin="8,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: icon + file name -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" >
+                    <TextBlock Text="⌨" FontSize="14" Foreground="#89b4fa" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Medium"
+                               Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"
+                               MaxWidth="200" TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding CurrentFilePath}"/>
+                    <!-- Dirty indicator -->
+                    <Ellipse Width="6" Height="6" Fill="#fab387" VerticalAlignment="Center"
+                             Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}"/>
+                </StackPanel>
+
+                <!-- Center: language selector -->
+                <ComboBox Grid.Column="1" x:Name="LanguageCombo"
+                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Width="110" Height="24"
+                          FontSize="11"
+                          SelectionChanged="OnLanguageSelectionChanged"/>
+
+                <!-- Right: action buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal"  VerticalAlignment="Center">
+
+                    <!-- Open file -->
+                    <Button Content="📂" ToolTip="Abrir arquivo (Ctrl+O)"
+                            Command="{Binding OpenFileCommand}"
+                            Width="26" Height="26" Cursor="Hand"
+                            Style="{StaticResource IconButton}"/>
+
+                    <!-- Save -->
+                    <Button Content="💾" ToolTip="Salvar (Ctrl+S)"
+                            Command="{Binding SaveFileCommand}"
+                            Width="26" Height="26" Cursor="Hand"
+                            Style="{StaticResource IconButton}"/>
+
+                    <!-- Format -->
+                    <Button x:Name="FormatBtn" Content="✨" ToolTip="Formatar documento (Shift+Alt+F)"
+                            Width="26" Height="26" Cursor="Hand" Click="OnFormatClick"
+                            Style="{StaticResource IconButton}"/>
+
+                    <!-- Send to AI -->
+                    <Button Content="🤖" ToolTip="Enviar para IA"
+                            Command="{Binding SendToAICommand}"
+                            Width="26" Height="26" Cursor="Hand"
+                            Style="{StaticResource IconButton}"/>
+
+                    <!-- Toggle minimap -->
+                    <ToggleButton x:Name="MinimapBtn" Content="🗺" ToolTip="Minimap"
+                                  IsChecked="{Binding ShowMinimap}"
+                                  Width="26" Height="26" Cursor="Hand"
+                                  Checked="OnMinimapToggle" Unchecked="OnMinimapToggle"
+                                  Style="{StaticResource IconToggleBtn}"/>
+
+                    <!-- Toggle word wrap -->
+                    <ToggleButton x:Name="WrapBtn" Content="↵" ToolTip="Word wrap"
+                                  IsChecked="{Binding WordWrap}"
+                                  Width="26" Height="26" Cursor="Hand"
+                                  Checked="OnWordWrapToggle" Unchecked="OnWordWrapToggle"
+                                  Style="{StaticResource IconToggleBtn}"/>
+
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ── Monaco WebView2 ────────────────────────────────────────────── -->
+        <Grid Grid.Row="2">
+            <!-- Loading overlay -->
+            <Border x:Name="LoadingOverlay" Background="#1e1e2e"
+                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" >
+                    <TextBlock Text="⌨" FontSize="32" HorizontalAlignment="Center" Opacity="0.4"/>
+                    <TextBlock Text="Carregando editor..." FontSize="13"
+                               Foreground="{DynamicResource SubtextBrush}"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Monaco editor -->
+            <wv2:WebView2 x:Name="Monaco"
+                          NavigationCompleted="OnNavigationCompleted"
+                          WebMessageReceived="OnWebMessageReceived"/>
+        </Grid>
+
+        <!-- ── Status bar ─────────────────────────────────────────────────── -->
+        <Border Grid.Row="3">
+            <Border.Background>
+                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.9"/>
+            </Border.Background>
+
+            <Grid Margin="8,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="{Binding StatusText}"
+                           FontSize="11"
+                           Foreground="{DynamicResource SubtextBrush}"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"/>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal"  VerticalAlignment="Center">
+                    <TextBlock FontSize="11" Foreground="{DynamicResource SubtextBrush}">
+                        <Run Text="Ln "/>
+                        <Run Text="{Binding CursorLine, Mode=OneWay}"/>
+                        <Run Text=", Col "/>
+                        <Run Text="{Binding CursorColumn, Mode=OneWay}"/>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+    </Grid>
+</UserControl>
+

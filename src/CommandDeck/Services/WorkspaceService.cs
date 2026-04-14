@@ -84,6 +84,28 @@ public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspa
         return item;
     }
 
+    public CodeEditorCanvasItemViewModel AddCodeEditorTile(double x = 40, double y = 40)
+    {
+        var (cx, cy) = x == 40 && y == 40 ? NextCascadePosition() : (x, y);
+        var item = _factory.CreateCodeEditorItem(cx, cy);
+        item.ZIndex = _nextZIndex++;
+        Items.Add(item);
+        WorkspaceChanged?.Invoke();
+        ScheduleAutoSave();
+        return item;
+    }
+
+    public FileExplorerCanvasItemViewModel AddFileExplorerTile(double x = 40, double y = 40)
+    {
+        var (cx, cy) = x == 40 && y == 40 ? NextCascadePosition() : (x, y);
+        var item = _factory.CreateFileExplorerItem(cx, cy);
+        item.ZIndex = _nextZIndex++;
+        Items.Add(item);
+        WorkspaceChanged?.Invoke();
+        ScheduleAutoSave();
+        return item;
+    }
+
     public bool HasWidget(WidgetType type)
         => Items.OfType<WidgetCanvasItemViewModel>().Any(w => w.WidgetType == type);
 
@@ -174,6 +196,12 @@ public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspa
     }
 
     // ─── Clear / Restore ──────────────────────────────────────────────────────
+
+    public void NotifyChanged()
+    {
+        WorkspaceChanged?.Invoke();
+        ScheduleAutoSave();
+    }
 
     public void ClearAll()
     {

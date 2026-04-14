@@ -482,6 +482,18 @@ public partial class TerminalCanvasViewModel : ObservableObject
         _workspaceService.AddChatTile(canvasX, canvasY);
     }
 
+    /// <summary>Adds a Code Editor widget to the canvas at the given position.</summary>
+    public void AddCodeEditorWidget(double canvasX = 40, double canvasY = 40)
+    {
+        _workspaceService.AddCodeEditorTile(canvasX, canvasY);
+    }
+
+    /// <summary>Adds a File Explorer widget to the canvas at the given position.</summary>
+    public void AddFileExplorerWidget(double canvasX = 40, double canvasY = 40)
+    {
+        _workspaceService.AddFileExplorerTile(canvasX, canvasY);
+    }
+
     /// <summary>Adds a System Monitor widget to the canvas at the given position.</summary>
     public void AddSystemMonitorWidget(double canvasX = 40, double canvasY = 40)
     {
@@ -744,4 +756,197 @@ public partial class TerminalCanvasViewModel : ObservableObject
             HasWallpaper = false;
         }
     }
+
+    /// <summary>Removes any canvas item by reference.</summary>
+    public void RemoveItem(CanvasItemViewModel item)
+    {
+        _workspaceService.RemoveItem(item.Model.Id);
+    }
+
+    /// <summary>Triggers fit-all (fires FitAllRequested → View animates).</summary>
+    public void RequestFitAll() => FitAllRequested?.Invoke();
+
+    /// <summary>Adds a Git widget at the given canvas coordinates.</summary>
+    public void AddGitWidget(double canvasX = 40, double canvasY = 40)
+    {
+        var item = _workspaceService.AddWidgetItem(WidgetType.Git);
+        item.X = canvasX;
+        item.Y = canvasY;
+    }
+
+    // ─── Fase 3.5: Arrange commands ──────────────────────────────────────────
+
+    /// <summary>Aligns all selected items to the LEFT edge of the leftmost item.</summary>
+    [RelayCommand(CanExecute = nameof(HasMultipleSelected))]
+    private void AlignLeft()
+    {
+        if (SelectedItems.Count < 2) return;
+        double minX = SelectedItems.Min(i => i.X);
+        foreach (var item in SelectedItems) item.X = minX;
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Aligns all selected items to the RIGHT edge of the rightmost item.</summary>
+    [RelayCommand(CanExecute = nameof(HasMultipleSelected))]
+    private void AlignRight()
+    {
+        if (SelectedItems.Count < 2) return;
+        double maxRight = SelectedItems.Max(i => i.X + i.Width);
+        foreach (var item in SelectedItems) item.X = maxRight - item.Width;
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Aligns all selected items to the TOP edge of the topmost item.</summary>
+    [RelayCommand(CanExecute = nameof(HasMultipleSelected))]
+    private void AlignTop()
+    {
+        if (SelectedItems.Count < 2) return;
+        double minY = SelectedItems.Min(i => i.Y);
+        foreach (var item in SelectedItems) item.Y = minY;
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Aligns all selected items to the BOTTOM edge of the bottommost item.</summary>
+    [RelayCommand(CanExecute = nameof(HasMultipleSelected))]
+    private void AlignBottom()
+    {
+        if (SelectedItems.Count < 2) return;
+        double maxBottom = SelectedItems.Max(i => i.Y + i.Height);
+        foreach (var item in SelectedItems) item.Y = maxBottom - item.Height;
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Centers all selected items horizontally relative to each other.</summary>
+    [RelayCommand(CanExecute = nameof(HasMultipleSelected))]
+    private void AlignCenterH()
+    {
+        if (SelectedItems.Count < 2) return;
+        double midY = SelectedItems.Average(i => i.Y + i.Height / 2);
+        foreach (var item in SelectedItems) item.Y = midY - item.Height / 2;
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Centers all selected items vertically relative to each other.</summary>
+    [RelayCommand(CanExecute = nameof(HasMultipleSelected))]
+    private void AlignCenterV()
+    {
+        if (SelectedItems.Count < 2) return;
+        double midX = SelectedItems.Average(i => i.X + i.Width / 2);
+        foreach (var item in SelectedItems) item.X = midX - item.Width / 2;
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Distributes selected items with equal horizontal spacing.</summary>
+    [RelayCommand(CanExecute = nameof(HasMultipleSelected))]
+    private void DistributeH()
+    {
+        if (SelectedItems.Count < 3) return;
+        var sorted = SelectedItems.OrderBy(i => i.X).ToList();
+        double left  = sorted.First().X;
+        double right = sorted.Last().X + sorted.Last().Width;
+        double totalWidth = sorted.Sum(i => i.Width);
+        double gap = (right - left - totalWidth) / (sorted.Count - 1);
+        double cursor = left;
+        foreach (var item in sorted)
+        {
+            item.X = cursor;
+            cursor += item.Width + gap;
+        }
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Distributes selected items with equal vertical spacing.</summary>
+    [RelayCommand(CanExecute = nameof(HasMultipleSelected))]
+    private void DistributeV()
+    {
+        if (SelectedItems.Count < 3) return;
+        var sorted = SelectedItems.OrderBy(i => i.Y).ToList();
+        double top    = sorted.First().Y;
+        double bottom = sorted.Last().Y + sorted.Last().Height;
+        double totalHeight = sorted.Sum(i => i.Height);
+        double gap = (bottom - top - totalHeight) / (sorted.Count - 1);
+        double cursor = top;
+        foreach (var item in sorted)
+        {
+            item.Y = cursor;
+            cursor += item.Height + gap;
+        }
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Makes all selected items the same width as the first selected item.</summary>
+    [RelayCommand(CanExecute = nameof(HasMultipleSelected))]
+    private void EqualizeWidth()
+    {
+        if (SelectedItems.Count < 2) return;
+        double w = SelectedItems.First().Width;
+        foreach (var item in SelectedItems) item.Width = w;
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Makes all selected items the same height as the first selected item.</summary>
+    [RelayCommand(CanExecute = nameof(HasMultipleSelected))]
+    private void EqualizeHeight()
+    {
+        if (SelectedItems.Count < 2) return;
+        double h = SelectedItems.First().Height;
+        foreach (var item in SelectedItems) item.Height = h;
+        _workspaceService.NotifyChanged();
+    }
+
+    private bool HasMultipleSelected() => SelectedItems.Count >= 2;
+
+    // ─── Fase 3.4: Per-tile customization commands ───────────────────────────
+
+    /// <summary>Sets the accent color for all selected tiles (or a specific tile).</summary>
+    public void SetTileAccentColor(CanvasItemViewModel? tile, string? hex)
+    {
+        var targets = tile is not null
+            ? new[] { tile }
+            : SelectedItems.ToArray();
+        foreach (var t in targets)
+            t.AccentColor = hex;
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Sets the label for a specific tile.</summary>
+    public void SetTileLabel(CanvasItemViewModel tile, string? label)
+    {
+        tile.TileLabel = string.IsNullOrWhiteSpace(label) ? null : label.Trim();
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Toggles HideTitlebar for a specific tile.</summary>
+    public void ToggleTitlebar(CanvasItemViewModel tile)
+    {
+        tile.HideTitlebar = !tile.HideTitlebar;
+        _workspaceService.NotifyChanged();
+    }
+
+    // ─── Fase 3.3: Connection management ─────────────────────────────────────
+
+    /// <summary>Adds a visual Bézier connection from <paramref name="source"/> to <paramref name="targetId"/>.</summary>
+    public void AddConnection(CanvasItemViewModel source, string targetId)
+    {
+        if (!source.ConnectionTargetIds.Contains(targetId))
+        {
+            source.ConnectionTargetIds.Add(targetId);
+            source.Model.ConnectionTargetIds.Add(targetId);
+            ConnectionsChanged?.Invoke();
+            _workspaceService.NotifyChanged();
+        }
+    }
+
+    /// <summary>Removes a visual connection from <paramref name="source"/> to <paramref name="targetId"/>.</summary>
+    public void RemoveConnection(CanvasItemViewModel source, string targetId)
+    {
+        source.ConnectionTargetIds.Remove(targetId);
+        source.Model.ConnectionTargetIds.Remove(targetId);
+        ConnectionsChanged?.Invoke();
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Fired whenever connections are added or removed — View redraws the Bézier overlay.</summary>
+    public event Action? ConnectionsChanged;
 }
+

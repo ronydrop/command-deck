@@ -633,10 +633,39 @@
                   MouseUp="OnViewportMouseUp"
                   MouseLeave="OnViewportMouseLeave"
                   MouseWheel="OnViewportMouseWheel"
+                  MouseRightButtonUp="OnViewportRightClick"
                   AllowDrop="True"
                   Drop="OnViewportDrop"
                   DragOver="OnViewportDragOver"
                   Cursor="Arrow">
+
+                <Grid.ContextMenu>
+                    <ContextMenu x:Name="CanvasContextMenu" Opened="OnCanvasContextMenuOpened">
+                        <!-- Add tiles section -->
+                        <MenuItem Header="➕ Novo Terminal"       Click="OnContextAddTerminal"/>
+                        <MenuItem Header="💬 Chat IA"             Click="OnContextAddChat"/>
+                        <MenuItem Header="⌨ Editor de Código"     Click="OnContextAddCodeEditor"/>
+                        <MenuItem Header="📁 Explorador de Arquivos" Click="OnContextAddFileExplorer"/>
+                        <MenuItem Header="📝 Nota"               Click="OnContextAddNote"/>
+                        <MenuItem Header="📊 Git"                Click="OnContextAddGit"/>
+                        <Separator/>
+                        <!-- Canvas actions -->
+                        <MenuItem Header="🎯 Centralizar Tudo (Home)" Click="OnContextFitAll"/>
+                        <MenuItem Header="📷 Capturar Canvas"         Click="OnContextCapture"/>
+                        <Separator/>
+                        <!-- Selection actions (only visible when items are selected) -->
+                        <MenuItem x:Name="CtxDeleteSelected" Header="🗑 Excluir Selecionados"
+                                  Click="OnContextDeleteSelected"/>
+                        <MenuItem x:Name="CtxColorPicker"   Header="🎨 Cor do Tile"
+                                  Click="OnContextColorPicker"/>
+                        <MenuItem x:Name="CtxSetLabel"      Header="🏷 Renomear Tile"
+                                  Click="OnContextSetLabel"/>
+                        <MenuItem x:Name="CtxToggleTitlebar" Header="👁 Ocultar/Mostrar Barra"
+                                  Click="OnContextToggleTitlebar"/>
+                        <MenuItem x:Name="CtxConnect"        Header="🔗 Conectar Tiles"
+                                  Click="OnContextConnect"/>
+                    </ContextMenu>
+                </Grid.ContextMenu>
 
                 <!-- ── Wallpaper background layer (hidden in tiled mode) ── -->
                 <Image Source="{Binding CanvasViewModel.WallpaperSource}"
@@ -758,6 +787,15 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!-- Bézier connection overlay — rendered above tiles, no hit-testing -->
+                    <ctrl:CanvasConnectionOverlay
+                        x:Name="ConnectionOverlay"
+                        IsHitTestVisible="False"
+                        Panel.ZIndex="50"
+                        Width="10000" Height="10000"
+                        Canvas.Left="-5000" Canvas.Top="-5000" />
+
                 </Canvas>
 
                 <!-- Proximity glow — radial soft light that follows the cursor (viewport-space) -->
@@ -819,6 +857,115 @@
                     DataContext="{Binding CanvasViewModel.MiniMap}"
                     HasTerminals="{Binding DataContext.CanvasViewModel.HasTerminals,
                                           RelativeSource={RelativeSource AncestorType=UserControl}}" />
+
+                <!-- ── Arrange Toolbar — floats top-center when ≥2 items selected ── -->
+                <Border x:Name="ArrangeToolbar"
+                        HorizontalAlignment="Center" VerticalAlignment="Top"
+                        Margin="0,10,0,0"
+                        Panel.ZIndex="110"
+                        CornerRadius="8"
+                        Padding="6,4"
+                        BorderThickness="1">
+                    <Border.Background>
+                        <SolidColorBrush Color="{DynamicResource Surface0}" Opacity="0.96"/>
+                    </Border.Background>
+                    <Border.BorderBrush>
+                        <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.6"/>
+                    </Border.BorderBrush>
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="12" ShadowDepth="3" Opacity="0.35" Color="#000000"/>
+                    </Border.Effect>
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanvasViewModel.SelectedCount}"
+                                             Value="0">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Selection count badge -->
+                        <Border Background="#30cba6f7" CornerRadius="4" Padding="5,1" Margin="0,0,6,0"
+                                VerticalAlignment="Center">
+                            <TextBlock FontSize="11" Foreground="{DynamicResource SubtextBrush}">
+                                <Run Text="{Binding CanvasViewModel.SelectedCount, Mode=OneWay}"/>
+                                <Run Text=" selecionados"/>
+                            </TextBlock>
+                        </Border>
+
+                        <!-- Separator -->
+                        <Separator Width="1" Margin="2,2" Background="{DynamicResource Surface2Brush}"/>
+
+                        <!-- Align Left -->
+                        <Button Content="⬤◻◻" ToolTip="Alinhar à esquerda"
+                                Command="{Binding CanvasViewModel.AlignLeftCommand}"
+                                Width="28" Height="24" FontSize="9" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0"/>
+                        <!-- Align Right -->
+                        <Button Content="◻◻⬤" ToolTip="Alinhar à direita"
+                                Command="{Binding CanvasViewModel.AlignRightCommand}"
+                                Width="28" Height="24" FontSize="9" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0"/>
+                        <!-- Align Top -->
+                        <Button Content="⬛" ToolTip="Alinhar ao topo"
+                                Command="{Binding CanvasViewModel.AlignTopCommand}"
+                                Width="28" Height="24" FontSize="10" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0"/>
+                        <!-- Align Bottom -->
+                        <Button Content="⬛" ToolTip="Alinhar à base"
+                                Command="{Binding CanvasViewModel.AlignBottomCommand}"
+                                Width="28" Height="24" FontSize="10" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0"/>
+                        <!-- Center H -->
+                        <Button Content="↕" ToolTip="Centralizar verticalmente"
+                                Command="{Binding CanvasViewModel.AlignCenterHCommand}"
+                                Width="28" Height="24" FontSize="14" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0"/>
+                        <!-- Center V -->
+                        <Button Content="↔" ToolTip="Centralizar horizontalmente"
+                                Command="{Binding CanvasViewModel.AlignCenterVCommand}"
+                                Width="28" Height="24" FontSize="14" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0"/>
+
+                        <Separator Width="1" Margin="2,2" Background="{DynamicResource Surface2Brush}"/>
+
+                        <!-- Distribute H -->
+                        <Button Content="⇹" ToolTip="Distribuir horizontalmente"
+                                Command="{Binding CanvasViewModel.DistributeHCommand}"
+                                Width="28" Height="24" FontSize="13" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0"/>
+                        <!-- Distribute V -->
+                        <Button Content="⇳" ToolTip="Distribuir verticalmente"
+                                Command="{Binding CanvasViewModel.DistributeVCommand}"
+                                Width="28" Height="24" FontSize="13" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0"/>
+
+                        <Separator Width="1" Margin="2,2" Background="{DynamicResource Surface2Brush}"/>
+
+                        <!-- Equalize Width -->
+                        <Button Content="↔=" ToolTip="Igualar largura"
+                                Command="{Binding CanvasViewModel.EqualizeWidthCommand}"
+                                Width="30" Height="24" FontSize="10" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0"/>
+                        <!-- Equalize Height -->
+                        <Button Content="↕=" ToolTip="Igualar altura"
+                                Command="{Binding CanvasViewModel.EqualizeHeightCommand}"
+                                Width="30" Height="24" FontSize="10" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0"/>
+
+                        <Separator Width="1" Margin="2,2" Background="{DynamicResource Surface2Brush}"/>
+
+                        <!-- Deselect all -->
+                        <Button Content="✕" ToolTip="Desselecionar tudo (Esc)"
+                                Click="OnClearSelectionClick"
+                                Width="24" Height="24" FontSize="10" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0"/>
+                    </StackPanel>
+                </Border>
 
                 <!-- Lock overlay: covers canvas when no terminals exist, blocks interaction -->
                 <Border x:Name="CanvasLockOverlay"

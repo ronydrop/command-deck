@@ -211,6 +211,10 @@ public partial class TerminalCanvasView : UserControl
             _canvasVm.FitAllRequested     += OnFitAllRequested;
             _canvasVm.ExitFocusModeRequested += OnExitFocusModeRequested;
             _canvasVm.LayoutModeChanged += OnLayoutModeChanged;
+            _canvasVm.ConnectionsChanged += RefreshConnectionOverlay;
+
+            // Refresh connections when items move
+            _canvasVm.Items.CollectionChanged += (_, _) => RefreshConnectionOverlay();
 
             // Read zoom mode from settings and react to changes
             _zoomRequiresCtrl = _canvasVm.ZoomRequiresCtrl;
@@ -1506,5 +1510,120 @@ public partial class TerminalCanvasView : UserControl
         {
             System.Diagnostics.Debug.WriteLine($"[AiContinuation:{type}] {ex.Message}");
         }
+    }
+
+    // ─── Arrange toolbar ─────────────────────────────────────────────────────
+
+    private void OnClearSelectionClick(object sender, RoutedEventArgs e)
+        => _canvasVm?.ClearSelection();
+
+    // ─── Context menu (canvas right-click) ───────────────────────────────────
+
+    // Stores the canvas-space point where the right-click occurred (for placing new tiles)
+    private System.Windows.Point _contextMenuCanvasPoint;
+
+    private void OnViewportRightClick(object sender, MouseButtonEventArgs e)
+    {
+        // Store click position for placing new tiles
+        _contextMenuCanvasPoint = ViewportToCanvas(e.GetPosition(ViewportArea));
+    }
+
+    private void OnCanvasContextMenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (_canvasVm is null) return;
+        bool hasSelection = _canvasVm.SelectedCount > 0;
+        CtxDeleteSelected.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;
+        CtxColorPicker.Visibility    = hasSelection ? Visibility.Visible : Visibility.Collapsed;
+        CtxSetLabel.Visibility       = hasSelection ? Visibility.Visible : Visibility.Collapsed;
+        CtxToggleTitlebar.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;
+        CtxConnect.Visibility        = _canvasVm.SelectedCount >= 2 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnContextAddTerminal(object sender, RoutedEventArgs e)
+    {
+        // Delegate to MainViewModel's NewTerminalCommand
+        _mainVm?.NewTerminalCommand?.Execute(null);
+    }
+
+    private void OnContextAddChat(object sender, RoutedEventArgs e)
+        => _canvasVm?.AddChatWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
+
+    private void OnContextAddCodeEditor(object sender, RoutedEventArgs e)
+        => _canvasVm?.AddCodeEditorWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
+
+    private void OnContextAddFileExplorer(object sender, RoutedEventArgs e)
+        => _canvasVm?.AddFileExplorerWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
+
+    private void OnContextAddNote(object sender, RoutedEventArgs e)
+        => _canvasVm?.AddNoteWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
+
+    private void OnContextAddGit(object sender, RoutedEventArgs e)
+        => _canvasVm?.AddGitWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
+
+    private void OnContextFitAll(object sender, RoutedEventArgs e)
+        => _canvasVm?.RequestFitAll();
+
+    private void OnContextCapture(object sender, RoutedEventArgs e) { /* TODO: implementar captura */ }
+
+    private void OnContextDeleteSelected(object sender, RoutedEventArgs e)
+    {
+        if (_canvasVm is null) return;
+        var toDelete = _canvasVm.SelectedItems.ToList();
+        _canvasVm.ClearSelection();
+        foreach (var item in toDelete)
+            _canvasVm.RemoveItem(item);
+    }
+
+    private void OnContextColorPicker(object sender, RoutedEventArgs e)
+    {
+        if (_canvasVm is null || _canvasVm.SelectedCount == 0) return;
+        var popup = new ColorPickerPopup();
+        popup.ColorSelected += hex => _canvasVm.SetTileAccentColor(null, hex);
+        popup.PlacementTarget = ViewportArea;
+        popup.IsOpen = true;
+    }
+
+    private void OnContextSetLabel(object sender, RoutedEventArgs e)
+    {
+        if (_canvasVm is null || _canvasVm.SelectedCount == 0) return;
+        var first = _canvasVm.SelectedItems.First();
+        var dialog = new TileLabelDialog(first.TileLabel ?? "");
+        if (dialog.ShowDialog() == true && dialog.NewLabel is not null)
+            _canvasVm.SetTileLabel(first, dialog.NewLabel);
+    }
+
+    private void OnContextToggleTitlebar(object sender, RoutedEventArgs e)
+    {
+        if (_canvasVm is null) return;
+        foreach (var item in _canvasVm.SelectedItems.ToList())
+            _canvasVm.ToggleTitlebar(item);
+    }
+
+    private void OnContextConnect(object sender, RoutedEventArgs e)
+    {
+        if (_canvasVm is null || _canvasVm.SelectedCount < 2) return;
+        var items = _canvasVm.SelectedItems.ToList();
+        for (int i = 0; i < items.Count - 1; i++)
+            _canvasVm.AddConnection(items[i], items[i + 1].Id);
+        RefreshConnectionOverlay();
+    }
+
+    // ─── Connections overlay ─────────────────────────────────────────────────
+
+    private void RefreshConnectionOverlay()
+    {
+        if (_canvasVm is null) return;
+        ConnectionOverlay.Refresh(_canvasVm.Items);
+    }
+
+    /// <summary>Converts a viewport-space point to canvas (world) space.</summary>
+    private System.Windows.Point ViewportToCanvas(System.Windows.Point viewportPoint)
+    {
+        double zoom = CanvasScale.ScaleX;
+        double ox = CanvasTranslate.X;
+        double oy = CanvasTranslate.Y;
+        return new System.Windows.Point(
+            (viewportPoint.X - ox) / zoom,
+            (viewportPoint.Y - oy) / zoom);
     }
 }

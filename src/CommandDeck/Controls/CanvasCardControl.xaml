@@ -118,6 +118,19 @@
                     <ctrl:PomodoroWidgetControl DataContext="{Binding}" />
                 </DataTemplate>
             </ctrl:CanvasItemContentTemplateSelector.PomodoroWidgetTemplate>
+
+            <ctrl:CanvasItemContentTemplateSelector.CodeEditorWidgetTemplate>
+                <DataTemplate DataType="{x:Type vm:CodeEditorCanvasItemViewModel}">
+                    <ctrl:CodeEditorWidgetControl DataContext="{Binding}" />
+                </DataTemplate>
+            </ctrl:CanvasItemContentTemplateSelector.CodeEditorWidgetTemplate>
+
+            <ctrl:CanvasItemContentTemplateSelector.FileExplorerWidgetTemplate>
+                <DataTemplate DataType="{x:Type vm:FileExplorerCanvasItemViewModel}">
+                    <ctrl:FileExplorerWidgetControl DataContext="{Binding}" />
+                </DataTemplate>
+            </ctrl:CanvasItemContentTemplateSelector.FileExplorerWidgetTemplate>
+
         </ctrl:CanvasItemContentTemplateSelector>
 
     </UserControl.Resources>
@@ -324,12 +337,25 @@
             <Grid x:Name="ContentGrid"
                   SizeChanged="OnContentGridSizeChanged">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="32" />
+                    <!-- Accent color strip (3px) -->
+                    <RowDefinition Height="3" />
+                    <!-- Title bar (0 when HideTitlebar) -->
+                    <RowDefinition x:Name="TitleBarRow" Height="32" />
+                    <!-- Content -->
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
+                <!-- ─── Top accent color strip ─────────────────────────────────── -->
+                <Border Grid.Row="0" x:Name="AccentStrip" CornerRadius="8,8,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                        </Style>
+                    </Border.Style>
+                </Border>
+
                 <!-- ─── Title bar ──────────────────────────────────────────────── -->
-                <Grid Grid.Row="0"
+                <Grid Grid.Row="1"
                       x:Name="TitleBar"
                       Background="{DynamicResource GlassTitleBarBrush}"
                       Cursor="SizeAll"
@@ -579,26 +605,37 @@
                             </Button.Template>
                         </Button>
 
-                        <!-- Title text -->
-                        <TextBlock Text="{Binding Title}"
+                        <!-- Title text: shows TileLabel when set, otherwise default Title -->
+                        <TextBlock x:Name="CardTitleText"
                                    FontSize="12"
                                    FontFamily="{StaticResource MonoFont}"
                                    Foreground="{DynamicResource TextBrush}"
                                    VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis" />
+                                   TextTrimming="CharacterEllipsis">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="{Binding Title}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding TileLabel}" Value="{x:Null}">
+                                            <Setter Property="Text" Value="{Binding Title}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
 
                     </DockPanel>
                 </Grid>
 
                 <!-- ─── Content area ───────────────────────────────────────────── -->
-                <ContentControl Grid.Row="1"
+                <ContentControl Grid.Row="2"
                                 Content="{Binding}"
                                 ContentTemplateSelector="{StaticResource ContentSelector}"
                                 Focusable="False"
                                 ClipToBounds="True" />
 
                 <!-- ─── Resize handle: right edge (horizontal only) ──────────── -->
-                <Thumb Grid.Row="0" Grid.RowSpan="2"
+                <Thumb Grid.Row="0" Grid.RowSpan="3"
                        x:Name="ResizeThumbRight"
                        Width="6"
                        HorizontalAlignment="Right"
@@ -640,7 +677,7 @@
                 </Thumb>
 
                 <!-- ─── Resize handle: bottom edge (vertical only) ────────────── -->
-                <Thumb Grid.Row="1"
+                <Thumb Grid.Row="2"
                        x:Name="ResizeThumbBottom"
                        Height="6"
                        HorizontalAlignment="Stretch"
@@ -682,7 +719,7 @@
                 </Thumb>
 
                 <!-- ─── Resize handle (bottom-right) — 3 diagonal lines ───────── -->
-                <Thumb Grid.Row="1"
+                <Thumb Grid.Row="2"
                        x:Name="ResizeThumb"
                        Width="18" Height="18"
                        HorizontalAlignment="Right"
@@ -740,7 +777,7 @@
                 </Thumb>
 
                 <!-- ─── Size indicator overlay (shown during resize) ──────────── -->
-                <Border Grid.Row="1"
+                <Border Grid.Row="2"
                         x:Name="SizeIndicator"
                         Background="#CC1E1E2E"
                         CornerRadius="4"

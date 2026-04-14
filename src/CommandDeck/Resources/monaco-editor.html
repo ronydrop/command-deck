@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monaco Editor</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #1e1e2e; }
+    #container { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.47.0/min/vs/loader.min.js"></script>
+  <script>
+    // ─── Config from host ────────────────────────────────────────────────────
+    var _initialContent  = '';
+    var _initialLanguage = 'plaintext';
+    var _theme           = 'vs-dark';
+    var _fontSize        = 13;
+    var _showMinimap     = true;
+    var _wordWrap        = false;
+    var _editor          = null;
+    var _ignoreNextChange = false;
+
+    // ─── Catppuccin Mocha theme ──────────────────────────────────────────────
+    function registerTheme(monaco) {
+      monaco.editor.defineTheme('catppuccin-mocha', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [
+          { token: 'comment',     foreground: '6c7086', fontStyle: 'italic' },
+          { token: 'keyword',     foreground: 'cba6f7' },
+          { token: 'string',      foreground: 'a6e3a1' },
+          { token: 'number',      foreground: 'fab387' },
+          { token: 'type',        foreground: '89dceb' },
+          { token: 'class',       foreground: 'f9e2af' },
+          { token: 'function',    foreground: '89b4fa' },
+          { token: 'variable',    foreground: 'cdd6f4' },
+          { token: 'identifier',  foreground: 'cdd6f4' },
+          { token: 'delimiter',   foreground: '89dceb' },
+        ],
+        colors: {
+          'editor.background':          '#1e1e2e',
+          'editor.foreground':          '#cdd6f4',
+          'editor.lineHighlightBackground': '#313244',
+          'editorLineNumber.foreground':   '#45475a',
+          'editorLineNumber.activeForeground': '#cba6f7',
+          'editor.selectionBackground':    '#45475a',
+          'editorCursor.foreground':       '#f5c2e7',
+          'editorIndentGuide.background1': '#313244',
+          'editorIndentGuide.activeBackground1': '#585b70',
+          'scrollbar.shadow':              '#00000000',
+          'scrollbarSlider.background':    '#45475a88',
+          'scrollbarSlider.hoverBackground':'#585b70aa',
+          'minimap.background':            '#181825',
+        }
+      });
+    }
+
+    // ─── Bootstrap ───────────────────────────────────────────────────────────
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.47.0/min/vs' } });
+
+    require(['vs/editor/editor.main'], function (monaco) {
+      registerTheme(monaco);
+
+      _editor = monaco.editor.create(document.getElementById('container'), {
+        value:        _initialContent,
+        language:     _initialLanguage,
+        theme:        'catppuccin-mocha',
+        fontSize:     _fontSize,
+        fontFamily:   "'JetBrainsMono Nerd Font', 'Cascadia Code', 'Fira Code', Consolas, monospace",
+        fontLigatures: true,
+        minimap:      { enabled: _showMinimap },
+        wordWrap:     _wordWrap ? 'on' : 'off',
+        scrollBeyondLastLine: false,
+        renderLineHighlight: 'all',
+        automaticLayout: true,
+        padding: { top: 8, bottom: 8 },
+        scrollbar: {
+          verticalScrollbarSize: 6,
+          horizontalScrollbarSize: 6,
+          useShadows: false,
+        },
+        suggest: { preview: true },
+        bracketPairColorization: { enabled: true },
+        smoothScrolling: true,
+        cursorBlinking: 'smooth',
+        cursorSmoothCaretAnimation: 'on',
+        roundedSelection: true,
+      });
+
+      // ─── Notify host on content change ────────────────────────────────────
+      _editor.onDidChangeModelContent(function () {
+        if (_ignoreNextChange) { _ignoreNextChange = false; return; }
+        var content = _editor.getValue();
+        window.chrome.webview.postMessage(JSON.stringify({ type: 'contentChanged', content: content }));
+      });
+
+      // ─── Notify host on cursor change ─────────────────────────────────────
+      _editor.onDidChangeCursorPosition(function (e) {
+        window.chrome.webview.postMessage(JSON.stringify({
+          type: 'cursorChanged',
+          line:   e.position.lineNumber,
+          column: e.position.column
+        }));
+      });
+
+      // ─── Ready signal ─────────────────────────────────────────────────────
+      window.chrome.webview.postMessage(JSON.stringify({ type: 'ready' }));
+    });
+
+    // ─── Host → WebView API ──────────────────────────────────────────────────
+
+    window.setContent = function (content, language) {
+      if (!_editor) return;
+      _ignoreNextChange = true;
+      var model = _editor.getModel();
+      if (language && model) {
+        var monaco = window.monaco;
+        monaco.editor.setModelLanguage(model, language);
+      }
+      _editor.setValue(content || '');
+    };
+
+    window.setLanguage = function (language) {
+      if (!_editor) return;
+      var model = _editor.getModel();
+      if (model) window.monaco.editor.setModelLanguage(model, language);
+    };
+
+    window.setOption = function (key, value) {
+      if (!_editor) return;
+      var opts = {};
+      opts[key] = value;
+      _editor.updateOptions(opts);
+    };
+
+    window.insertText = function (text) {
+      if (!_editor) return;
+      _editor.executeEdits('host', [{
+        range: _editor.getSelection(),
+        text:  text,
+        forceMoveMarkers: true
+      }]);
+    };
+
+    window.formatDocument = function () {
+      if (!_editor) return;
+      _editor.getAction('editor.action.formatDocument').run();
+    };
+
+    window.focusEditor = function () {
+      if (_editor) _editor.focus();
+    };
+  </script>
+</body>
+</html>

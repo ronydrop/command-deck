@@ -14,6 +14,8 @@ public class TerminalService : ITerminalService, IDisposable
     private readonly ConcurrentDictionary<string, ConPtyHelper.ConPtySession> _conPtySessions = new();
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _readCancellations = new();
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _closeLocks = new();
+    private readonly IEventBusService _eventBus;
+    private readonly ITileContextService _tileContext;
 
     public event Action<string, string>? OutputReceived;
     public event Action<TerminalSession>? SessionCreated;
@@ -21,6 +23,12 @@ public class TerminalService : ITerminalService, IDisposable
 #pragma warning disable CS0067
     public event Action<string, string>? TitleChanged;
 #pragma warning restore CS0067
+
+    public TerminalService(IEventBusService eventBus, ITileContextService tileContext)
+    {
+        _eventBus = eventBus;
+        _tileContext = tileContext;
+    }
 
     public async Task<TerminalSession> CreateSessionAsync(
         ShellType shellType,
@@ -59,6 +67,7 @@ public class TerminalService : ITerminalService, IDisposable
             _sessions[session.Id] = session;
             _conPtySessions[session.Id] = conPtySession;
             SessionCreated?.Invoke(session);
+            _eventBus.Publish(BusEventType.Terminal_SessionCreated, session, source: session.Id);
 
             // Start reading output asynchronously
             var cts = new CancellationTokenSource();
@@ -72,6 +81,10 @@ public class TerminalService : ITerminalService, IDisposable
                     await ConPtyHelper.ReadOutputAsync(conPtySession, output =>
                     {
                         OutputReceived?.Invoke(session.Id, output);
+                        _eventBus.Publish(BusEventType.Terminal_OutputReceived,
+                            new { SessionId = session.Id, Output = output }, source: session.Id);
+                        _tileContext.Set(TileContextKeys.TerminalLastOutput, output,
+                            sourceTileId: session.Id, sourceLabel: session.Title);
                     }, cts.Token);
                 }
                 catch (OperationCanceledException)
@@ -87,6 +100,7 @@ public class TerminalService : ITerminalService, IDisposable
                     // Always mark session as stopped and notify subscribers
                     session.Status = TerminalStatus.Stopped;
                     SessionExited?.Invoke(session.Id);
+                    _eventBus.Publish(BusEventType.Terminal_SessionExited, session.Id, source: session.Id);
                 }
             });
         }

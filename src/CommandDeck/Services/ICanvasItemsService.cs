@@ -33,6 +33,12 @@ public interface ICanvasItemsService
     /// <summary>Creates and registers a dedicated chat tile (supports multiple instances).</summary>
     ChatCanvasItemViewModel AddChatTile(double x = 40, double y = 40);
 
+    /// <summary>Creates and registers a Code Editor tile.</summary>
+    CodeEditorCanvasItemViewModel AddCodeEditorTile(double x = 40, double y = 40);
+
+    /// <summary>Creates and registers a File Explorer tile.</summary>
+    FileExplorerCanvasItemViewModel AddFileExplorerTile(double x = 40, double y = 40);
+
     /// <summary>Toggles a singleton widget: removes it if it exists, adds it if it doesn't.</summary>
     void ToggleWidgetItem(WidgetType type, double? fixedX = null, double? fixedY = null);
 
@@ -59,6 +65,9 @@ public interface ICanvasItemsService
 
     /// <summary>Adds a pre-built item (restored from saved layout) without recalculating position.</summary>
     void AddRestoredItem(CanvasItemViewModel item);
+
+    /// <summary>Manually triggers a workspace-changed notification (auto-save + minimap refresh).</summary>
+    void NotifyChanged();
 
     // ─── Events ───────────────────────────────────────────────────────────────
 
