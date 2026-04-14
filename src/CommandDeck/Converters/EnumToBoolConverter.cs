@@ -20,11 +20,14 @@ public class EnumToBoolConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
+        // Only update the source when the RadioButton becomes checked (true).
+        // When it becomes unchecked (false), do nothing — the other RadioButton
+        // will fire its own ConvertBack and update the source.
         if (value is bool b && b && parameter != null)
         {
             try { return Enum.Parse(targetType, parameter.ToString()!); }
-            catch { /* fall through */ }
+            catch { /* fall through to DoNothing */ }
         }
-        return DependencyProperty.UnsetValue;
+        return Binding.DoNothing;
     }
 }

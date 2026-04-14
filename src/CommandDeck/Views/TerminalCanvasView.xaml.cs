@@ -222,7 +222,13 @@ public partial class TerminalCanvasView : UserControl
             {
                 if (args.PropertyName == nameof(TerminalCanvasViewModel.ZoomRequiresCtrl))
                     _zoomRequiresCtrl = _canvasVm.ZoomRequiresCtrl;
+                if (args.PropertyName == nameof(TerminalCanvasViewModel.CameraZoom))
+                    ApplyZoomImmunity(_canvasVm.CameraZoom);
             };
+
+            // Also apply immunity when new items are added to the canvas
+            _canvasVm.Items.CollectionChanged += (_, _) =>
+                Dispatcher.InvokeAsync(() => ApplyZoomImmunity(CanvasScale.ScaleX), DispatcherPriority.Loaded);
         }
 
 
@@ -619,6 +625,38 @@ public partial class TerminalCanvasView : UserControl
     }
 
     // ─── Zoom (Scroll / Ctrl+Scroll) ───────────────────────────────────────
+
+    // ─── Zoom-immune items ────────────────────────────────────────────────────
+    //
+    // Browser tiles (IsZoomImmune=true) get an inverse ScaleTransform applied to
+    // their ItemsControl container so the card keeps its original on-screen size
+    // regardless of the canvas zoom level. The inverse is recomputed every time
+    // CameraZoom changes (including every frame of the smooth-zoom lerp).
+
+    private void ApplyZoomImmunity(double zoom)
+    {
+        if (ItemsHost is null) return;
+        var scale = zoom > 0 ? 1.0 / zoom : 1.0;
+
+        foreach (var item in ItemsHost.Items)
+        {
+            if (item is not CanvasItemViewModel vm || !vm.IsZoomImmune) continue;
+
+            var container = ItemsHost.ItemContainerGenerator.ContainerFromItem(item) as ContentPresenter;
+            if (container is null) continue;
+
+            container.RenderTransformOrigin = new Point(0, 0);
+            if (container.RenderTransform is ScaleTransform st)
+            {
+                st.ScaleX = scale;
+                st.ScaleY = scale;
+            }
+            else
+            {
+                container.RenderTransform = new ScaleTransform(scale, scale);
+            }
+        }
+    }
 
     private void OnViewportMouseWheel(object sender, MouseWheelEventArgs e)
     {

@@ -66,8 +66,16 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
 
     // ─── Kanban widget data ──────────────────────────────────────────────────
     [ObservableProperty] private KanbanBoard? _kanbanBoard;
-    public ObservableCollection<KanbanColumn> KanbanColumns { get; } = new();
-    public ObservableCollection<KanbanCard> KanbanCards { get; } = new();
+
+    /// <summary>
+    /// Per-column view-models driving the dynamic column layout.
+    /// Each <see cref="KanbanColumnViewModel"/> owns its cards collection.
+    /// </summary>
+    public ObservableCollection<KanbanColumnViewModel> KanbanColumnViewModels { get; } = new();
+
+    /// <summary>Total card count across all columns for the header badge.</summary>
+    public int KanbanCardCount =>
+        KanbanColumnViewModels.Sum(c => c.Cards.Count);
 
     // ─── Chat widget data ────────────────────────────────────────────────────
     [ObservableProperty] private string _chatInputText = string.Empty;
@@ -173,6 +181,8 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
 
         if (type == WidgetType.Kanban && kanbanService is not null)
         {
+            kanbanService.CardUpdated += OnKanbanCardUpdated;
+            kanbanService.CardDeleted += OnKanbanCardDeleted;
             _ = LoadKanbanBoardAsync();
         }
 
@@ -341,63 +351,202 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
     {
         if (_kanbanService is null) return;
 
-        var workspaceId = Model.Metadata.TryGetValue("workspaceId", out var wid) ? wid : "default";
-        var boardId = Model.Metadata.TryGetValue("boardId", out var bid) ? bid : null;
+        // Use the real workspace ID; fall back to "default" only if nothing is active yet
+        var workspaceId = Model.Metadata.TryGetValue("workspaceId", out var wid) && !string.IsNullOrEmpty(wid)
+            ? wid
+            : _workspaceService?.CurrentWorkspace?.Id ?? "default";
 
-        KanbanBoard? board;
-        if (boardId is not null)
-        {
-            // Board already known — just reload cards; keep existing KanbanBoard reference
-            board = KanbanBoard;
-        }
-        else
-        {
-            board = await _kanbanService.GetBoardForWorkspaceAsync(workspaceId).ConfigureAwait(false)
+        // Always reload board from DB so columns/cards are fresh on refresh
+        var board = await _kanbanService.GetBoardForWorkspaceAsync(workspaceId).ConfigureAwait(false)
                     ?? await _kanbanService.CreateBoardAsync(workspaceId).ConfigureAwait(false);
-            Model.Metadata["boardId"] = board.Id;
-        }
 
-        if (board is null) return;
+        Model.Metadata["boardId"]     = board.Id;
+        Model.Metadata["workspaceId"] = workspaceId;
+
+        var cards = await _kanbanService.GetCardsForBoardAsync(board.Id).ConfigureAwait(false);
 
         System.Windows.Application.Current?.Dispatcher.Invoke(() =>
         {
             KanbanBoard = board;
-            KanbanColumns.Clear();
-            foreach (var col in board.Columns) KanbanColumns.Add(col);
+            RebuildColumnViewModels(board.Columns, cards);
         });
-
-        await RefreshKanbanCardsAsync(board.Id).ConfigureAwait(false);
     }
 
-    public async Task RefreshKanbanCardsAsync(string boardId)
+    /// <summary>
+    /// Rebuilds <see cref="KanbanColumnViewModels"/> from the given columns and cards.
+    /// Must be called on the UI thread.
+    /// </summary>
+    private void RebuildColumnViewModels(IEnumerable<KanbanColumn> columns, IEnumerable<KanbanCard> cards)
     {
-        if (_kanbanService is null) return;
-        var cards = await _kanbanService.GetCardsForBoardAsync(boardId).ConfigureAwait(false);
-        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        KanbanColumnViewModels.Clear();
+        var colVms = columns
+            .OrderBy(c => c.SortOrder)
+            .Select(c => new KanbanColumnViewModel(c))
+            .ToList();
+
+        var cardsByColumn = cards
+            .OrderBy(c => c.SortOrder)
+            .GroupBy(c => c.ColumnId);
+
+        foreach (var group in cardsByColumn)
         {
-            KanbanCards.Clear();
-            foreach (var c in cards) KanbanCards.Add(c);
-        });
+            var colVm = colVms.FirstOrDefault(c => c.Id == group.Key);
+            if (colVm is null) continue;
+            foreach (var card in group)
+                colVm.Cards.Add(new KanbanCardViewModel(card));
+        }
+
+        foreach (var colVm in colVms)
+        {
+            colVm.Cards.CollectionChanged += (_, _) => OnPropertyChanged(nameof(KanbanCardCount));
+            KanbanColumnViewModels.Add(colVm);
+        }
+
+        OnPropertyChanged(nameof(KanbanCardCount));
     }
 
-    public async Task MoveCardAsync(string cardId, string columnId)
+    /// <summary>Refreshes only the card collections inside the existing column VMs.</summary>
+    public async Task RefreshKanbanCardsAsync()
     {
         if (_kanbanService is null || KanbanBoard is null) return;
-        await _kanbanService.MoveCardAsync(cardId, columnId).ConfigureAwait(false);
-        await RefreshKanbanCardsAsync(KanbanBoard.Id).ConfigureAwait(false);
+        var cards = await _kanbanService.GetCardsForBoardAsync(KanbanBoard.Id).ConfigureAwait(false);
+
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            if (KanbanBoard is null) return;
+            var columns = KanbanColumnViewModels.Select(c => c.Column).ToList();
+            RebuildColumnViewModels(columns, cards);
+        });
     }
 
+    /// <summary>
+    /// Moves a card to a target column and triggers the JustMoved flash animation (1.5 s).
+    /// </summary>
+    public async Task MoveCardToColumnAsync(string cardId, string targetColumnId)
+    {
+        if (_kanbanService is null || KanbanBoard is null) return;
+        await _kanbanService.MoveCardAsync(cardId, targetColumnId).ConfigureAwait(false);
+
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            // Find the card VM wherever it is and move it to the correct column
+            KanbanCardViewModel? cardVm = null;
+            KanbanColumnViewModel? sourceColVm = null;
+            foreach (var col in KanbanColumnViewModels)
+            {
+                cardVm = col.Cards.FirstOrDefault(c => c.Id == cardId);
+                if (cardVm is not null) { sourceColVm = col; break; }
+            }
+            var targetColVm = KanbanColumnViewModels.FirstOrDefault(c => c.Id == targetColumnId);
+            if (cardVm is null || targetColVm is null || sourceColVm?.Id == targetColumnId) return;
+
+            sourceColVm?.Cards.Remove(cardVm);
+            cardVm.Card.ColumnId = targetColumnId;
+            targetColVm.Cards.Add(cardVm);
+            cardVm.JustMoved = true;
+
+            // Reset the flash flag after 1.5 s
+            var timer = new System.Windows.Threading.DispatcherTimer
+                { Interval = TimeSpan.FromMilliseconds(1500) };
+            timer.Tick += (_, _) => { cardVm.JustMoved = false; timer.Stop(); };
+            timer.Start();
+
+            OnPropertyChanged(nameof(KanbanCardCount));
+        });
+    }
+
+    /// <summary>Adds a card to the specified column.</summary>
     public async Task AddCardAsync(string title, string columnId)
     {
         if (_kanbanService is null || KanbanBoard is null) return;
         var card = new KanbanCard
         {
-            BoardId = KanbanBoard.Id,
+            BoardId  = KanbanBoard.Id,
             ColumnId = columnId,
-            Title = title
+            Title    = title,
+            SortOrder = KanbanColumnViewModels
+                .FirstOrDefault(c => c.Id == columnId)?.Cards.Count ?? 0
         };
-        await _kanbanService.CreateCardAsync(card).ConfigureAwait(false);
-        await RefreshKanbanCardsAsync(KanbanBoard.Id).ConfigureAwait(false);
+        var created = await _kanbanService.CreateCardAsync(card).ConfigureAwait(false);
+
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            var colVm = KanbanColumnViewModels.FirstOrDefault(c => c.Id == columnId);
+            colVm?.Cards.Add(new KanbanCardViewModel(created));
+            OnPropertyChanged(nameof(KanbanCardCount));
+        });
+    }
+
+    /// <summary>Saves all mutable fields of an existing card.</summary>
+    public async Task SaveCardAsync(KanbanCard card)
+    {
+        if (_kanbanService is null) return;
+        await _kanbanService.UpdateCardAsync(card).ConfigureAwait(false);
+        // CardUpdated event will propagate changes to the card VM automatically
+    }
+
+    /// <summary>Deletes a card from the board.</summary>
+    public async Task DeleteCardAsync(string cardId)
+    {
+        if (_kanbanService is null) return;
+        await _kanbanService.DeleteCardAsync(cardId).ConfigureAwait(false);
+        // CardDeleted event handler removes it from the column VM collection
+    }
+
+    /// <summary>Adds a new column to the board.</summary>
+    public async Task AddColumnAsync(string title)
+    {
+        if (_kanbanService is null || KanbanBoard is null) return;
+        var column = new KanbanColumn
+        {
+            BoardId   = KanbanBoard.Id,
+            Title     = title,
+            SortOrder = KanbanColumnViewModels.Count
+        };
+        var created = await _kanbanService.CreateColumnAsync(column).ConfigureAwait(false);
+        KanbanBoard.Columns.Add(created);
+
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            var colVm = new KanbanColumnViewModel(created);
+            colVm.Cards.CollectionChanged += (_, _) => OnPropertyChanged(nameof(KanbanCardCount));
+            KanbanColumnViewModels.Add(colVm);
+        });
+    }
+
+    /// <summary>Persists a column title change after inline rename.</summary>
+    public async Task UpdateColumnAsync(KanbanColumn column)
+    {
+        if (_kanbanService is null) return;
+        await _kanbanService.UpdateColumnAsync(column).ConfigureAwait(false);
+    }
+
+    /// <summary>Deletes a column, moving its cards to the first remaining column.</summary>
+    public async Task DeleteColumnAsync(string columnId)
+    {
+        if (_kanbanService is null || KanbanBoard is null) return;
+        if (KanbanColumnViewModels.Count <= 1) return;  // guard: never delete last column
+
+        await _kanbanService.DeleteColumnAsync(columnId, KanbanBoard.Id).ConfigureAwait(false);
+
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            var toRemove = KanbanColumnViewModels.FirstOrDefault(c => c.Id == columnId);
+            if (toRemove is null) return;
+
+            // Move orphaned card VMs to the first remaining column
+            var fallback = KanbanColumnViewModels.FirstOrDefault(c => c.Id != columnId);
+            if (fallback is not null)
+                foreach (var cardVm in toRemove.Cards)
+                {
+                    cardVm.Card.ColumnId = fallback.Id;
+                    fallback.Cards.Add(cardVm);
+                }
+
+            KanbanColumnViewModels.Remove(toRemove);
+            KanbanBoard.Columns.RemoveAll(c => c.Id == columnId);
+            OnPropertyChanged(nameof(KanbanCardCount));
+        });
     }
 
     /// <summary>
@@ -416,8 +565,7 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
             await _taskAutomationService.LaunchCardAsync(KanbanBoard.Id, cardId, workDir)
                 .ConfigureAwait(false);
 
-            // Refresh to show updated card state (moved to "running")
-            await RefreshKanbanCardsAsync(KanbanBoard.Id).ConfigureAwait(false);
+            // The service fires CardUpdated which will move the card to "running" via event handler
         }
         catch (InvalidOperationException ex)
         {
@@ -435,6 +583,61 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
                 NotificationSource.Terminal,
                 ex.Message);
         }
+    }
+
+    // ─── Kanban event handlers (fired by IKanbanService) ─────────────────────
+
+    private void OnKanbanCardUpdated(KanbanCard updated)
+    {
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            // Find the card VM (may now be in a different column than updated.ColumnId)
+            KanbanCardViewModel? cardVm = null;
+            KanbanColumnViewModel? currentColVm = null;
+            foreach (var col in KanbanColumnViewModels)
+            {
+                cardVm = col.Cards.FirstOrDefault(c => c.Id == updated.Id);
+                if (cardVm is not null) { currentColVm = col; break; }
+            }
+
+            if (cardVm is null)
+            {
+                // Card not yet in any column VM — add it to the correct one
+                var destColVm = KanbanColumnViewModels.FirstOrDefault(c => c.Id == updated.ColumnId);
+                destColVm?.Cards.Add(new KanbanCardViewModel(updated));
+                OnPropertyChanged(nameof(KanbanCardCount));
+                return;
+            }
+
+            // Update card data in place
+            cardVm.UpdateFrom(updated);
+
+            // If the column changed, migrate the VM to the correct column
+            if (currentColVm?.Id != updated.ColumnId)
+            {
+                currentColVm?.Cards.Remove(cardVm);
+                var destColVm = KanbanColumnViewModels.FirstOrDefault(c => c.Id == updated.ColumnId);
+                destColVm?.Cards.Add(cardVm);
+                OnPropertyChanged(nameof(KanbanCardCount));
+            }
+        });
+    }
+
+    private void OnKanbanCardDeleted(string cardId)
+    {
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            foreach (var col in KanbanColumnViewModels)
+            {
+                var cardVm = col.Cards.FirstOrDefault(c => c.Id == cardId);
+                if (cardVm is not null)
+                {
+                    col.Cards.Remove(cardVm);
+                    OnPropertyChanged(nameof(KanbanCardCount));
+                    return;
+                }
+            }
+        });
     }
 
     // ─── System Monitor ───────────────────────────────────────────────────────
@@ -549,5 +752,10 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
         _chatCts?.Dispose();
         if (WidgetType == WidgetType.Process && _processMonitorService is not null)
             _processMonitorService.ProcessesUpdated -= OnProcessesUpdated;
+        if (WidgetType == WidgetType.Kanban && _kanbanService is not null)
+        {
+            _kanbanService.CardUpdated -= OnKanbanCardUpdated;
+            _kanbanService.CardDeleted -= OnKanbanCardDeleted;
+        }
     }
 }

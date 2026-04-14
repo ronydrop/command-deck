@@ -18,6 +18,7 @@
         <conv:StringToStretchConverter x:Key="StringToStretch" />
         <conv:StringToImageSourceConverter x:Key="StringToImageSource" />
         <conv:HexToColorConverter x:Key="HexToColor" />
+        <conv:EnumToBoolConverter x:Key="EnumToBool" />
 
         <!-- Tab styling -->
         <Style x:Key="SettingsTabControl" TargetType="TabControl">
@@ -441,7 +442,48 @@
                               Margin="0,16,0,0" Padding="0,0,8,0">
                     <StackPanel>
 
-                        <!-- Tema -->
+                        <!-- Modo (escuro / claro / sistema) -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <!-- Ícone: sol/lua -->
+                                <Path Data="M12 3C7.03 3 3 7.03 3 12C3 16.97 7.03 21 12 21C16.97 21 21 16.97 21 12C21 7.03 16.97 3 12 3ZM12 19C8.13 19 5 15.87 5 12C5 8.13 8.13 5 12 5V19Z"
+                                      Fill="{DynamicResource AccentBrush}"
+                                      Width="20" Height="20" Stretch="Uniform"
+                                      VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Modo" Style="{StaticResource SubheadingText}" Margin="0,0,0,2"/>
+                                    <TextBlock Text="Escuro usa temas escuros. Claro usa temas claros. Sistema segue as configurações do seu OS."
+                                               Style="{StaticResource CaptionText}" Opacity="0.7"/>
+                                </StackPanel>
+                                <!-- Segmented: Escuro / Claro / Sistema -->
+                                <Border Grid.Column="2"
+                                        Background="{DynamicResource Surface0Brush}"
+                                        BorderBrush="{DynamicResource GlassBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="2"
+                                        VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton Style="{StaticResource SegmentedRadio}"
+                                                     Content="Escuro"
+                                                     IsChecked="{Binding SelectedMode, Converter={StaticResource EnumToBool}, ConverterParameter=Dark}" />
+                                        <RadioButton Style="{StaticResource SegmentedRadio}"
+                                                     Content="Claro"
+                                                     IsChecked="{Binding SelectedMode, Converter={StaticResource EnumToBool}, ConverterParameter=Light}" />
+                                        <RadioButton Style="{StaticResource SegmentedRadio}"
+                                                     Content="Sistema"
+                                                     IsChecked="{Binding SelectedMode, Converter={StaticResource EnumToBool}, ConverterParameter=System}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Tema (filtrado pelo modo ativo) -->
                         <Border Style="{StaticResource Card}" Margin="0,0,0,16">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -458,13 +500,11 @@
                                     <TextBlock Text="Escolha o esquema de cores da interface" Style="{StaticResource CaptionText}" Opacity="0.7"/>
                                 </StackPanel>
                                 <ComboBox Grid.Column="2" Style="{StaticResource DarkComboBox}"
-                                          ItemsSource="{Binding AvailableThemes}"
-                                          SelectedItem="{Binding SelectedTheme}"
-                                          VerticalAlignment="Center">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate><TextBlock Text="{Binding}"/></DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
+                                          ItemsSource="{Binding FilteredThemes}"
+                                          SelectedValue="{Binding SelectedTheme}"
+                                          SelectedValuePath="Id"
+                                          DisplayMemberPath="DisplayName"
+                                          VerticalAlignment="Center" />
                             </Grid>
                         </Border>
 

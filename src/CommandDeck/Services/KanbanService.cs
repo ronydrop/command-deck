@@ -379,6 +379,104 @@ public sealed class KanbanService : IKanbanService
         }
     }
 
+    // ── Columns ───────────────────────────────────────────────────────────────
+
+    /// <inheritdoc/>
+    public async Task<KanbanColumn> CreateColumnAsync(KanbanColumn column, CancellationToken ct = default)
+    {
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
+            await EnsureTablesAsync(conn, ct).ConfigureAwait(false);
+            await InsertColumnAsync(conn, column, ct).ConfigureAwait(false);
+            return column;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateColumnAsync(KanbanColumn column, CancellationToken ct = default)
+    {
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
+            await EnsureTablesAsync(conn, ct).ConfigureAwait(false);
+
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                UPDATE KanbanColumns
+                SET Title = @title, SortOrder = @sortOrder
+                WHERE Id = @id;";
+            cmd.Parameters.AddWithValue("@title",     column.Title);
+            cmd.Parameters.AddWithValue("@sortOrder", column.SortOrder);
+            cmd.Parameters.AddWithValue("@id",        column.Id);
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task DeleteColumnAsync(string columnId, string boardId, CancellationToken ct = default)
+    {
+        await _lock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(ct).ConfigureAwait(false);
+            await EnsureTablesAsync(conn, ct).ConfigureAwait(false);
+
+            // Find the first remaining column (by SortOrder) that isn't this one
+            string? fallbackColumnId = null;
+            await using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    SELECT Id FROM KanbanColumns
+                    WHERE BoardId = @boardId AND Id != @colId
+                    ORDER BY SortOrder ASC LIMIT 1;";
+                cmd.Parameters.AddWithValue("@boardId", boardId);
+                cmd.Parameters.AddWithValue("@colId",   columnId);
+                var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+                fallbackColumnId = result as string;
+            }
+
+            // If no fallback exists (only column), bail out
+            if (fallbackColumnId is null) return;
+
+            // Reassign cards to the fallback column
+            await using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    UPDATE KanbanCards SET ColumnId = @fallback
+                    WHERE ColumnId = @colId;";
+                cmd.Parameters.AddWithValue("@fallback", fallbackColumnId);
+                cmd.Parameters.AddWithValue("@colId",    columnId);
+                await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+            }
+
+            // Delete the column
+            await using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "DELETE FROM KanbanColumns WHERE Id = @id;";
+                cmd.Parameters.AddWithValue("@id", columnId);
+                await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
     // ── Comments ──────────────────────────────────────────────────────────────
 
     /// <inheritdoc/>

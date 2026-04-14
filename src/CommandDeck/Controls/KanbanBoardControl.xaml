@@ -4,146 +4,19 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:ctrl="clr-namespace:CommandDeck.Controls"
+             xmlns:conv="clr-namespace:CommandDeck.Converters"
+             xmlns:vm="clr-namespace:CommandDeck.ViewModels"
              mc:Ignorable="d"
-             d:DesignWidth="600" d:DesignHeight="440"
+             d:DesignWidth="660" d:DesignHeight="440"
              Background="Transparent">
 
     <UserControl.Resources>
-        <ctrl:ColumnIdToVisibilityConverter x:Key="ColVis" />
+        <!-- Converters -->
+        <conv:HexToBrushConverter x:Key="HexToBrush" />
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <ctrl:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
 
-        <!-- Shared card DataTemplate used in every column -->
-        <DataTemplate x:Key="KanbanCardTemplate">
-            <Border x:Name="CardBg"
-                    CornerRadius="6"
-                    Padding="10,8"
-                    Margin="0,2"
-                    ClipToBounds="True">
-                <Border.Background>
-                    <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5" />
-                </Border.Background>
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background">
-                                    <Setter.Value>
-                                        <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.6" />
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="4" />
-                        <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Left accent strip (card Color) -->
-                    <Border Grid.Column="0"
-                            CornerRadius="2"
-                            Margin="-10,-8,-6,-8">
-                        <Border.Background>
-                            <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.7" />
-                        </Border.Background>
-                    </Border>
-
-                    <!-- Card body -->
-                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                        <!-- Title -->
-                        <TextBlock Text="{Binding Title}"
-                                   FontSize="12" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextBrush}"
-                                   TextTrimming="CharacterEllipsis" />
-
-                        <!-- Agent badge + launched dot -->
-                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                            <Border CornerRadius="6" Padding="5,1" Margin="0,0,4,0">
-                                <Border.Background>
-                                    <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.18" />
-                                </Border.Background>
-                                <TextBlock Text="{Binding Agent}"
-                                           FontSize="9" FontWeight="SemiBold"
-                                           FontFamily="{StaticResource MonoFont}"
-                                           Foreground="{DynamicResource AccentBrush}" />
-                            </Border>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <!-- Launched indicator dot -->
-                    <Ellipse Grid.Column="3"
-                             Width="7" Height="7"
-                             VerticalAlignment="Top"
-                             Margin="0,2,0,0">
-                        <Ellipse.Style>
-                            <Style TargetType="Ellipse">
-                                <Setter Property="Fill" Value="Transparent" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Launched}" Value="True">
-                                        <Setter Property="Fill" Value="{DynamicResource AccentGreenBrush}" />
-                                        <DataTrigger.EnterActions>
-                                            <BeginStoryboard>
-                                                <Storyboard RepeatBehavior="Forever">
-                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                                     From="1" To="0.3"
-                                                                     Duration="0:0:1" AutoReverse="True">
-                                                        <DoubleAnimation.EasingFunction>
-                                                            <SineEase EasingMode="EaseInOut" />
-                                                        </DoubleAnimation.EasingFunction>
-                                                    </DoubleAnimation>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </DataTrigger.EnterActions>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Ellipse.Style>
-                    </Ellipse>
-
-                    <!-- Execute button — visible only when card has not yet been launched -->
-                    <Button Grid.Column="4"
-                            Tag="{Binding}"
-                            Width="22" Height="22"
-                            Margin="3,0,0,0"
-                            VerticalAlignment="Center"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Cursor="Hand"
-                            ToolTip="Executar tarefa com agente AI"
-                            Click="OnExecuteCardClicked"
-                            Visibility="{Binding Launched,
-                                Converter={StaticResource InvBoolToVis}}">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="ExecBg" CornerRadius="4" Background="Transparent"
-                                        Width="22" Height="22">
-                                    <TextBlock Text="▶" FontSize="9"
-                                               Foreground="{DynamicResource AccentGreenBrush}"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="ExecBg" Property="Background">
-                                            <Setter.Value>
-                                                <SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.18" />
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
-                </Grid>
-            </Border>
-        </DataTemplate>
-
-        <!-- Column border style (shared) -->
+        <!-- Column container -->
         <Style x:Key="ColumnBorderStyle" TargetType="Border">
             <Setter Property="CornerRadius" Value="6" />
             <Setter Property="ClipToBounds" Value="True" />
@@ -154,31 +27,366 @@
             </Setter>
         </Style>
 
-        <Style x:Key="ColumnHeaderBorderStyle" TargetType="Border">
-            <Setter Property="Padding" Value="8,0" />
+        <!-- Column header band -->
+        <Style x:Key="ColumnHeaderStyle" TargetType="Border">
+            <Setter Property="Padding" Value="7,0" />
             <Setter Property="Background">
                 <Setter.Value>
                     <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.6" />
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Card ListBox: no selection highlight, transparent chrome -->
+        <Style x:Key="KanbanListBoxStyle" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="5,4" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+
+        <!-- Card item: no selection blue highlight -->
+        <Style x:Key="KanbanCardItemStyle" TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <ContentPresenter />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnCardMouseLeftDown" />
+            <EventSetter Event="PreviewMouseMove" Handler="OnCardMouseMove" />
+        </Style>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             Card DataTemplate (shared across all columns)
+        ═══════════════════════════════════════════════════════════════ -->
+        <DataTemplate x:Key="KanbanCardTemplate" DataType="{x:Type vm:KanbanCardViewModel}">
+            <Grid>
+                <!-- Main card border — left accent via BorderBrush + BorderThickness="3,0,0,0" -->
+                <Border x:Name="CardBorder"
+                        CornerRadius="6"
+                        Margin="0,2"
+                        Padding="9,0,6,0"
+                        BorderThickness="3,0,0,0"
+                        ClipToBounds="True">
+                    <Border.BorderBrush>
+                        <Binding Path="Color" Converter="{StaticResource HexToBrush}" />
+                    </Border.BorderBrush>
+                    <Border.Background>
+                        <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.55" />
+                    </Border.Background>
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background">
+                                        <Setter.Value>
+                                            <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.5" />
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+
+                    <StackPanel>
+                        <!-- ── Collapsed card header (always visible) ──────── -->
+                        <Grid Margin="0,7,0,7">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Title + agent badge -->
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Title}"
+                                           FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                    <Border CornerRadius="6" Padding="5,1" Margin="0,0,4,0">
+                                        <Border.Background>
+                                            <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.18" />
+                                        </Border.Background>
+                                        <TextBlock Text="{Binding Agent}"
+                                                   FontSize="9" FontWeight="SemiBold"
+                                                   FontFamily="{StaticResource MonoFont}"
+                                                   Foreground="{DynamicResource AccentBrush}" />
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Launched pulsing dot -->
+                            <Ellipse x:Name="LaunchedDot"
+                                     Grid.Column="1"
+                                     Width="7" Height="7"
+                                     VerticalAlignment="Top"
+                                     Margin="0,2,2,0"
+                                     Fill="Transparent">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Launched}" Value="True">
+                                                <Setter Property="Fill" Value="{DynamicResource AccentGreenBrush}" />
+                                                <DataTrigger.EnterActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard RepeatBehavior="Forever">
+                                                            <DoubleAnimation
+                                                                Storyboard.TargetProperty="Opacity"
+                                                                From="1" To="0.3"
+                                                                Duration="0:0:1" AutoReverse="True">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <SineEase EasingMode="EaseInOut" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </DataTrigger.EnterActions>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+
+                            <!-- Execute (▶) button — hidden after launch -->
+                            <Button Grid.Column="2"
+                                    Tag="{Binding}"
+                                    Width="22" Height="22"
+                                    VerticalAlignment="Center"
+                                    Margin="1,0,0,0"
+                                    Background="Transparent" BorderThickness="0"
+                                    Cursor="Hand"
+                                    ToolTip="Executar tarefa com agente AI"
+                                    Click="OnExecuteCardClicked"
+                                    Visibility="{Binding Launched, Converter={StaticResource InvBoolToVis}}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="ExecBg" CornerRadius="4" Background="Transparent"
+                                                Width="22" Height="22">
+                                            <TextBlock Text="▶" FontSize="9"
+                                                       Foreground="{DynamicResource AccentGreenBrush}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ExecBg" Property="Background">
+                                                    <Setter.Value>
+                                                        <SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.18" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <!-- Expand (⌄/⌃) toggle button -->
+                            <Button Grid.Column="3"
+                                    Tag="{Binding}"
+                                    Width="20" Height="22"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,0,0"
+                                    Background="Transparent" BorderThickness="0"
+                                    Cursor="Hand"
+                                    Click="OnToggleExpandCard">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="ExpBg" CornerRadius="4" Background="Transparent"
+                                                Width="20" Height="22">
+                                            <TextBlock x:Name="ChevronText"
+                                                       Text="⌄" FontSize="11"
+                                                       Foreground="{DynamicResource SubtextBrush}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ExpBg" Property="Background">
+                                                    <Setter.Value>
+                                                        <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </Grid>
+
+                        <!-- ── Expanded detail panel ──────────────────────── -->
+                        <Border x:Name="ExpandedPanel"
+                                Padding="0,0,0,8"
+                                Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <Separator Margin="0,0,0,6">
+                                    <Separator.Style>
+                                        <Style TargetType="Separator">
+                                            <Setter Property="Background">
+                                                <Setter.Value>
+                                                    <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.5" />
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </Separator.Style>
+                                </Separator>
+
+                                <!-- Description preview (hidden when empty) -->
+                                <TextBlock Text="{Binding Card.Description}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource SubtextBrush}"
+                                           TextWrapping="Wrap"
+                                           MaxHeight="56"
+                                           TextTrimming="CharacterEllipsis">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Card.Description}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <!-- Instructions preview -->
+                                <TextBlock Text="{Binding Card.Instructions}"
+                                           FontSize="10"
+                                           FontFamily="{StaticResource MonoFont}"
+                                           Foreground="{DynamicResource SubtextBrush}"
+                                           TextWrapping="Wrap"
+                                           MaxHeight="44"
+                                           Margin="0,4,0,0"
+                                           TextTrimming="CharacterEllipsis">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Card.Instructions}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <!-- Footer: deps badge + comment count + delete -->
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Comment count badge -->
+                                    <Border Grid.Column="0" CornerRadius="8" Padding="6,2"
+                                            HorizontalAlignment="Left"
+                                            Visibility="{Binding HasDeps, Converter={StaticResource BoolToVis}}">
+                                        <Border.Background>
+                                            <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.15" />
+                                        </Border.Background>
+                                        <TextBlock Text="↳ deps" FontSize="9"
+                                                   FontFamily="{StaticResource MonoFont}"
+                                                   Foreground="{DynamicResource AccentBrush}" />
+                                    </Border>
+
+                                    <!-- Notes count -->
+                                    <TextBlock Grid.Column="1"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource SubtextBrush}"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,6,0">
+                                        <Run Text="{Binding Comments.Count, Mode=OneWay}" />
+                                        <Run Text=" nota(s)" />
+                                    </TextBlock>
+
+                                    <!-- Delete card button -->
+                                    <Button Grid.Column="2"
+                                            Tag="{Binding}"
+                                            Width="22" Height="22"
+                                            Background="Transparent" BorderThickness="0"
+                                            Cursor="Hand"
+                                            ToolTip="Excluir card"
+                                            Click="OnDeleteCardClicked">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="DelBg" CornerRadius="4" Background="Transparent"
+                                                        Width="22" Height="22">
+                                                    <TextBlock Text="✕" FontSize="10"
+                                                               Foreground="{DynamicResource AccentRedBrush}"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center" />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="DelBg" Property="Background">
+                                                            <Setter.Value>
+                                                                <SolidColorBrush Color="{DynamicResource AccentRed}" Opacity="0.15" />
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- JustMoved green flash overlay (same position, no hit test) -->
+                <Border x:Name="MovedFlash"
+                        CornerRadius="6"
+                        Margin="0,2"
+                        BorderThickness="2"
+                        IsHitTestVisible="False"
+                        Visibility="Collapsed">
+                    <Border.BorderBrush>
+                        <SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.85" />
+                    </Border.BorderBrush>
+                </Border>
+            </Grid>
+
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding JustMoved}" Value="True">
+                    <Setter TargetName="MovedFlash" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
     </UserControl.Resources>
 
+    <!-- ══════════════════════════════════════════════════════════════════
+         Main layout: Header + Columns
+    ══════════════════════════════════════════════════════════════════ -->
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="36" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="36" />
         </Grid.RowDefinitions>
 
-        <!-- ─── Header ───────────────────────────────────────────────────── -->
-        <Border Grid.Row="0"
-                Padding="12,0"
-                BorderThickness="0,0,0,1">
+        <!-- ─── Board header ──────────────────────────────────────────── -->
+        <Border Grid.Row="0" Padding="12,0" BorderThickness="0,0,0,1">
             <Border.BorderBrush>
                 <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5" />
             </Border.BorderBrush>
             <DockPanel VerticalAlignment="Center">
+
+                <!-- Left: icon + label -->
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                     <Border Width="22" Height="22" CornerRadius="5" Margin="0,0,8,0" VerticalAlignment="Center">
                         <Border.Background>
@@ -187,29 +395,30 @@
                         <TextBlock Text="🗂" FontSize="11"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
-                    <TextBlock Text="Kanban"
-                               FontSize="12" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextBrush}"
-                               VerticalAlignment="Center" />
+                    <TextBlock Text="Kanban" FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                 </StackPanel>
 
-                <Border DockPanel.Dock="Left" CornerRadius="8" Padding="6,2" Margin="8,0,0,0" VerticalAlignment="Center">
+                <!-- Card count badge -->
+                <Border DockPanel.Dock="Left" CornerRadius="8" Padding="6,2"
+                        Margin="8,0,0,0" VerticalAlignment="Center">
                     <Border.Background>
                         <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.6" />
                     </Border.Background>
                     <TextBlock FontSize="9" FontFamily="{StaticResource MonoFont}"
                                Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center">
-                        <Run Text="{Binding KanbanCards.Count, Mode=OneWay}" /><Run Text=" cards" />
+                        <Run Text="{Binding KanbanCardCount, Mode=OneWay}" /><Run Text=" cards" />
                     </TextBlock>
                 </Border>
 
+                <!-- Right: Refresh button -->
                 <Button DockPanel.Dock="Right"
                         Width="24" Height="24"
                         Background="Transparent" BorderThickness="0"
                         Cursor="Hand"
-                        Click="OnRefreshClicked"
                         ToolTip="Atualizar board"
-                        VerticalAlignment="Center">
+                        VerticalAlignment="Center"
+                        Click="OnRefreshClicked">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="Bg" CornerRadius="4" Background="Transparent" Width="24" Height="24">
@@ -229,164 +438,280 @@
                         </ControlTemplate>
                     </Button.Template>
                 </Button>
+
+                <!-- Right: Add column button -->
+                <Button DockPanel.Dock="Right"
+                        Height="24"
+                        Padding="8,0"
+                        Margin="0,0,6,0"
+                        Background="Transparent" BorderThickness="0"
+                        Cursor="Hand"
+                        ToolTip="Adicionar nova coluna"
+                        VerticalAlignment="Center"
+                        Click="OnAddColumnClicked">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="AddColBg" CornerRadius="4" Padding="7,0"
+                                    Height="24">
+                                <Border.Background>
+                                    <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.12" />
+                                </Border.Background>
+                                <TextBlock Text="⊕ Lista" FontSize="10"
+                                           Foreground="{DynamicResource AccentBlueBrush}"
+                                           VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="AddColBg" Property="Background">
+                                        <Setter.Value>
+                                            <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.22" />
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
             </DockPanel>
         </Border>
 
-        <!-- ─── Columns area ─────────────────────────────────────────────── -->
-        <Grid Grid.Row="1" Margin="10,8,10,4">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="6" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="6" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="6" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+        <!-- ─── Columns area ──────────────────────────────────────────── -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Disabled"
+                      Padding="10,8,4,4">
+            <ItemsControl ItemsSource="{Binding KanbanColumnViewModels}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="Margin" Value="0" />
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
 
-            <!-- ── Backlog ──────────────────────────────────────────────── -->
-            <Border Grid.Column="0" Style="{StaticResource ColumnBorderStyle}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="28" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Style="{StaticResource ColumnHeaderBorderStyle}">
-                        <TextBlock Text="BACKLOG" FontSize="9" FontWeight="Bold"
-                                   Foreground="{DynamicResource SubtextBrush}" VerticalAlignment="Center" />
-                    </Border>
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled" Padding="5,4">
-                        <ItemsControl ItemsSource="{Binding KanbanCards}"
-                                      ItemTemplate="{StaticResource KanbanCardTemplate}">
-                            <ItemsControl.ItemContainerStyle>
-                                <Style TargetType="ContentPresenter">
-                                    <Setter Property="Visibility"
-                                            Value="{Binding ColumnId,
-                                                Converter={StaticResource ColVis},
-                                                ConverterParameter=backlog}" />
-                                </Style>
-                            </ItemsControl.ItemContainerStyle>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
-            </Border>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:KanbanColumnViewModel}">
+                        <!-- ── Single column ──────────────────────────── -->
+                        <Border Width="168" Margin="0,0,6,0"
+                                Style="{StaticResource ColumnBorderStyle}">
+                            <!-- Drag-over overlay -->
+                            <Grid>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="28" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
 
-            <!-- ── Executando ───────────────────────────────────────────── -->
-            <Border Grid.Column="2" Style="{StaticResource ColumnBorderStyle}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="28" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Style="{StaticResource ColumnHeaderBorderStyle}">
-                        <TextBlock Text="EXECUTANDO" FontSize="9" FontWeight="Bold"
-                                   Foreground="{DynamicResource AccentBlueBrush}" VerticalAlignment="Center" />
-                    </Border>
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled" Padding="5,4">
-                        <ItemsControl ItemsSource="{Binding KanbanCards}"
-                                      ItemTemplate="{StaticResource KanbanCardTemplate}">
-                            <ItemsControl.ItemContainerStyle>
-                                <Style TargetType="ContentPresenter">
-                                    <Setter Property="Visibility"
-                                            Value="{Binding ColumnId,
-                                                Converter={StaticResource ColVis},
-                                                ConverterParameter=running}" />
-                                </Style>
-                            </ItemsControl.ItemContainerStyle>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
-            </Border>
+                                    <!-- Column header -->
+                                    <Border Grid.Row="0"
+                                            Style="{StaticResource ColumnHeaderStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
 
-            <!-- ── Revisão ──────────────────────────────────────────────── -->
-            <Border Grid.Column="4" Style="{StaticResource ColumnBorderStyle}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="28" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Style="{StaticResource ColumnHeaderBorderStyle}">
-                        <TextBlock Text="REVISÃO" FontSize="9" FontWeight="Bold"
-                                   Foreground="{DynamicResource AccentYellowBrush}" VerticalAlignment="Center" />
-                    </Border>
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled" Padding="5,4">
-                        <ItemsControl ItemsSource="{Binding KanbanCards}"
-                                      ItemTemplate="{StaticResource KanbanCardTemplate}">
-                            <ItemsControl.ItemContainerStyle>
-                                <Style TargetType="ContentPresenter">
-                                    <Setter Property="Visibility"
-                                            Value="{Binding ColumnId,
-                                                Converter={StaticResource ColVis},
-                                                ConverterParameter=review}" />
-                                </Style>
-                            </ItemsControl.ItemContainerStyle>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
-            </Border>
+                                            <!-- Title display (double-click to rename) -->
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding Title}"
+                                                       FontSize="9" FontWeight="Bold"
+                                                       Foreground="{DynamicResource SubtextBrush}"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Tag="{Binding}"
+                                                       MouseDown="OnColumnTitleMouseDown"
+                                                       Cursor="Hand"
+                                                       ToolTip="Clique duplo para renomear">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEditingTitle}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
 
-            <!-- ── Concluído ─────────────────────────────────────────────── -->
-            <Border Grid.Column="6" Style="{StaticResource ColumnBorderStyle}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="28" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Style="{StaticResource ColumnHeaderBorderStyle}">
-                        <TextBlock Text="CONCLUÍDO" FontSize="9" FontWeight="Bold"
-                                   Foreground="{DynamicResource AccentGreenBrush}" VerticalAlignment="Center" />
-                    </Border>
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled" Padding="5,4">
-                        <ItemsControl ItemsSource="{Binding KanbanCards}"
-                                      ItemTemplate="{StaticResource KanbanCardTemplate}">
-                            <ItemsControl.ItemContainerStyle>
-                                <Style TargetType="ContentPresenter">
-                                    <Setter Property="Visibility"
-                                            Value="{Binding ColumnId,
-                                                Converter={StaticResource ColVis},
-                                                ConverterParameter=done}" />
-                                </Style>
-                            </ItemsControl.ItemContainerStyle>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
-            </Border>
-        </Grid>
+                                            <!-- Title editor (visible when IsEditingTitle) -->
+                                            <TextBox Grid.Column="0"
+                                                     Text="{Binding EditingTitle, UpdateSourceTrigger=PropertyChanged}"
+                                                     FontSize="9" FontWeight="Bold"
+                                                     Background="Transparent"
+                                                     BorderThickness="0,0,0,1"
+                                                     Foreground="{DynamicResource TextBrush}"
+                                                     VerticalAlignment="Center"
+                                                     Tag="{Binding}"
+                                                     KeyDown="OnColumnTitleKeyDown">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <EventSetter Event="IsVisibleChanged" Handler="OnColumnEditBoxVisibleChanged" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEditingTitle}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
 
-        <!-- ─── Add card input ───────────────────────────────────────────── -->
-        <Border Grid.Row="2" Padding="10,5" BorderThickness="0,1,0,0">
-            <Border.BorderBrush>
-                <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.4" />
-            </Border.BorderBrush>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="26" />
-                </Grid.ColumnDefinitions>
+                                            <!-- Card count badge -->
+                                            <Border Grid.Column="1"
+                                                    CornerRadius="7" Padding="5,1"
+                                                    Margin="4,0,2,0"
+                                                    VerticalAlignment="Center">
+                                                <Border.Background>
+                                                    <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.5" />
+                                                </Border.Background>
+                                                <TextBlock Text="{Binding CardCount}"
+                                                           FontSize="9"
+                                                           FontFamily="{StaticResource MonoFont}"
+                                                           Foreground="{DynamicResource SubtextBrush}" />
+                                            </Border>
 
-                <TextBox Grid.Column="0"
-                         x:Name="NewCardInput"
-                         Style="{StaticResource DarkTextBox}"
-                         Tag="Nova tarefa..."
-                         Padding="8,3"
-                         Height="26"
-                         FontSize="12"
-                         VerticalContentAlignment="Center"
-                         KeyDown="OnAddCardKeyDown" />
+                                            <!-- Add card to this column -->
+                                            <Button Grid.Column="2"
+                                                    Width="20" Height="20"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand"
+                                                    ToolTip="Adicionar card nesta coluna"
+                                                    Tag="{Binding}"
+                                                    Click="OnAddCardToColumnClick">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="AddBg" CornerRadius="4" Background="Transparent"
+                                                                Width="20" Height="20">
+                                                            <TextBlock Text="+" FontSize="12"
+                                                                       Foreground="{DynamicResource SubtextBrush}"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center" />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="AddBg" Property="Background">
+                                                                    <Setter.Value>
+                                                                        <SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.15" />
+                                                                    </Setter.Value>
+                                                                </Setter>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
 
-                <Button Grid.Column="2"
-                        Content="+"
-                        Width="26" Height="26"
-                        FontSize="15"
-                        Style="{StaticResource AccentButton}"
-                        Click="OnAddCardButtonClick"
-                        ToolTip="Adicionar ao Backlog (Enter)" />
-            </Grid>
-        </Border>
+                                            <!-- Delete column -->
+                                            <Button Grid.Column="3"
+                                                    Width="20" Height="20"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand"
+                                                    ToolTip="Excluir coluna"
+                                                    Tag="{Binding}"
+                                                    Click="OnDeleteColumnClick">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="DelColBg" CornerRadius="4" Background="Transparent"
+                                                                Width="20" Height="20">
+                                                            <TextBlock Text="✕" FontSize="9"
+                                                                       Foreground="{DynamicResource SubtextBrush}"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center" />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="DelColBg" Property="Background">
+                                                                    <Setter.Value>
+                                                                        <SolidColorBrush Color="{DynamicResource AccentRed}" Opacity="0.12" />
+                                                                    </Setter.Value>
+                                                                </Setter>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Card list with drag-drop support -->
+                                    <ListBox Grid.Row="1"
+                                             ItemsSource="{Binding Cards}"
+                                             ItemTemplate="{StaticResource KanbanCardTemplate}"
+                                             ItemContainerStyle="{StaticResource KanbanCardItemStyle}"
+                                             Style="{StaticResource KanbanListBoxStyle}"
+                                             AllowDrop="True"
+                                             Drop="OnColumnDrop"
+                                             DragEnter="OnColumnDragEnter"
+                                             DragOver="OnColumnDragOver"
+                                             DragLeave="OnColumnDragLeave"
+                                             SelectionMode="Single"
+                                             HorizontalContentAlignment="Stretch"
+                                             Tag="{Binding}" />
+
+                                    <!-- Inline add-card input (shown when IsAddingCard) -->
+                                    <Border Grid.Row="2"
+                                            Padding="5,4,5,5"
+                                            BorderThickness="0,1,0,0"
+                                            Visibility="{Binding IsAddingCard, Converter={StaticResource BoolToVis}}">
+                                        <Border.BorderBrush>
+                                            <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.4" />
+                                        </Border.BorderBrush>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="4" />
+                                                <ColumnDefinition Width="22" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0"
+                                                     Text="{Binding NewCardTitle, UpdateSourceTrigger=PropertyChanged}"
+                                                     Tag="{Binding}"
+                                                     Height="24" FontSize="11"
+                                                     Padding="6,3"
+                                                     VerticalContentAlignment="Center"
+                                                     KeyDown="OnColumnAddCardKeyDown">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
+                                                        <EventSetter Event="IsVisibleChanged" Handler="OnAddCardBoxVisibleChanged" />
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
+                                            <Button Grid.Column="2"
+                                                    Tag="{Binding}"
+                                                    Content="×" FontSize="14"
+                                                    Width="22" Height="24"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand"
+                                                    Foreground="{DynamicResource SubtextBrush}"
+                                                    Click="OnCancelAddCard" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Drag-over visual indicator (overlaid on top, no hit test) -->
+                                <Border CornerRadius="6" IsHitTestVisible="False"
+                                        Visibility="{Binding IsDragOver, Converter={StaticResource BoolToVis}}">
+                                    <Border.BorderBrush>
+                                        <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.6" />
+                                    </Border.BorderBrush>
+                                    <Border.Background>
+                                        <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.06" />
+                                    </Border.Background>
+                                    <Border BorderBrush="{DynamicResource AccentBlueBrush}"
+                                            BorderThickness="1.5" CornerRadius="6"
+                                            Background="Transparent" />
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
     </Grid>
 </UserControl>

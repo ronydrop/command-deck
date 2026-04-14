@@ -52,6 +52,25 @@ public interface IKanbanService
     /// </summary>
     Task<List<KanbanCard>> GetCardsForBoardAsync(string boardId, CancellationToken ct = default);
 
+    // ── Columns ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Appends a new column to the board and persists it.
+    /// <c>column.BoardId</c> and <c>column.SortOrder</c> must be set before calling.
+    /// </summary>
+    Task<KanbanColumn> CreateColumnAsync(KanbanColumn column, CancellationToken ct = default);
+
+    /// <summary>
+    /// Persists a column's mutable fields (currently: <c>Title</c> and <c>SortOrder</c>).
+    /// </summary>
+    Task UpdateColumnAsync(KanbanColumn column, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a column and reassigns all its cards to the first remaining column.
+    /// No-op when only one column remains.
+    /// </summary>
+    Task DeleteColumnAsync(string columnId, string boardId, CancellationToken ct = default);
+
     // ── Comments ──────────────────────────────────────────────────────────────
 
     /// <summary>
