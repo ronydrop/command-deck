@@ -184,6 +184,16 @@ public static class ServiceCollectionExtensions
         // Chat tile router — routes quick-action messages to canvas chat tiles
         services.AddSingleton<ChatTileRouter>();
 
+        // Widget catalog — registry of built-in widgets with enable/disable
+        services.AddSingleton<IWidgetCatalogService, WidgetCatalogService>();
+
+        // Prompt templates and agent modes
+        services.AddSingleton<IPromptTemplateService, PromptTemplateService>();
+
+        // ViewModels for catalog and template picker
+        services.AddSingleton<WidgetCatalogViewModel>();
+        services.AddSingleton<PromptTemplatePickerViewModel>();
+
         // Transient: each request gets a fresh instance
         services.AddTransient<TerminalViewModel>();
         services.AddTransient<SettingsViewModel>();

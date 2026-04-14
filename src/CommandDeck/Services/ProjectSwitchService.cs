@@ -200,6 +200,8 @@ public class ProjectSwitchService : IProjectSwitchService
                             _canvasItemFactory.CreateCodeEditorItemFromModel(itemModel),
                         CanvasItemType.FileExplorerWidget =>
                             _canvasItemFactory.CreateFileExplorerItemFromModel(itemModel),
+                        CanvasItemType.BrowserWidget =>
+                            _canvasItemFactory.CreateBrowserItemFromModel(itemModel),
                         _ => null  // WidgetCanvasItemViewModel types are handled by AddWidgetItem
                     };
 

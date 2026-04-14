@@ -25,6 +25,12 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IClaudeOAuthService _claudeOAuthService;
     private readonly INotificationService _notificationService;
 
+    /// <summary>Widget catalog sub-ViewModel (bound by the Widgets settings tab).</summary>
+    public WidgetCatalogViewModel WidgetCatalog { get; }
+
+    /// <summary>Prompt template picker sub-ViewModel (bound by the Templates IA settings tab).</summary>
+    public PromptTemplatePickerViewModel PromptTemplatePicker { get; }
+
     // ─── Aparência ────────────────────────────────────────────────────────────
 
     private string _originalTheme = "LiquidGlassDark";
@@ -538,7 +544,9 @@ public partial class SettingsViewModel : ObservableObject
         IAssistantService assistantService,
         ITerminalBackgroundService terminalBackgroundService,
         IClaudeOAuthService claudeOAuthService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        WidgetCatalogViewModel widgetCatalog,
+        PromptTemplatePickerViewModel promptTemplatePicker)
     {
         _settingsService = settingsService;
         _secretStorageService = secretStorageService;
@@ -547,6 +555,8 @@ public partial class SettingsViewModel : ObservableObject
         _terminalBackgroundService = terminalBackgroundService;
         _claudeOAuthService = claudeOAuthService;
         _notificationService = notificationService;
+        WidgetCatalog = widgetCatalog;
+        PromptTemplatePicker = promptTemplatePicker;
         AppVersion = _updateService.CurrentVersion;
     }
 

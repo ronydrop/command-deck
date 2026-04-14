@@ -518,6 +518,20 @@ public partial class TerminalCanvasViewModel : ObservableObject
         item.Y = canvasY;
     }
 
+    /// <summary>Adds a Process Monitor widget to the canvas at the given position.</summary>
+    public void AddProcessMonitorWidget(double canvasX = 40, double canvasY = 40)
+    {
+        var item = _workspaceService.AddWidgetItem(WidgetType.Process);
+        item.X = canvasX;
+        item.Y = canvasY;
+    }
+
+    /// <summary>Adds a Browser tile to the canvas at the given position.</summary>
+    public void AddBrowserWidget(double canvasX = 40, double canvasY = 40)
+    {
+        _workspaceService.AddBrowserTile(canvasX, canvasY);
+    }
+
     // ─── Multi-selection ─────────────────────────────────────────────────────
 
     /// <summary>All currently selected canvas items (drives accent border on cards).</summary>

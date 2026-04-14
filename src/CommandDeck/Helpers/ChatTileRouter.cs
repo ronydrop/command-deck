@@ -55,4 +55,28 @@ public class ChatTileRouter
     /// </summary>
     public async Task RouteUserMessageAsync(string message)
         => await RouteMessageAsync(message, autoSend: true);
+
+    /// <summary>
+    /// Ensures at least one chat tile exists on the canvas.
+    /// Returns the existing tile or creates a new one.
+    /// </summary>
+    public async Task<ChatCanvasItemViewModel?> EnsureChatTileAsync()
+    {
+        var canvas = _canvasVm.Value;
+        var tile = canvas.Items.OfType<ChatCanvasItemViewModel>()
+            .OrderByDescending(t => t.ZIndex).FirstOrDefault();
+
+        if (tile is null)
+        {
+            canvas.AddChatWidget();
+            await Task.Delay(200);
+            tile = canvas.Items.OfType<ChatCanvasItemViewModel>()
+                .OrderByDescending(t => t.ZIndex).FirstOrDefault();
+        }
+
+        if (tile is not null)
+            canvas.BringToFront(tile);
+
+        return tile;
+    }
 }

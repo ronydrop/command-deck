@@ -641,13 +641,19 @@
 
                 <Grid.ContextMenu>
                     <ContextMenu x:Name="CanvasContextMenu" Opened="OnCanvasContextMenuOpened">
-                        <!-- Add tiles section -->
-                        <MenuItem Header="➕ Novo Terminal"       Click="OnContextAddTerminal"/>
-                        <MenuItem Header="💬 Chat IA"             Click="OnContextAddChat"/>
-                        <MenuItem Header="⌨ Editor de Código"     Click="OnContextAddCodeEditor"/>
-                        <MenuItem Header="📁 Explorador de Arquivos" Click="OnContextAddFileExplorer"/>
-                        <MenuItem Header="📝 Nota"               Click="OnContextAddNote"/>
-                        <MenuItem Header="📊 Git"                Click="OnContextAddGit"/>
+                        <!-- Add tiles section — visibility controlled by Widget Catalog -->
+                        <MenuItem Header="➕ Novo Terminal" Click="OnContextAddTerminal"/>
+                        <MenuItem x:Name="CtxAddChat"          Header="💬 Chat IA"                   Click="OnContextAddChat"/>
+                        <MenuItem x:Name="CtxAddCodeEditor"    Header="⌨ Editor de Código"            Click="OnContextAddCodeEditor"/>
+                        <MenuItem x:Name="CtxAddFileExplorer"  Header="📁 Explorador de Arquivos"     Click="OnContextAddFileExplorer"/>
+                        <MenuItem x:Name="CtxAddBrowser"       Header="🌐 Browser"                    Click="OnContextAddBrowser"/>
+                        <MenuItem x:Name="CtxAddNote"          Header="📝 Nota"                       Click="OnContextAddNote"/>
+                        <MenuItem x:Name="CtxAddGit"           Header="🌿 Git Status"                 Click="OnContextAddGit"/>
+                        <MenuItem x:Name="CtxAddProcess"       Header="📊 Monitor de Processos"       Click="OnContextAddProcess"/>
+                        <MenuItem x:Name="CtxAddSystemMonitor" Header="🖥 Monitor do Sistema"          Click="OnContextAddSystemMonitor"/>
+                        <MenuItem x:Name="CtxAddKanban"        Header="🗂 Kanban"                     Click="OnContextAddKanban"/>
+                        <MenuItem x:Name="CtxAddPomodoro"      Header="🍅 Pomodoro"                   Click="OnContextAddPomodoro"/>
+                        <MenuItem x:Name="CtxAddTokenCounter"  Header="🔢 Contador de Tokens"         Click="OnContextAddTokenCounter"/>
                         <Separator/>
                         <!-- Canvas actions -->
                         <MenuItem Header="🎯 Centralizar Tudo (Home)" Click="OnContextFitAll"/>

@@ -21,6 +21,8 @@ public enum CanvasItemType
     PomodoroWidget,
     CodeEditorWidget,
     FileExplorerWidget,
+    BrowserWidget,
+    ActivityFeedWidget,
 }
 
 /// <summary>Logical widget category used by CanvasItemFactory.</summary>

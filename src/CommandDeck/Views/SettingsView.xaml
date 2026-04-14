@@ -1095,6 +1095,252 @@
             </TabItem>
 
             <!-- ═══════════════════════════════════════════════════════════
+                 TAB: WIDGETS (catálogo)
+                 ═══════════════════════════════════════════════════════════ -->
+            <TabItem Style="{StaticResource SettingsTabItem}" Header="Widgets">
+                <Grid Margin="0,16,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header + actions -->
+                    <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Catálogo de Widgets" Style="{StaticResource SubheadingText}" Margin="0,0,0,4"/>
+                                <TextBlock Text="Ative ou desative widgets para controlar o que aparece nos menus de adição. Widgets Core não podem ser desativados."
+                                           Style="{StaticResource CaptionText}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="Ativar Todos"
+                                        Command="{Binding WidgetCatalog.EnableAllCommand}"
+                                        Margin="0,0,8,0"
+                                        Style="{StaticResource GhostButton}"/>
+                                <Button Content="Redefinir"
+                                        Command="{Binding WidgetCatalog.ResetDefaultsCommand}"
+                                        Style="{StaticResource GhostButton}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Filter bar -->
+                    <Grid Grid.Row="1" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="180"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="{DynamicResource Surface0Brush}"
+                                CornerRadius="8" Padding="10,0" BorderThickness="1"
+                                BorderBrush="{DynamicResource Surface1Brush}" Margin="0,0,8,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="🔍" FontSize="12"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"
+                                           Foreground="{DynamicResource SubtextBrush}"/>
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding WidgetCatalog.FilterText, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="Transparent" BorderThickness="0"
+                                         Height="32" FontSize="13"
+                                         Foreground="{DynamicResource TextBrush}"
+                                         CaretBrush="{DynamicResource TextBrush}"
+                                         VerticalContentAlignment="Center">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox">
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="TextBox">
+                                                        <Grid>
+                                                            <TextBlock x:Name="ph" Text="Buscar widget..."
+                                                                       VerticalAlignment="Center" FontSize="13"
+                                                                       Foreground="{DynamicResource SubtextBrush}"
+                                                                       Visibility="Collapsed" IsHitTestVisible="False"/>
+                                                            <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="Text" Value="">
+                                                                <Setter TargetName="ph" Property="Visibility" Value="Visible"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+                            </Grid>
+                        </Border>
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{Binding WidgetCatalog.Categories}"
+                                  SelectedItem="{Binding WidgetCatalog.SelectedCategory}"
+                                  Style="{StaticResource DarkComboBox}" Height="32"/>
+                    </Grid>
+
+                    <!-- Widget cards grid -->
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding WidgetCatalog.Entries}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Width="240" Margin="0,0,12,12" CornerRadius="10"
+                                            BorderThickness="1" Padding="14,12">
+                                        <Border.Background>
+                                            <SolidColorBrush Color="{DynamicResource Surface0}" Opacity="0.8"/>
+                                        </Border.Background>
+                                        <Border.BorderBrush>
+                                            <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.4"/>
+                                        </Border.BorderBrush>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- Icon + toggle -->
+                                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Colored icon badge -->
+                                                <Border Grid.Column="0" Width="36" Height="36"
+                                                        CornerRadius="9" Margin="0,0,10,0">
+                                                    <Border.Background>
+                                                        <SolidColorBrush Color="{Binding AccentColor, Converter={StaticResource StringToImageSource}}"
+                                                                         Opacity="0.22"/>
+                                                    </Border.Background>
+                                                    <TextBlock Text="{Binding Icon}" FontSize="18"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+
+                                                <!-- Name + category -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontSize="13" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock Text="{Binding Category}"
+                                                               FontSize="10"
+                                                               Foreground="{DynamicResource SubtextBrush}"/>
+                                                </StackPanel>
+
+                                                <!-- Toggle switch -->
+                                                <CheckBox Grid.Column="2" IsChecked="{Binding IsEnabled}"
+                                                          IsEnabled="{Binding IsCore, Converter={StaticResource BoolToVis}}"
+                                                          VerticalAlignment="Center"/>
+                                            </Grid>
+
+                                            <!-- Description -->
+                                            <TextBlock Grid.Row="1"
+                                                       Text="{Binding Description}"
+                                                       FontSize="11"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource SubtextBrush}"
+                                                       Margin="0,0,0,6"/>
+
+                                            <!-- Preview hint -->
+                                            <Border Grid.Row="2" Background="{DynamicResource Surface1Brush}"
+                                                    CornerRadius="5" Padding="6,3" Margin="0,0,0,0"
+                                                    Visibility="{Binding PreviewHint, Converter={StaticResource StringToVis}}">
+                                                <TextBlock Text="{Binding PreviewHint}"
+                                                           FontSize="10" FontFamily="{StaticResource MonoFont}"
+                                                           Foreground="{DynamicResource SubtextBrush}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </Border>
+
+                                            <!-- Core badge -->
+                                            <Border Grid.Row="3" Margin="0,6,0,0"
+                                                    Visibility="{Binding IsCore, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="🔒 Core (sempre ativo)"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource SubtextBrush}"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 TAB: TEMPLATES IA
+                 ═══════════════════════════════════════════════════════════ -->
+            <TabItem Style="{StaticResource SettingsTabItem}" Header="Templates IA">
+                <Grid Margin="0,16,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Prompt Templates" Style="{StaticResource SubheadingText}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Templates pré-criados com campos dinâmicos. Use o botão 📝 no chat para acessá-los rapidamente."
+                                       Style="{StaticResource CaptionText}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding PromptTemplatePicker.Templates}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Width="220" Margin="0,0,12,12" CornerRadius="10"
+                                            BorderThickness="1" Padding="12,10">
+                                        <Border.Background>
+                                            <SolidColorBrush Color="{DynamicResource Surface0}" Opacity="0.8"/>
+                                        </Border.Background>
+                                        <Border.BorderBrush>
+                                            <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.4"/>
+                                        </Border.BorderBrush>
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                                <TextBlock Text="{Binding Icon}" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextBrush}"/>
+                                                    <TextBlock Text="{Binding Category}" FontSize="10"
+                                                               Foreground="{DynamicResource SubtextBrush}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Description}" FontSize="11"
+                                                       TextWrapping="Wrap" Foreground="{DynamicResource SubtextBrush}"
+                                                       Margin="0,0,0,4"/>
+                                            <TextBlock FontSize="10" Foreground="{DynamicResource SubtextBrush}">
+                                                <Run Text="{Binding Fields.Count, Mode=OneWay}"/>
+                                                <Run Text=" campos dinâmicos"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ═══════════════════════════════════════════════════════════
                  TAB 6: SOBRE
                  ═══════════════════════════════════════════════════════════ -->
             <TabItem Style="{StaticResource SettingsTabItem}" Header="Sobre">

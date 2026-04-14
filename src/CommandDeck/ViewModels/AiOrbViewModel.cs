@@ -4,21 +4,25 @@ using System.Threading.Tasks;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommandDeck.Helpers;
 using CommandDeck.Services;
 
 namespace CommandDeck.ViewModels;
 
-public enum OrbState { Idle, MenuOpen, Recording, Processing }
+public enum OrbState { Idle, MenuOpen, Recording, Processing, QuickChat }
 
 /// <summary>
 /// ViewModel for the AI Floating Orb widget.
-/// Manages state, position, radial menu, voice input, and AI actions.
+/// Manages state, position, radial menu, voice input, AI actions,
+/// quick chat inline, and template shortcuts.
 /// </summary>
 public partial class AiOrbViewModel : ObservableObject, IDisposable
 {
     private readonly IAiOrbService _orbService;
     private readonly IVoiceInputService _voiceService;
     private readonly ISettingsService _settingsService;
+    private readonly ChatTileRouter _chatRouter;
+    private readonly IPromptTemplateService _templateService;
     private CancellationTokenSource? _statusMessageCts;
     private bool _disposed;
 
@@ -37,11 +41,40 @@ public partial class AiOrbViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _hasSuggestion;
     [ObservableProperty] private string _statusMessage = string.Empty;
 
-    public AiOrbViewModel(IAiOrbService orbService, IVoiceInputService voiceService, ISettingsService settingsService)
+    // ─── Quick Chat inline ────────────────────────────────────────────────────
+
+    /// <summary>Whether the quick-chat text input is visible below the orb.</summary>
+    [ObservableProperty] private bool _isQuickChatOpen;
+
+    /// <summary>Text typed in the quick-chat input field.</summary>
+    [ObservableProperty] private string _quickChatInput = string.Empty;
+
+    /// <summary>Whether the quick-chat send button is loading.</summary>
+    [ObservableProperty] private bool _isQuickChatSending;
+
+    // ─── Context indicators ───────────────────────────────────────────────────
+
+    /// <summary>Brief summary of the current context (project + branch) shown as tooltip.</summary>
+    [ObservableProperty] private string _contextSummary = string.Empty;
+
+    /// <summary>Number of active terminal sessions — shown as badge on the orb.</summary>
+    [ObservableProperty] private int _activeTerminalCount;
+
+    /// <summary>True when there's an active AI session in at least one chat tile.</summary>
+    [ObservableProperty] private bool _hasActiveAiSession;
+
+    public AiOrbViewModel(
+        IAiOrbService orbService,
+        IVoiceInputService voiceService,
+        ISettingsService settingsService,
+        ChatTileRouter chatRouter,
+        IPromptTemplateService templateService)
     {
         _orbService = orbService;
         _voiceService = voiceService;
         _settingsService = settingsService;
+        _chatRouter = chatRouter;
+        _templateService = templateService;
 
         _settingsService.SettingsChanged += OnSettingsChanged;
         _voiceService.TranscriptionUpdated += OnVoiceTranscriptionUpdated;
@@ -218,6 +251,103 @@ public partial class AiOrbViewModel : ObservableObject, IDisposable
 
         if (State == OrbState.MenuOpen)
             State = OrbState.Idle;
+    }
+
+    // ─── Quick Chat commands ──────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void ToggleQuickChat()
+    {
+        IsRadialMenuOpen = false;
+        IsQuickChatOpen = !IsQuickChatOpen;
+        State = IsQuickChatOpen ? OrbState.QuickChat : OrbState.Idle;
+        if (!IsQuickChatOpen)
+            QuickChatInput = string.Empty;
+    }
+
+    [RelayCommand]
+    private async Task SendQuickChatAsync()
+    {
+        if (string.IsNullOrWhiteSpace(QuickChatInput)) return;
+
+        var msg = QuickChatInput.Trim();
+        QuickChatInput = string.Empty;
+        IsQuickChatOpen = false;
+        IsQuickChatSending = true;
+        State = OrbState.Processing;
+        StatusMessage = "Enviando...";
+
+        try
+        {
+            await _chatRouter.RouteUserMessageAsync(msg);
+            State = OrbState.Idle;
+            await ShowTemporaryStatusAsync("Mensagem enviada!");
+        }
+        catch (Exception ex)
+        {
+            State = OrbState.Idle;
+            await ShowTemporaryStatusAsync($"Erro: {ex.Message}");
+        }
+        finally
+        {
+            IsQuickChatSending = false;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenNewChatTile()
+    {
+        IsRadialMenuOpen = false;
+        _chatRouter.EnsureChatTileAsync().ContinueWith(_ => { }, TaskScheduler.Default);
+        State = OrbState.Idle;
+        _ = ShowTemporaryStatusAsync("Chat tile criado");
+    }
+
+    [RelayCommand]
+    private async Task OpenPromptTemplatesAsync()
+    {
+        IsRadialMenuOpen = false;
+        // Signal to the main window to open the template picker
+        await _chatRouter.RouteMessageAsync("$open_templates", autoSend: false);
+    }
+
+    [RelayCommand]
+    private async Task ExplainLastOutputAsync()
+    {
+        IsRadialMenuOpen = false;
+        State = OrbState.Processing;
+        StatusMessage = "Preparando explicação...";
+        try
+        {
+            await _chatRouter.RouteUserMessageAsync("Explique a última saída do terminal");
+            State = OrbState.Idle;
+            await ShowTemporaryStatusAsync("Enviado ao chat IA");
+        }
+        catch { State = OrbState.Idle; }
+    }
+
+    [RelayCommand]
+    private async Task FixLastErrorAsync()
+    {
+        IsRadialMenuOpen = false;
+        State = OrbState.Processing;
+        StatusMessage = "Analisando erro...";
+        try
+        {
+            await _chatRouter.RouteUserMessageAsync("Analise e corrija o último erro do terminal");
+            State = OrbState.Idle;
+            await ShowTemporaryStatusAsync("Enviado ao chat IA");
+        }
+        catch { State = OrbState.Idle; }
+    }
+
+    /// <summary>Updates context summary (called by TileContext subscriber).</summary>
+    public void UpdateContextSummary(string projectName, string? branch, int terminalCount)
+    {
+        ContextSummary = string.IsNullOrEmpty(branch)
+            ? $"{projectName} · {terminalCount} terminal(is)"
+            : $"{projectName} · {branch} · {terminalCount} terminal(is)";
+        ActiveTerminalCount = terminalCount;
     }
 
     /// <summary>Saves the current position to settings.</summary>

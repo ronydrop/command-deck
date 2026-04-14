@@ -36,6 +36,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <!-- Title row -->
@@ -153,6 +154,36 @@
                             <Style TargetType="ComboBox" BasedOn="{StaticResource DarkComboBox}" />
                         </ComboBox.Style>
                     </ComboBox>
+                </Grid>
+
+                <!-- Agent Mode selector row -->
+                <Grid Grid.Row="2" Margin="0,4,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <ComboBox Grid.Column="0"
+                              x:Name="AgentModeCombo"
+                              Height="24" FontSize="10"
+                              ItemsSource="{Binding AgentModes}"
+                              SelectedItem="{Binding ActiveAgentMode, Mode=TwoWay}"
+                              SelectionChanged="OnAgentModeChanged"
+                              ToolTip="Selecionar modo do agente">
+                        <ComboBox.Style>
+                            <Style TargetType="ComboBox" BasedOn="{StaticResource DarkComboBox}"/>
+                        </ComboBox.Style>
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Icon}" FontSize="10" Margin="0,0,5,0"/>
+                                    <TextBlock Text="{Binding Name}" FontSize="10"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Grid.Column="1" Text="{Binding ActiveModeLabel}"
+                               FontSize="9" Foreground="{DynamicResource SubtextBrush}"
+                               VerticalAlignment="Center" Margin="6,0,0,0"/>
                 </Grid>
             </Grid>
         </Border>
@@ -328,12 +359,39 @@
             </Border.BorderBrush>
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="4" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <TextBox Grid.Column="0"
+                <!-- Template picker button -->
+                <Button Grid.Column="0"
+                        x:Name="TemplateBtnInput"
+                        Width="30" Height="30"
+                        Click="OnTemplatePickerClick"
+                        ToolTip="Prompt Templates (Ctrl+T)"
+                        Background="Transparent" BorderThickness="0">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="TplBg" CornerRadius="6" Background="Transparent"
+                                    Width="30" Height="30">
+                                <TextBlock Text="📝" FontSize="12"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="TplBg" Property="Background">
+                                        <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5"/></Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <TextBox Grid.Column="2"
                          x:Name="ChatInput"
                          Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
                          Style="{StaticResource DarkTextBox}"
@@ -350,7 +408,7 @@
                              ConverterParameter=BoolToEnabled}"
                          KeyDown="OnChatInputKeyDown" />
 
-                <Button Grid.Column="2"
+                <Button Grid.Column="4"
                         Width="34" Height="34"
                         Click="OnSendClicked"
                         ToolTip="Enviar (Ctrl+Enter)"
@@ -380,5 +438,90 @@
                 </Button>
             </Grid>
         </Border>
+
+        <!-- ─── Template Picker Popup ───────────────────────────────────────── -->
+        <Popup x:Name="TemplatePickerPopup"
+               PlacementTarget="{Binding ElementName=TemplateBtnInput}"
+               Placement="Top"
+               VerticalOffset="-6"
+               StaysOpen="False"
+               AllowsTransparency="True"
+               MaxWidth="380">
+            <Border CornerRadius="10" Padding="12,10"
+                    BorderThickness="1" MaxHeight="400">
+                <Border.Background>
+                    <SolidColorBrush Color="{DynamicResource Surface0}" Opacity="0.98"/>
+                </Border.Background>
+                <Border.BorderBrush>
+                    <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.6"/>
+                </Border.BorderBrush>
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.5" Color="#000000"/>
+                </Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Prompt Templates"
+                               FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextBrush}"
+                               Margin="0,0,0,8"/>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="320">
+                        <ItemsControl x:Name="TemplateList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,6" CornerRadius="7" Padding="10,8"
+                                            Cursor="Hand"
+                                            MouseLeftButtonDown="OnTemplateItemClick">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background">
+                                                    <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5"/></Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background">
+                                                            <Setter.Value><SolidColorBrush Color="{DynamicResource Blue}" Opacity="0.15"/></Setter.Value>
+                                                        </Setter>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding Icon}"
+                                                       FontSize="16" Margin="0,0,8,0"
+                                                       VerticalAlignment="Center"/>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontSize="12" FontWeight="Medium"
+                                                           Foreground="{DynamicResource TextBrush}"/>
+                                                <TextBlock Text="{Binding Description}"
+                                                           FontSize="10"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource SubtextBrush}"
+                                                           Margin="0,2,0,0"/>
+                                                <TextBlock FontSize="9" Foreground="{DynamicResource SubtextBrush}"
+                                                           Margin="0,2,0,0">
+                                                    <Run Text="{Binding Category}"/>
+                                                    <Run Text=" · "/>
+                                                    <Run Text="{Binding Fields.Count, Mode=OneWay}"/>
+                                                    <Run Text=" campos"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Popup>
+
     </Grid>
 </UserControl>

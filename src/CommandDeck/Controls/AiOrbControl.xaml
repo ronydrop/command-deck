@@ -324,5 +324,109 @@
             <controls:RadialMenuControl DataContext="{Binding}" />
         </Popup>
 
+        <!-- ── Quick Chat inline input ─────────────────────────────────────── -->
+        <Border x:Name="QuickChatPanel"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Margin="62,6,0,0"
+                MinWidth="220" MaxWidth="320"
+                CornerRadius="10"
+                Padding="0"
+                BorderThickness="1"
+                Visibility="{Binding IsQuickChatOpen, Converter={StaticResource BoolToVis}}">
+            <Border.Background>
+                <SolidColorBrush Color="#E01E1E2E" />
+            </Border.Background>
+            <Border.BorderBrush>
+                <SolidColorBrush Color="#44CBA6F7" />
+            </Border.BorderBrush>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.4" Color="#000000"/>
+            </Border.Effect>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                         x:Name="QuickChatTextBox"
+                         Text="{Binding QuickChatInput, UpdateSourceTrigger=PropertyChanged}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Foreground="#CDD6F4"
+                         CaretBrush="#CBA6F7"
+                         FontSize="12"
+                         Padding="10,8"
+                         MinHeight="36"
+                         MaxHeight="100"
+                         AcceptsReturn="False"
+                         TextWrapping="Wrap"
+                         VerticalContentAlignment="Center">
+                    <TextBox.Style>
+                        <Style TargetType="TextBox">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="TextBox">
+                                        <Grid>
+                                            <TextBlock x:Name="ph" Text="Pergunte algo ao AI..."
+                                                       Padding="10,8" FontSize="12"
+                                                       Foreground="#6C7086"
+                                                       VerticalAlignment="Center"
+                                                       Visibility="Collapsed"
+                                                       IsHitTestVisible="False"/>
+                                            <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                                        </Grid>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="Text" Value="">
+                                                <Setter TargetName="ph" Property="Visibility" Value="Visible"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
+                <Button Grid.Column="1"
+                        Command="{Binding SendQuickChatCommand}"
+                        Width="34" Margin="0,4,4,4"
+                        Background="Transparent" BorderThickness="0"
+                        Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bg" CornerRadius="7" Background="Transparent" Padding="5">
+                                <TextBlock Text="↑" FontSize="14" Foreground="#CBA6F7"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bg" Property="Background">
+                                        <Setter.Value><SolidColorBrush Color="#44CBA6F7"/></Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Active terminal count badge (top-left of orb) -->
+        <Border x:Name="TerminalCountBadge"
+                Width="16" Height="16"
+                CornerRadius="8"
+                Background="#A6E3A1"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Margin="0,2,0,0"
+                IsHitTestVisible="False"
+                Visibility="{Binding ActiveTerminalCount, Converter={StaticResource StringToVis}}">
+            <TextBlock Text="{Binding ActiveTerminalCount}"
+                       FontSize="8" FontWeight="Bold"
+                       Foreground="#1E1E2E"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+        </Border>
+
     </Grid>
 </UserControl>

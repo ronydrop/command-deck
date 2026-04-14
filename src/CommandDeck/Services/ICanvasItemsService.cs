@@ -39,6 +39,9 @@ public interface ICanvasItemsService
     /// <summary>Creates and registers a File Explorer tile.</summary>
     FileExplorerCanvasItemViewModel AddFileExplorerTile(double x = 40, double y = 40);
 
+    /// <summary>Creates and registers a Browser tile.</summary>
+    BrowserCanvasItemViewModel AddBrowserTile(double x = 40, double y = 40);
+
     /// <summary>Toggles a singleton widget: removes it if it exists, adds it if it doesn't.</summary>
     void ToggleWidgetItem(WidgetType type, double? fixedX = null, double? fixedY = null);
 

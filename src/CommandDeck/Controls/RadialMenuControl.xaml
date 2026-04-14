@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Width="220" Height="220"
              Background="Transparent">
-    
+
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -13,115 +13,143 @@
     </UserControl.Resources>
 
     <Grid>
+        <!-- ── TOP: Voz ────────────────────────────────────────────────────── -->
         <Button x:Name="BtnVoice"
                 Width="40" Height="40"
                 HorizontalAlignment="Center" VerticalAlignment="Top"
-                Margin="0,8,0,0"
-                Opacity="0"
+                Margin="0,8,0,0" Opacity="0"
                 Command="{Binding StartRecordingCommand}"
                 Style="{StaticResource RadialMenuButtonStyle}">
             <Button.ToolTip>
                 <ToolTip Style="{StaticResource OrbTooltipStyle}">
-                    <TextBlock Text="Gravar (Ctrl+Alt+A para abrir menu)" />
+                    <TextBlock Text="Gravar voz" />
                 </ToolTip>
             </Button.ToolTip>
             <TextBlock Text="🎤" FontSize="16" />
         </Button>
 
+        <!-- ── TOP-RIGHT: Melhorar prompt ──────────────────────────────────── -->
         <Button x:Name="BtnImprovePrompt"
                 Width="40" Height="40"
                 HorizontalAlignment="Right" VerticalAlignment="Top"
-                Margin="0,72,8,0"
-                Opacity="0"
+                Margin="0,52,18,0" Opacity="0"
                 Command="{Binding ImprovePromptCommand}"
-                ToolTipService.ShowOnDisabled="True">
-            <Button.Style>
-                <Style TargetType="Button" BasedOn="{StaticResource RadialMenuButtonStyle}">
-                    <Setter Property="ToolTip">
-                        <Setter.Value>
-                            <ToolTip Style="{StaticResource OrbTooltipStyle}">
-                                <TextBlock Text="Melhorar prompt (Ctrl+Shift+I)" />
-                            </ToolTip>
-                        </Setter.Value>
-                    </Setter>
-                    <Style.Triggers>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="ToolTip">
-                                <Setter.Value>
-                                    <ToolTip Style="{StaticResource OrbTooltipStyle}">
-                                        <TextBlock Text="Requer provider ativo" />
-                                    </ToolTip>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                    </Style.Triggers>
-                </Style>
-            </Button.Style>
+                ToolTipService.ShowOnDisabled="True"
+                Style="{StaticResource RadialMenuButtonStyle}">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <TextBlock Text="Melhorar prompt" />
+                </ToolTip>
+            </Button.ToolTip>
             <TextBlock Text="✨" FontSize="16" />
         </Button>
 
-        <Button x:Name="BtnRunSuggestion"
+        <!-- ── RIGHT: Quick chat inline ────────────────────────────────────── -->
+        <Button x:Name="BtnQuickChat"
                 Width="40" Height="40"
-                HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                Margin="0,0,8,72"
-                Opacity="0"
-                Command="{Binding RunSuggestionCommand}"
-                ToolTipService.ShowOnDisabled="True">
-            <Button.Style>
-                <Style TargetType="Button" BasedOn="{StaticResource RadialMenuButtonStyle}">
-                    <Setter Property="ToolTip">
-                        <Setter.Value>
-                            <ToolTip Style="{StaticResource OrbTooltipStyle}">
-                                <TextBlock Text="Executar sugestão" />
-                            </ToolTip>
-                        </Setter.Value>
-                    </Setter>
-                    <Style.Triggers>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="ToolTip">
-                                <Setter.Value>
-                                    <ToolTip Style="{StaticResource OrbTooltipStyle}">
-                                        <TextBlock Text="Requer sugestão da AI" />
-                                    </ToolTip>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                    </Style.Triggers>
-                </Style>
-            </Button.Style>
-            <TextBlock Text="▶" FontSize="16" />
+                HorizontalAlignment="Right" VerticalAlignment="Center"
+                Margin="0,0,4,0" Opacity="0"
+                Command="{Binding ToggleQuickChatCommand}"
+                Style="{StaticResource RadialMenuButtonStyle}">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <TextBlock Text="Chat rápido" />
+                </ToolTip>
+            </Button.ToolTip>
+            <TextBlock Text="💬" FontSize="16" />
         </Button>
 
-        <Button x:Name="BtnCopyContext"
+        <!-- ── BOTTOM-RIGHT: Novo tile de chat ─────────────────────────────── -->
+        <Button x:Name="BtnNewChat"
+                Width="40" Height="40"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Margin="0,0,18,52" Opacity="0"
+                Command="{Binding OpenNewChatTileCommand}"
+                Style="{StaticResource RadialMenuButtonStyle}">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <TextBlock Text="Novo tile de chat" />
+                </ToolTip>
+            </Button.ToolTip>
+            <TextBlock Text="➕" FontSize="14" />
+        </Button>
+
+        <!-- ── BOTTOM: Templates ────────────────────────────────────────────── -->
+        <Button x:Name="BtnTemplates"
+                Width="40" Height="40"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                Margin="0,0,0,8" Opacity="0"
+                Command="{Binding OpenPromptTemplatesCommand}"
+                Style="{StaticResource RadialMenuButtonStyle}">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <TextBlock Text="Prompt templates" />
+                </ToolTip>
+            </Button.ToolTip>
+            <TextBlock Text="📝" FontSize="16" />
+        </Button>
+
+        <!-- ── BOTTOM-LEFT: Explicar saída ─────────────────────────────────── -->
+        <Button x:Name="BtnExplain"
                 Width="40" Height="40"
                 HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                Margin="8,0,0,72"
-                Opacity="0"
+                Margin="18,0,0,52" Opacity="0"
+                Command="{Binding ExplainLastOutputCommand}"
+                Style="{StaticResource RadialMenuButtonStyle}">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <TextBlock Text="Explicar última saída" />
+                </ToolTip>
+            </Button.ToolTip>
+            <TextBlock Text="📖" FontSize="16" />
+        </Button>
+
+        <!-- ── LEFT: Copiar contexto ────────────────────────────────────────── -->
+        <Button x:Name="BtnCopyContext"
+                Width="40" Height="40"
+                HorizontalAlignment="Left" VerticalAlignment="Center"
+                Margin="4,0,0,0" Opacity="0"
                 Command="{Binding CopyContextCommand}"
-                ToolTipService.ShowOnDisabled="True">
-            <Button.Style>
-                <Style TargetType="Button" BasedOn="{StaticResource RadialMenuButtonStyle}">
-                    <Setter Property="ToolTip">
-                        <Setter.Value>
-                            <ToolTip Style="{StaticResource OrbTooltipStyle}">
-                                <TextBlock Text="Copiar contexto (Ctrl+Shift+X)" />
-                            </ToolTip>
-                        </Setter.Value>
-                    </Setter>
-                    <Style.Triggers>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="ToolTip">
-                                <Setter.Value>
-                                    <ToolTip Style="{StaticResource OrbTooltipStyle}">
-                                        <TextBlock Text="Requer provider ativo" />
-                                    </ToolTip>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                    </Style.Triggers>
-                </Style>
-            </Button.Style>
+                ToolTipService.ShowOnDisabled="True"
+                Style="{StaticResource RadialMenuButtonStyle}">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <TextBlock Text="Copiar contexto" />
+                </ToolTip>
+            </Button.ToolTip>
             <TextBlock Text="⎘" FontSize="16" />
         </Button>
+
+        <!-- ── TOP-LEFT: Corrigir erro ──────────────────────────────────────── -->
+        <Button x:Name="BtnFixError"
+                Width="40" Height="40"
+                HorizontalAlignment="Left" VerticalAlignment="Top"
+                Margin="18,52,0,0" Opacity="0"
+                Command="{Binding FixLastErrorCommand}"
+                Style="{StaticResource RadialMenuButtonStyle}">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <TextBlock Text="Corrigir último erro" />
+                </ToolTip>
+            </Button.ToolTip>
+            <TextBlock Text="🐛" FontSize="16" />
+        </Button>
+
+        <!-- ── CENTER: Executar sugestão ────────────────────────────────────── -->
+        <Button x:Name="BtnRunSuggestion"
+                Width="38" Height="38"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Opacity="0"
+                Command="{Binding RunSuggestionCommand}"
+                ToolTipService.ShowOnDisabled="True"
+                Style="{StaticResource RadialMenuButtonStyle}">
+            <Button.ToolTip>
+                <ToolTip Style="{StaticResource OrbTooltipStyle}">
+                    <TextBlock Text="Executar sugestão" />
+                </ToolTip>
+            </Button.ToolTip>
+            <TextBlock Text="▶" FontSize="14" />
+        </Button>
+
     </Grid>
 </UserControl>

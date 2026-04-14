@@ -131,6 +131,12 @@
                 </DataTemplate>
             </ctrl:CanvasItemContentTemplateSelector.FileExplorerWidgetTemplate>
 
+            <ctrl:CanvasItemContentTemplateSelector.BrowserWidgetTemplate>
+                <DataTemplate DataType="{x:Type vm:BrowserCanvasItemViewModel}">
+                    <ctrl:BrowserWidgetControl DataContext="{Binding}" />
+                </DataTemplate>
+            </ctrl:CanvasItemContentTemplateSelector.BrowserWidgetTemplate>
+
         </ctrl:CanvasItemContentTemplateSelector>
 
     </UserControl.Resources>

@@ -1537,6 +1537,23 @@ public partial class TerminalCanvasView : UserControl
         CtxSetLabel.Visibility       = hasSelection ? Visibility.Visible : Visibility.Collapsed;
         CtxToggleTitlebar.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;
         CtxConnect.Visibility        = _canvasVm.SelectedCount >= 2 ? Visibility.Visible : Visibility.Collapsed;
+
+        // Apply Widget Catalog visibility
+        var catalog = App.Services.GetService(typeof(Services.IWidgetCatalogService)) as Services.IWidgetCatalogService;
+        if (catalog is not null)
+        {
+            CtxAddChat.Visibility          = catalog.IsEnabled("chat_ai")        ? Visibility.Visible : Visibility.Collapsed;
+            CtxAddCodeEditor.Visibility    = catalog.IsEnabled("code_editor")    ? Visibility.Visible : Visibility.Collapsed;
+            CtxAddFileExplorer.Visibility  = catalog.IsEnabled("file_explorer")  ? Visibility.Visible : Visibility.Collapsed;
+            CtxAddBrowser.Visibility       = catalog.IsEnabled("browser")        ? Visibility.Visible : Visibility.Collapsed;
+            CtxAddNote.Visibility          = catalog.IsEnabled("note")           ? Visibility.Visible : Visibility.Collapsed;
+            CtxAddGit.Visibility           = catalog.IsEnabled("git")            ? Visibility.Visible : Visibility.Collapsed;
+            CtxAddProcess.Visibility       = catalog.IsEnabled("process_monitor")? Visibility.Visible : Visibility.Collapsed;
+            CtxAddSystemMonitor.Visibility = catalog.IsEnabled("system_monitor") ? Visibility.Visible : Visibility.Collapsed;
+            CtxAddKanban.Visibility        = catalog.IsEnabled("kanban")         ? Visibility.Visible : Visibility.Collapsed;
+            CtxAddPomodoro.Visibility      = catalog.IsEnabled("pomodoro")       ? Visibility.Visible : Visibility.Collapsed;
+            CtxAddTokenCounter.Visibility  = catalog.IsEnabled("token_counter")  ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     private void OnContextAddTerminal(object sender, RoutedEventArgs e)
@@ -1559,6 +1576,24 @@ public partial class TerminalCanvasView : UserControl
 
     private void OnContextAddGit(object sender, RoutedEventArgs e)
         => _canvasVm?.AddGitWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
+
+    private void OnContextAddBrowser(object sender, RoutedEventArgs e)
+        => _canvasVm?.AddBrowserWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
+
+    private void OnContextAddProcess(object sender, RoutedEventArgs e)
+        => _canvasVm?.AddProcessMonitorWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
+
+    private void OnContextAddSystemMonitor(object sender, RoutedEventArgs e)
+        => _canvasVm?.AddSystemMonitorWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
+
+    private void OnContextAddKanban(object sender, RoutedEventArgs e)
+        => _canvasVm?.AddKanbanWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
+
+    private void OnContextAddPomodoro(object sender, RoutedEventArgs e)
+        => _canvasVm?.AddPomodoroWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
+
+    private void OnContextAddTokenCounter(object sender, RoutedEventArgs e)
+        => _canvasVm?.AddTokenCounterWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
 
     private void OnContextFitAll(object sender, RoutedEventArgs e)
         => _canvasVm?.RequestFitAll();

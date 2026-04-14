@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommandDeck.Models;
 using CommandDeck.Services;
+using CDApp = CommandDeck.App;
 
 namespace CommandDeck.ViewModels;
 
@@ -42,8 +44,26 @@ public partial class ChatCanvasItemViewModel : CanvasItemViewModel, IDisposable
     [ObservableProperty] private string _selectedModel = string.Empty;
     [ObservableProperty] private string _chatTitle = "Chat AI";
 
+    // ─── Agent Mode ───────────────────────────────────────────────────────────
+
+    private IPromptTemplateService? _templateService;
+
+    /// <summary>Currently active agent mode (affects system prompt).</summary>
+    [ObservableProperty] private AgentMode? _activeAgentMode;
+
+    /// <summary>Display label for the active mode (icon + name).</summary>
+    public string ActiveModeLabel => ActiveAgentMode is null ? "🤖 Padrão" : $"{ActiveAgentMode.Icon} {ActiveAgentMode.Name}";
+
+    /// <summary>All available agent modes (loaded from IPromptTemplateService).</summary>
+    public System.Collections.ObjectModel.ObservableCollection<AgentMode> AgentModes { get; } = new();
+
+    partial void OnActiveAgentModeChanged(AgentMode? value)
+    {
+        OnPropertyChanged(nameof(ActiveModeLabel));
+    }
+
     /// <summary>Conversation history shown in the chat list.</summary>
-    public ObservableCollection<ChatMessage> Messages { get; } = new();
+    public System.Collections.ObjectModel.ObservableCollection<ChatMessage> Messages { get; } = new();
 
     public override CanvasItemType ItemType => CanvasItemType.ChatWidget;
 
@@ -79,6 +99,17 @@ public partial class ChatCanvasItemViewModel : CanvasItemViewModel, IDisposable
             _chatTitle = title;
 
         _settingsService.SettingsChanged += OnSettingsChanged;
+
+        // Load agent modes if service available
+        if (App.Services.GetService(typeof(IPromptTemplateService)) is IPromptTemplateService ts)
+        {
+            _templateService = ts;
+            foreach (var m in ts.Modes) AgentModes.Add(m);
+            ts.DataChanged += () => System.Windows.Application.Current.Dispatcher.Invoke(RefreshAgentModes);
+            // Default mode = first (Assistente Geral)
+            _activeAgentMode = AgentModes.FirstOrDefault(m => m.Id == "builtin-default");
+        }
+
         _ = InitializeAsync();
     }
 
@@ -88,7 +119,32 @@ public partial class ChatCanvasItemViewModel : CanvasItemViewModel, IDisposable
         await LoadHistoryAsync();
     }
 
-    // ─── Commands ─────────────────────────────────────────────────────────────
+    private void RefreshAgentModes()
+    {
+        if (_templateService is null) return;
+        AgentModes.Clear();
+        foreach (var m in _templateService.Modes) AgentModes.Add(m);
+    }
+
+    // ─── Agent Mode command ───────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void SetAgentMode(AgentMode? mode)
+    {
+        ActiveAgentMode = mode;
+        StatusText = mode is null ? "Modo padrão" : $"Modo: {mode.Name}";
+    }
+
+    // ─── Template injection ───────────────────────────────────────────────────
+
+    /// <summary>Injects a rendered prompt template into the input box (and optionally sends it).</summary>
+    [RelayCommand]
+    private async Task InjectTemplate(string renderedPrompt)
+    {
+        InputText = renderedPrompt;
+        if (!string.IsNullOrWhiteSpace(renderedPrompt))
+            await SendMessageCommand.ExecuteAsync(null);
+    }
 
     [RelayCommand(CanExecute = nameof(CanSendMessage))]
     private async Task SendMessage()
@@ -102,8 +158,14 @@ public partial class ChatCanvasItemViewModel : CanvasItemViewModel, IDisposable
             var messages = new List<AssistantMessage>();
 
             var settings = await _settingsService.GetSettingsAsync();
-            if (!string.IsNullOrWhiteSpace(settings.AiSystemPrompt))
-                messages.Add(AssistantMessage.System(settings.AiSystemPrompt));
+
+            // Agent mode system prompt takes priority over the global system prompt
+            var systemPrompt = (ActiveAgentMode is not null && ActiveAgentMode.Id != "builtin-default")
+                ? ActiveAgentMode.SystemPrompt
+                : settings.AiSystemPrompt;
+
+            if (!string.IsNullOrWhiteSpace(systemPrompt))
+                messages.Add(AssistantMessage.System(systemPrompt));
 
             foreach (var m in Messages)
                 messages.Add(m.IsUser ? AssistantMessage.User(m.Content) : AssistantMessage.Assistant(m.Content));

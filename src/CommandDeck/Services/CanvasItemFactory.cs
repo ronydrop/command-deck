@@ -225,4 +225,22 @@ public class CanvasItemFactory
     /// <summary>Restores a File Explorer tile from a persisted <see cref="CanvasItemModel"/>.</summary>
     public FileExplorerCanvasItemViewModel CreateFileExplorerItemFromModel(CanvasItemModel model)
         => new(model, _notificationService, _eventBus, _tileContext);
+
+    // ─── Browser ─────────────────────────────────────────────────────────────
+
+    /// <summary>Creates a new Browser canvas tile at the given position.</summary>
+    public BrowserCanvasItemViewModel CreateBrowserItem(double x = 40, double y = 40)
+    {
+        var model = new CanvasItemModel
+        {
+            Type = CanvasItemType.BrowserWidget,
+            X = x, Y = y,
+            Width = 720, Height = 500
+        };
+        return new BrowserCanvasItemViewModel(model, _notificationService, _eventBus, _tileContext);
+    }
+
+    /// <summary>Restores a Browser tile from a persisted <see cref="CanvasItemModel"/>.</summary>
+    public BrowserCanvasItemViewModel CreateBrowserItemFromModel(CanvasItemModel model)
+        => new(model, _notificationService, _eventBus, _tileContext);
 }

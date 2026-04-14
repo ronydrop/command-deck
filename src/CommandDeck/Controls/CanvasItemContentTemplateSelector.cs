@@ -25,15 +25,17 @@ public class CanvasItemContentTemplateSelector : DataTemplateSelector
     public DataTemplate? PomodoroWidgetTemplate { get; set; }
     public DataTemplate? CodeEditorWidgetTemplate { get; set; }
     public DataTemplate? FileExplorerWidgetTemplate { get; set; }
+    public DataTemplate? BrowserWidgetTemplate { get; set; }
 
     public override DataTemplate? SelectTemplate(object item, DependencyObject container)
     {
         return item switch
         {
-            TerminalCanvasItemViewModel => TerminalTemplate,
-            ChatCanvasItemViewModel     => ChatWidgetTemplate,
-            CodeEditorCanvasItemViewModel => CodeEditorWidgetTemplate,
+            TerminalCanvasItemViewModel     => TerminalTemplate,
+            ChatCanvasItemViewModel         => ChatWidgetTemplate,
+            CodeEditorCanvasItemViewModel   => CodeEditorWidgetTemplate,
             FileExplorerCanvasItemViewModel => FileExplorerWidgetTemplate,
+            BrowserCanvasItemViewModel      => BrowserWidgetTemplate,
             WidgetCanvasItemViewModel w => w.WidgetType switch
             {
                 WidgetType.Git           => GitWidgetTemplate,

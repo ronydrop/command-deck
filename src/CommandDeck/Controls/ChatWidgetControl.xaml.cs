@@ -98,6 +98,51 @@ public partial class ChatWidgetControl : UserControl
                 vm.SwitchProviderCommand.Execute(providerType);
         }
     }
+
+    private void OnAgentModeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is ChatCanvasItemViewModel vm &&
+            sender is ComboBox cb && cb.SelectedItem is Models.AgentMode mode)
+        {
+            vm.SetAgentModeCommand.Execute(mode);
+        }
+    }
+
+    private void OnTemplatePickerClick(object sender, RoutedEventArgs e)
+    {
+        var service = App.Services.GetService(typeof(Services.IPromptTemplateService)) as Services.IPromptTemplateService;
+        if (service is null) return;
+
+        TemplateList.ItemsSource = service.Templates;
+        TemplatePickerPopup.IsOpen = !TemplatePickerPopup.IsOpen;
+    }
+
+    private void OnTemplateItemClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement fe || fe.DataContext is not Models.PromptTemplate template) return;
+        TemplatePickerPopup.IsOpen = false;
+
+        // If template has no fields, inject immediately
+        if (template.Fields.Count == 0)
+        {
+            if (DataContext is ChatCanvasItemViewModel vm)
+                vm.InputText = template.Template;
+            return;
+        }
+
+        // Show field dialog for templates with dynamic fields
+        var dialog = new TemplateFieldsDialog(template);
+        if (dialog.ShowDialog() == true)
+        {
+            var rendered = template.Render(dialog.FieldValues);
+            if (DataContext is ChatCanvasItemViewModel vm)
+            {
+                vm.InputText = rendered;
+                if (template.AutoSend)
+                    _ = vm.SendMessageCommand.ExecuteAsync(null);
+            }
+        }
+    }
 }
 
 /// <summary>
