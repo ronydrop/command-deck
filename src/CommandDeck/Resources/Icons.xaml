@@ -91,6 +91,15 @@
     <Geometry x:Key="CopyIcon">M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z</Geometry>
     <Geometry x:Key="CheckIcon">M20 6L9 17L4 12</Geometry>
 
+    <!-- Code Editor (code brackets) -->
+    <Geometry x:Key="CodeEditorIcon">M8 3L3 8.5L8 14M16 3L21 8.5L16 14M13 1L11 15</Geometry>
+
+    <!-- Note / Sticky note -->
+    <Geometry x:Key="NoteIcon">M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM14 8V3.5L18.5 8H14ZM16 13H8M16 17H8M10 9H8</Geometry>
+
+    <!-- Kanban board (3 columns) -->
+    <Geometry x:Key="KanbanIcon">M3 3H8V21H3V3ZM10 3H14V15H10V3ZM16 3H21V9H16V3Z</Geometry>
+
     <!-- ═══════════════════════════════════════════════════════════════════════
          ICON STYLE (for Path elements using icons)
          ═══════════════════════════════════════════════════════════════════════ -->

@@ -41,8 +41,6 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <!-- Accent strip -->
-            <RowDefinition Height="3"/>
             <!-- Toolbar -->
             <RowDefinition Height="36"/>
             <!-- WebView2 -->
@@ -51,11 +49,8 @@
             <RowDefinition Height="20"/>
         </Grid.RowDefinitions>
 
-        <!-- Accent strip -->
-        <Border Grid.Row="0" Background="#89b4fa" CornerRadius="0"/>
-
         <!-- ── Toolbar ─────────────────────────────────────────────────────── -->
-        <Border Grid.Row="1">
+        <Border Grid.Row="0">
             <Border.Background>
                 <SolidColorBrush Color="{DynamicResource Surface0}" Opacity="0.92"/>
             </Border.Background>
@@ -100,24 +95,45 @@
 
                 <!-- URL Bar -->
                 <Border Grid.Column="3" CornerRadius="6" Margin="6,5"
-                        BorderThickness="1">
+                        BorderThickness="1.5">
                     <Border.Background>
-                        <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.5"/>
+                        <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.8"/>
                     </Border.Background>
                     <Border.BorderBrush>
-                        <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.4"/>
+                        <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.7"/>
                     </Border.BorderBrush>
-                    <TextBox x:Name="AddressBar"
-                             Text="{Binding AddressBarText, UpdateSourceTrigger=PropertyChanged}"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             Foreground="{DynamicResource TextBrush}"
-                             CaretBrush="{DynamicResource TextBrush}"
-                             FontSize="11"
-                             VerticalContentAlignment="Center"
-                             Padding="8,0"
-                             KeyDown="OnAddressBarKeyDown"
-                             GotFocus="OnAddressBarFocus"/>
+                    <Grid>
+                        <!-- Placeholder quando URL vazia -->
+                        <TextBlock Text="Pesquisar ou digitar URL..."
+                                   FontSize="11"
+                                   Foreground="{DynamicResource SubtextBrush}"
+                                   VerticalAlignment="Center"
+                                   Margin="9,0"
+                                   IsHitTestVisible="False"
+                                   Opacity="0.5">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding AddressBarText}" Value="">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBox x:Name="AddressBar"
+                                 Text="{Binding AddressBarText, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Foreground="{DynamicResource TextBrush}"
+                                 CaretBrush="{DynamicResource TextBrush}"
+                                 FontSize="11"
+                                 VerticalContentAlignment="Center"
+                                 Padding="8,0"
+                                 KeyDown="OnAddressBarKeyDown"
+                                 GotFocus="OnAddressBarFocus"/>
+                    </Grid>
                 </Border>
 
                 <!-- Desktop/Mobile toggle -->
@@ -174,14 +190,14 @@
         </Border>
 
         <!-- ── WebView2 ───────────────────────────────────────────────────── -->
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="1">
             <!-- Loading progress bar -->
             <Border x:Name="LoadingBar" Height="2" VerticalAlignment="Top"
                     Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="#89b4fa" Offset="0"/>
-                        <GradientStop Color="#cba6f7" Offset="1"/>
+                        <GradientStop Color="{DynamicResource AccentBlue}" Offset="0"/>
+                        <GradientStop Color="{DynamicResource AccentPurple}" Offset="1"/>
                     </LinearGradientBrush>
                 </Border.Background>
             </Border>
@@ -197,7 +213,7 @@
 
             <!-- WebView2 (Composition variant: participates in WPF visual tree,
                  respects ClipToBounds, RenderTransform and zoom transforms) -->
-            <wv2:WebView2CompositionControl x:Name="WebView"
+            <wv2:WebView2 x:Name="WebView"
                           Visibility="{Binding IsBrowserReady, Converter={StaticResource BoolToVisibility}}"
                           NavigationStarting="OnNavigationStarting"
                           NavigationCompleted="OnNavigationCompleted"
@@ -205,7 +221,7 @@
         </Grid>
 
         <!-- ── Status bar ─────────────────────────────────────────────────── -->
-        <Border Grid.Row="3">
+        <Border Grid.Row="2">
             <Border.Background>
                 <SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.8"/>
             </Border.Background>

@@ -30,7 +30,6 @@ public class ProjectSwitchService : IProjectSwitchService
     // ViewModels injected lazily to break circular DI chains.
     private readonly Lazy<TerminalCanvasViewModel> _canvasVm;
     private readonly Lazy<DashboardViewModel> _dashboardVm;
-    private readonly Lazy<BrowserViewModel> _browserVm;
     private readonly Lazy<ProjectListViewModel> _projectListVm;
 
     /// <inheritdoc/>
@@ -46,7 +45,6 @@ public class ProjectSwitchService : IProjectSwitchService
         IActivityFeedService activityFeed,
         Lazy<TerminalCanvasViewModel> canvasVm,
         Lazy<DashboardViewModel> dashboardVm,
-        Lazy<BrowserViewModel> browserVm,
         Lazy<ProjectListViewModel> projectListVm)
     {
         _settingsService = settingsService;
@@ -58,7 +56,6 @@ public class ProjectSwitchService : IProjectSwitchService
         _activityFeed = activityFeed;
         _canvasVm = canvasVm;
         _dashboardVm = dashboardVm;
-        _browserVm = browserVm;
         _projectListVm = projectListVm;
     }
 
@@ -119,10 +116,9 @@ public class ProjectSwitchService : IProjectSwitchService
             });
 
             var dashboardTask = _dashboardVm.Value.SetProjectAsync(project);
-            var browserTask = _browserVm.Value.SwitchToProjectAsync(project);
 
-            await Task.WhenAll(settingsTask, dashboardTask, browserTask);
-            Debug.WriteLine($"[Perf] ParallelTasks (settings+dashboard+browser): {stepSw.ElapsedMilliseconds}ms");
+            await Task.WhenAll(settingsTask, dashboardTask);
+            Debug.WriteLine($"[Perf] ParallelTasks (settings+dashboard): {stepSw.ElapsedMilliseconds}ms");
             stepSw.Restart();
 
             _dashboardVm.Value.StopRefresh();

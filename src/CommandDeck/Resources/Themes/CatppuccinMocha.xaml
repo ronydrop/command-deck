@@ -41,6 +41,8 @@
     <SolidColorBrush x:Key="AccentYellowBrush" Color="{StaticResource AccentYellow}" />
     <SolidColorBrush x:Key="AccentRedBrush"    Color="{StaticResource AccentRed}" />
     <SolidColorBrush x:Key="AccentMauveBrush"  Color="{StaticResource AccentMauve}" />
+    <SolidColorBrush x:Key="AccentForegroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="MenuItemHoverBrush"   Color="#407C3AED" />
 
     <!-- Search highlight brushes -->
     <SolidColorBrush x:Key="SearchHighlightBrush"         Color="{StaticResource SearchHighlight}" />
@@ -57,5 +59,10 @@
     <SolidColorBrush x:Key="GlassTitleBarBrush"   Color="{StaticResource MantelBg}" />
 
     <DropShadowEffect x:Key="CardShadow" ShadowDepth="3" BlurRadius="22" Opacity="0.35" Color="#000000" Direction="270" />
+
+    <!-- DOT GRID: base white dots + accent glow (revealed via OpacityMask near cursor) -->
+    <SolidColorBrush x:Key="DotGridDotBrush"  Color="#2EFFFFFF" />
+    <SolidColorBrush x:Key="DotGridLineBrush" Color="#0FFFFFFF" />
+    <SolidColorBrush x:Key="DotGridGlowBrush" Color="{StaticResource AccentPurple}" Opacity="0.22" />
 
 </ResourceDictionary>

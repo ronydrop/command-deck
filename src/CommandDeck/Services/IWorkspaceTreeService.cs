@@ -15,7 +15,6 @@ public interface IWorkspaceTreeService
     Task LoadAsync();
     Task SaveAsync();
 
-    WorkspaceNodeModel AddGroup(string name, string color = "#6C7086", string? parentId = null);
     WorkspaceNodeModel AddProject(string name, string path, string? parentId = null);
     WorkspaceNodeModel AddTerminalNode(string name, string canvasItemId, string? parentId = null);
 

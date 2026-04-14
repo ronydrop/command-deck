@@ -550,11 +550,11 @@
                                                      Foreground="{DynamicResource TextBrush}"
                                                      VerticalAlignment="Center"
                                                      Tag="{Binding}"
-                                                     KeyDown="OnColumnTitleKeyDown">
+                                                     KeyDown="OnColumnTitleKeyDown"
+                                                     IsVisibleChanged="OnColumnEditBoxVisibleChanged">
                                                 <TextBox.Style>
                                                     <Style TargetType="TextBox">
                                                         <Setter Property="Visibility" Value="Collapsed" />
-                                                        <EventSetter Event="IsVisibleChanged" Handler="OnColumnEditBoxVisibleChanged" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsEditingTitle}" Value="True">
                                                                 <Setter Property="Visibility" Value="Visible" />
@@ -675,11 +675,10 @@
                                                      Height="24" FontSize="11"
                                                      Padding="6,3"
                                                      VerticalContentAlignment="Center"
-                                                     KeyDown="OnColumnAddCardKeyDown">
+                                                     KeyDown="OnColumnAddCardKeyDown"
+                                                     IsVisibleChanged="OnAddCardBoxVisibleChanged">
                                                 <TextBox.Style>
-                                                    <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}">
-                                                        <EventSetter Event="IsVisibleChanged" Handler="OnAddCardBoxVisibleChanged" />
-                                                    </Style>
+                                                    <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}" />
                                                 </TextBox.Style>
                                             </TextBox>
                                             <Button Grid.Column="2"

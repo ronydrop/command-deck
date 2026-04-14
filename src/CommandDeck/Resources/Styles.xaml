@@ -57,7 +57,7 @@
 
     <Style x:Key="AccentButton" TargetType="Button">
         <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="16,8" />
         <Setter Property="FontSize" Value="13" />
@@ -93,7 +93,7 @@
     <!-- Split button variants: left/right halves share a parent Border -->
     <Style x:Key="AccentButtonLeft" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="12,6" />
         <Setter Property="FontSize" Value="13" />
@@ -128,7 +128,7 @@
 
     <Style x:Key="AccentButtonRight" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="8,6" />
         <Setter Property="FontSize" Value="13" />
@@ -456,7 +456,7 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="6"
-                            Padding="{TemplateBinding Padding}"
+                            Padding="0"
                             MinHeight="{TemplateBinding MinHeight}"
                             SnapsToDevicePixels="True">
                         <Grid VerticalAlignment="Center" SnapsToDevicePixels="True">
@@ -471,7 +471,7 @@
                                        Text="{TemplateBinding Tag}"
                                        Foreground="{DynamicResource SubtextBrush}"
                                        Opacity="0.5"
-                                       Margin="0"
+                                       Margin="{TemplateBinding Padding}"
                                        IsHitTestVisible="False"
                                        VerticalAlignment="Center"
                                        Visibility="Collapsed" />
@@ -520,7 +520,7 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="6"
-                            Padding="{TemplateBinding Padding}"
+                            Padding="0"
                             MinHeight="{TemplateBinding MinHeight}"
                             SnapsToDevicePixels="True">
                         <Grid VerticalAlignment="Center" SnapsToDevicePixels="True">
@@ -535,7 +535,7 @@
                                        Text="{TemplateBinding Tag}"
                                        Foreground="{DynamicResource SubtextBrush}"
                                        Opacity="0.5"
-                                       Margin="0"
+                                       Margin="{TemplateBinding Padding}"
                                        IsHitTestVisible="False"
                                        VerticalAlignment="Center"
                                        Visibility="Visible" />
@@ -1064,7 +1064,9 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="border" Property="Background"
-                                    Value="{DynamicResource Surface1Brush}" />
+                                    Value="{DynamicResource MenuItemHoverBrush}" />
+                            <Setter Property="Foreground"
+                                    Value="{DynamicResource AccentBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="content" Property="Opacity" Value="0.4" />

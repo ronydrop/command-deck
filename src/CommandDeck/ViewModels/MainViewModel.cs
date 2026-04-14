@@ -50,9 +50,6 @@ public partial class MainViewModel : ObservableObject
     public CommandPaletteViewModel CommandPalette { get; }
     public WorkspaceTreeViewModel WorkspaceTree { get; }
 
-    /// <summary>AI Assistant side-panel ViewModel.</summary>
-    public BrowserViewModel Browser { get; }
-
     /// <summary>Tabbed terminal layout ViewModel.</summary>
     public TabbedTerminalViewModel TabbedTerminal { get; }
 
@@ -175,7 +172,6 @@ public partial class MainViewModel : ObservableObject
         ProjectListViewModel projectList,
         DashboardViewModel dashboard,
         ProcessMonitorViewModel processMonitor,
-        BrowserViewModel browserViewModel,
         CanvasItemFactory canvasItemFactory,
         IAiTerminalLauncher aiLauncher,
         IAgentSelectorService agentSelectorService,
@@ -223,7 +219,6 @@ public partial class MainViewModel : ObservableObject
         CanvasViewModel = canvasViewModel;
         CommandPalette = commandPalette;
         WorkspaceTree = workspaceTree;
-        Browser = browserViewModel;
         BranchSelector = branchSelector;
         AiOrb = aiOrb;
         TabbedTerminal = tabbedTerminal;
@@ -232,6 +227,13 @@ public partial class MainViewModel : ObservableObject
         TerminalManager.CurrentProject = null; // will be set on project switch
         TerminalManager.CanvasViewModel = CanvasViewModel;
         TerminalManager.AllTerminalsClosed += (_, _) => CurrentView = ViewType.Dashboard;
+
+        CanvasViewModel.AddTerminalRequested += async () =>
+        {
+            TerminalManager.CurrentProject = CurrentProject;
+            await TerminalManager.NewTerminal();
+            CurrentView = ViewType.Terminal;
+        };
 
         CommandPalette.CloseRequested += () => IsCommandPaletteOpen = false;
 
@@ -867,6 +869,5 @@ public enum ViewType
     Terminal,
     ProcessMonitor,
     Settings,
-    Browser,
     TabbedTerminal
 }

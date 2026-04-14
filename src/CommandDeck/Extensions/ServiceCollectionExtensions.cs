@@ -178,7 +178,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ProjectListViewModel>();
         services.AddSingleton<DashboardViewModel>();
         services.AddSingleton<ProcessMonitorViewModel>();
-        services.AddSingleton<BrowserViewModel>();
         services.AddSingleton<AiOrbViewModel>();
         services.AddSingleton<AgentSelectorViewModel>();
 
@@ -206,7 +205,6 @@ public static class ServiceCollectionExtensions
         // Lazy wrappers — break circular DI dependencies at resolution time
         services.AddSingleton(sp => new Lazy<TerminalCanvasViewModel>(() => sp.GetRequiredService<TerminalCanvasViewModel>()));
         services.AddSingleton(sp => new Lazy<DashboardViewModel>(() => sp.GetRequiredService<DashboardViewModel>()));
-        services.AddSingleton(sp => new Lazy<BrowserViewModel>(() => sp.GetRequiredService<BrowserViewModel>()));
         services.AddSingleton(sp => new Lazy<WorkspaceTreeViewModel>(() => sp.GetRequiredService<WorkspaceTreeViewModel>()));
         services.AddSingleton(sp => new Lazy<ProjectListViewModel>(() => sp.GetRequiredService<ProjectListViewModel>()));
         services.AddSingleton(sp => new Lazy<MainViewModel>(() => sp.GetRequiredService<MainViewModel>()));

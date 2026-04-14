@@ -69,25 +69,6 @@ public class WorkspaceTreeService : IWorkspaceTreeService
 
     // ─── Add ─────────────────────────────────────────────────────────────────
 
-    public WorkspaceNodeModel AddGroup(string name, string color = "#6C7086", string? parentId = null)
-    {
-        _lock.Wait();
-        try
-        {
-            var node = new WorkspaceNodeModel
-            {
-                NodeType = WorkspaceNodeType.Group,
-                Name = name,
-                Color = color,
-                IconKey = "FolderIcon",
-                ParentId = parentId
-            };
-            Insert(node, parentId);
-            return node;
-        }
-        finally { _lock.Release(); }
-    }
-
     public WorkspaceNodeModel AddProject(string name, string path, string? parentId = null)
     {
         _lock.Wait();

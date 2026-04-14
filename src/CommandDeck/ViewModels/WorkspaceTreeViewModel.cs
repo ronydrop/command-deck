@@ -71,25 +71,6 @@ public partial class WorkspaceTreeViewModel : ObservableObject
     }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
-    private async Task AddGroup()
-    {
-        try
-        {
-            var node = _treeService.AddGroup("Novo Grupo");
-            await _treeService.SaveAsync();
-            var vm = new WorkspaceTreeNodeViewModel(node);
-            EnsureUiThread(() => RootNodes.Add(vm));
-            // Auto-select the new node and enter edit mode
-            SelectedNode = vm;
-            vm.IsEditing = true;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[WorkspaceTree] AddGroup failed: {ex}");
-        }
-    }
-
-    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task DeleteSelected()
     {
         try

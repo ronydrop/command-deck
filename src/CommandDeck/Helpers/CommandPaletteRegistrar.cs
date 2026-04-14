@@ -171,25 +171,6 @@ public static class CommandPaletteRegistrar
         });
 
         // ═══════════════════════════════════════════════════════════════
-        // WORKSPACE COMMANDS
-        // ═══════════════════════════════════════════════════════════════
-
-        commandService.RegisterCommand(new CommandDefinition
-        {
-            Id = "workspace.newGroup",
-            Title = "New Group",
-            Category = "Workspace",
-            Icon = "\uE710", // New folder/group
-            Keywords = "workspace grupo grupo novo group",
-            Action = () =>
-            {
-                // TODO: Implement workspace grouping
-                System.Diagnostics.Debug.WriteLine("[CommandPalette] New Group - not yet implemented");
-                return Task.CompletedTask;
-            }
-        });
-
-        // ═══════════════════════════════════════════════════════════════
         // PROJECT COMMANDS
         // ═══════════════════════════════════════════════════════════════
 

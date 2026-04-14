@@ -75,21 +75,33 @@ public partial class TerminalManagerViewModel : ObservableObject
     [RelayCommand]
     public async Task NewTerminal()
     {
-        var settings = await _settingsService.GetSettingsAsync();
-        var shellType = CurrentProject?.DefaultShell ?? settings.DefaultShell;
-        var workDir = CurrentProject?.Path;
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync();
+            var shellType = CurrentProject?.DefaultShell ?? settings.DefaultShell;
+            var workDir = CurrentProject?.Path;
 
-        var terminalVm = _terminalVmFactory();
-        Terminals.Add(terminalVm);
-        ActiveTerminal = terminalVm;
-        ActiveTerminalCount = Terminals.Count;
+            var terminalVm = _terminalVmFactory();
+            Terminals.Add(terminalVm);
+            ActiveTerminal = terminalVm;
+            ActiveTerminalCount = Terminals.Count;
 
-        await terminalVm.PrepareAsync(shellType, workDir, CurrentProject?.Id);
+            await terminalVm.PrepareAsync(shellType, workDir, CurrentProject?.Id);
 
-        // Register with workspace so it appears as a spatial canvas item
-        _workspaceService.AddTerminalItem(terminalVm);
+            // Register with workspace so it appears as a spatial canvas item
+            _workspaceService.AddTerminalItem(terminalVm);
 
-        ShellTypeDisplay = shellType.GetDisplayName();
+            ShellTypeDisplay = shellType.GetDisplayName();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[NewTerminal] {ex}");
+            _notificationService.Notify(
+                "Erro ao criar terminal",
+                NotificationType.Error,
+                NotificationSource.System,
+                message: ex.Message);
+        }
     }
 
     /// <summary>Closes the specified terminal tab.</summary>

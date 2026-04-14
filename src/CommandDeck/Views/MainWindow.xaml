@@ -112,7 +112,7 @@
                     <StackPanel Orientation="Horizontal">
                         <Path Data="{StaticResource DashboardIcon}"
                               Style="{StaticResource IconPathSmall}"
-                              Margin="0,0,6,0" />
+                              Margin="0,0,8,0" />
                         <TextBlock Text="Painel" VerticalAlignment="Center" FontSize="13" />
                     </StackPanel>
                 </Button>
@@ -137,7 +137,7 @@
                     <StackPanel Orientation="Horizontal">
                         <Path Data="{StaticResource TerminalIcon}"
                               Style="{StaticResource IconPathSmall}"
-                              Margin="0,0,6,0" />
+                              Margin="0,0,8,0" />
                         <TextBlock Text="Terminal" VerticalAlignment="Center" FontSize="13" />
                     </StackPanel>
                 </Button>
@@ -162,8 +162,8 @@
                     <StackPanel Orientation="Horizontal">
                         <Path Data="{StaticResource TerminalIcon}"
                               Style="{StaticResource IconPathSmall}"
-                              Margin="0,0,6,0" />
-                        <TextBlock Text="Abas" VerticalAlignment="Center" FontSize="13" />
+                              Margin="0,0,8,0" />
+                        <TextBlock Text="Terminal com Abas" VerticalAlignment="Center" FontSize="13" />
                     </StackPanel>
                 </Button>
 
@@ -393,28 +393,182 @@
                                 </StackPanel>
                             </Button>
 
+                        </StackPanel>
+
+                        <Separator Style="{StaticResource DarkSeparator}"
+                                   Margin="16,2,16,2" />
+
+                        <!-- ══ Group: BLOCOS ══ -->
+                        <ToggleButton x:Name="BlocksGroupToggle"
+                                      IsChecked="True"
+                                      Style="{StaticResource SidebarGroupHeader}"
+                                      Margin="8,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="BLOCOS"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SubtextBrush}"
+                                           Opacity="0.7"
+                                           VerticalAlignment="Center" />
+                                <Path Grid.Column="1" Data="{StaticResource ChevronDownIcon}">
+                                    <Path.Style>
+                                        <Style TargetType="Path" BasedOn="{StaticResource IconPathSmall}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=BlocksGroupToggle}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                                <Path Grid.Column="1" Data="{StaticResource ChevronRightIcon}">
+                                    <Path.Style>
+                                        <Style TargetType="Path" BasedOn="{StaticResource IconPathSmall}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=BlocksGroupToggle}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                            </Grid>
+                        </ToggleButton>
+
+                        <!-- Items: BLOCOS -->
+                        <StackPanel Margin="8,2,8,0">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsChecked, ElementName=BlocksGroupToggle}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+
+                            <!-- Terminal -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.CanvasViewModel.AddBlockByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="Terminal">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}" />
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource TerminalIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Terminal" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Chat IA -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.CanvasViewModel.AddBlockByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="Chat">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}" />
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource ChatIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Chat IA" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Editor de Código -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.CanvasViewModel.AddBlockByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="CodeEditor">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}" />
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource CodeEditorIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Editor de Código" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
+
                             <!-- Browser -->
                             <Button HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Left"
                                     Padding="8,6" Margin="0,1"
-                                    Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    CommandParameter="{x:Static vm:ViewType.Browser}">
+                                    Command="{Binding DataContext.CanvasViewModel.AddBlockByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="Browser">
                                 <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                         Value="{x:Static vm:ViewType.Browser}">
-                                                <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
-                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}" />
                                 </Button.Style>
                                 <StackPanel Orientation="Horizontal">
                                     <Path Data="{StaticResource BrowserIcon}"
                                           Style="{StaticResource IconPathSmall}"
                                           Margin="0,0,8,0" />
                                     <TextBlock Text="Browser" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Nota -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.CanvasViewModel.AddBlockByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="Note">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}" />
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource NoteIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Nota" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Git Status -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.CanvasViewModel.AddBlockByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="Git">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}" />
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource GitBranchIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Git Status" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Kanban -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.CanvasViewModel.AddBlockByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="Kanban">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}" />
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource KanbanIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Kanban" VerticalAlignment="Center" FontSize="13" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -596,12 +750,6 @@
                 DataContext="{Binding SettingsViewModel}"
                 Visibility="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window},
                              Converter={StaticResource ViewTypeToVis}, ConverterParameter=Settings}" />
-
-            <!-- Browser View -->
-            <views:BrowserView
-                DataContext="{Binding Browser}"
-                Visibility="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window},
-                             Converter={StaticResource ViewTypeToVis}, ConverterParameter=Browser}" />
 
             <!-- Tabbed Terminal View -->
             <views:TabbedTerminalView

@@ -25,8 +25,8 @@ public partial class BrowserCanvasItemViewModel : CanvasItemViewModel
 
     // ─── Observable state ────────────────────────────────────────────────────
 
-    [ObservableProperty] private string _url = "about:blank";
-    [ObservableProperty] private string _addressBarText = string.Empty;
+    [ObservableProperty] private string _url = "https://www.google.com";
+    [ObservableProperty] private string _addressBarText = "https://www.google.com";
     [ObservableProperty] private string _pageTitle = "Browser";
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private bool _canGoBack;
@@ -63,6 +63,10 @@ public partial class BrowserCanvasItemViewModel : CanvasItemViewModel
         {
             _url = savedUrl;
             _addressBarText = savedUrl;
+        }
+        else
+        {
+            _addressBarText = "https://www.google.com";
         }
         if (model.Metadata.TryGetValue("desktopMode", out var dm))
             _isDesktopMode = dm != "false";

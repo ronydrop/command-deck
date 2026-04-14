@@ -337,8 +337,6 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Terminais Ativos -->
@@ -411,103 +409,6 @@
                     </Grid>
                 </Border>
 
-                <!-- Claude Usage (compacto) -->
-                <Border Grid.Column="4" CornerRadius="12" ClipToBounds="True"
-                        BorderThickness="1" BorderBrush="#30CC785C" Margin="0">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                            <GradientStop Color="#1A1A1A" Offset="0"/>
-                            <GradientStop Color="#1C1512" Offset="1"/>
-                        </LinearGradientBrush>
-                    </Border.Background>
-                    <Grid Margin="14,12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <!-- Header: ícone + nome + reset -->
-                        <DockPanel Grid.Row="0" Margin="0,0,0,8">
-                            <Button DockPanel.Dock="Right"
-                                    Style="{StaticResource GhostButton}"
-                                    Padding="4,2"
-                                    ToolTip="Resetar estatísticas da sessão"
-                                    Command="{Binding ResetClaudeUsageCommand}">
-                                <TextBlock Text="↺" FontSize="13" Foreground="#80CC785C" />
-                            </Button>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Border Width="38" Height="38" CornerRadius="9" Padding="2" Margin="0,0,10,0">
-                                    <Border.Background>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Color="#CC785C" Offset="0"/>
-                                            <GradientStop Color="#A0522D" Offset="1"/>
-                                        </LinearGradientBrush>
-                                    </Border.Background>
-                                    <TextBlock Text="✦" FontSize="20" FontWeight="Bold"
-                                               Foreground="White"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center" />
-                                </Border>
-                                <TextBlock Text="Claude Code"
-                                           FontSize="15" FontWeight="SemiBold"
-                                           Foreground="#E8C4A0"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </DockPanel>
-
-                        <!-- Tokens + descrição -->
-                        <StackPanel Grid.Row="1" Margin="0,4,0,0">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding ClaudeTokensDisplay}"
-                                           FontSize="28" FontWeight="Bold"
-                                           FontFamily="{StaticResource MonoFont}"
-                                           Foreground="#E8C4A0"
-                                           VerticalAlignment="Center"
-                                           ToolTip="Total de tokens consumidos pelo Claude Code nesta sessão" />
-                                <TextBlock Text=" tokens"
-                                           FontSize="13" Foreground="#80CC785C"
-                                           VerticalAlignment="Bottom"
-                                           Margin="3,0,0,6" />
-                            </StackPanel>
-                            <TextBlock Text="consumidos na sessão"
-                                       FontSize="12" Foreground="#50CC785C"
-                                       Margin="0,5,0,0" />
-                            <!-- Modelo em uso -->
-                            <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
-                                <TextBlock Text="Modelo: "
-                                           FontSize="12" Foreground="#50CC785C"
-                                           VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding ClaudeModelDisplay}"
-                                           FontSize="12" FontWeight="Medium"
-                                           FontFamily="{StaticResource MonoFont}"
-                                           Foreground="#80CC785C"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                        </StackPanel>
-
-                        <!-- Custo USD / BRL -->
-                        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
-                            <TextBlock Text="USD"
-                                       FontSize="12" Foreground="#50CC785C"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,10,0" />
-                            <TextBlock Text="{Binding ClaudeCostUsdDisplay}"
-                                       FontSize="13" FontWeight="SemiBold"
-                                       FontFamily="{StaticResource MonoFont}"
-                                       Foreground="#E8C4A0"
-                                       Margin="0,0,10,0" />
-                            <TextBlock Text="BRL"
-                                       FontSize="12" Foreground="#50CC785C"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,10,0" />
-                            <TextBlock Text="{Binding ClaudeCostBrlDisplay}"
-                                       FontSize="13" FontWeight="SemiBold"
-                                       FontFamily="{StaticResource MonoFont}"
-                                       Foreground="#CC9966" />
-                        </StackPanel>
-                    </Grid>
-                </Border>
             </Grid>
 
             <!-- ═══════════════════════════════════════════════════════════

@@ -20,27 +20,60 @@
         <conv:HexToColorConverter x:Key="HexToColor" />
         <conv:EnumToBoolConverter x:Key="EnumToBool" />
 
-        <!-- Tab styling -->
+        <!-- Tab styling — sidebar esquerda -->
         <Style x:Key="SettingsTabControl" TargetType="TabControl">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="0"/>
+            <Setter Property="TabStripPlacement" Value="Left"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabControl">
                         <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <!-- Pill nav bar -->
-                            <Border Grid.Row="0" Background="{DynamicResource Surface0Brush}"
-                                    CornerRadius="10" Padding="4" Margin="0,0,0,20"
-                                    HorizontalAlignment="Left">
-                                <TabPanel IsItemsHost="True" Background="Transparent"/>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="220"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- ── Sidebar ── -->
+                            <Border Grid.Column="0"
+                                    Background="{DynamicResource Surface0Brush}"
+                                    BorderBrush="{DynamicResource GlassBorderBrush}"
+                                    BorderThickness="0,0,1,0">
+                                <DockPanel LastChildFill="False">
+                                    <!-- Logo / Título -->
+                                    <StackPanel DockPanel.Dock="Top" Margin="18,22,18,14">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                            <TextBlock Text="⚙" FontSize="15"
+                                                       Foreground="{DynamicResource AccentBrush}"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBlock Text="Configurações"
+                                                       FontSize="14" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextBrush}"
+                                                       VerticalAlignment="Center" Margin="9,0,0,0"/>
+                                        </StackPanel>
+                                        <TextBlock Text="Personalize sua experiência"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource SubtextBrush}"
+                                                   Margin="24,0,0,0" Opacity="0.55"/>
+                                    </StackPanel>
+
+                                    <!-- Separador -->
+                                    <Rectangle DockPanel.Dock="Top" Height="1"
+                                               Fill="{DynamicResource GlassBorderBrush}"
+                                               Margin="18,0,18,10"/>
+
+                                    <!-- Itens de navegação -->
+                                    <TabPanel DockPanel.Dock="Top"
+                                              IsItemsHost="True"
+                                              Background="Transparent"
+                                              Margin="8,0"/>
+                                </DockPanel>
                             </Border>
-                            <!-- Content without any border -->
-                            <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"
+
+                            <!-- ── Área de conteúdo ── -->
+                            <ContentPresenter Grid.Column="1"
+                                              ContentSource="SelectedContent"
                                               HorizontalAlignment="Stretch"/>
                         </Grid>
                     </ControlTemplate>
@@ -52,18 +85,33 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="2"/>
-            <Setter Property="Width" Value="180"/>
+            <Setter Property="Margin" Value="0,1"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="TabBorder" Padding="8,8" Cursor="Hand"
-                                Background="Transparent" CornerRadius="7">
-                            <TextBlock x:Name="HeaderText"
-                                       Text="{TemplateBinding Header}"
-                                       FontSize="13"
-                                       HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource SubtextBrush}"/>
+                        <Border x:Name="TabBorder"
+                                Background="Transparent"
+                                CornerRadius="6"
+                                Height="38"
+                                Cursor="Hand">
+                            <Grid Margin="10,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="3"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="Indicator"
+                                        Grid.Column="0"
+                                        CornerRadius="2"
+                                        Background="Transparent"
+                                        Margin="0,9"/>
+                                <TextBlock x:Name="HeaderText"
+                                           Grid.Column="2"
+                                           Text="{TemplateBinding Header}"
+                                           FontSize="13"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource SubtextBrush}"/>
+                            </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -76,9 +124,11 @@
                                 <Setter TargetName="TabBorder" Property="Background"
                                         Value="{DynamicResource Surface1Brush}"/>
                                 <Setter TargetName="HeaderText" Property="Foreground"
-                                        Value="{DynamicResource TextBrush}"/>
+                                        Value="{DynamicResource AccentBrush}"/>
                                 <Setter TargetName="HeaderText" Property="FontWeight"
                                         Value="SemiBold"/>
+                                <Setter TargetName="Indicator" Property="Background"
+                                        Value="{DynamicResource AccentBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -193,21 +243,14 @@
     </UserControl.Resources>
 
     <Grid>
-    <Grid Margin="16,16" MaxWidth="1800" HorizontalAlignment="Center">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- TÍTULO -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,16">
-            <TextBlock Text="Configurações" Style="{StaticResource HeadingText}" Margin="0,0,0,4"/>
-            <TextBlock Text="Personalize sua experiência" Style="{StaticResource CaptionText}" Opacity="0.5"/>
-        </StackPanel>
-
-        <!-- TAB CONTROL -->
-        <TabControl Grid.Row="1" Style="{StaticResource SettingsTabControl}"
+        <!-- TAB CONTROL com sidebar embutida -->
+        <TabControl Grid.Row="0" Style="{StaticResource SettingsTabControl}"
                     SelectedIndex="{Binding SelectedTabIndex}">
 
             <!-- ═══════════════════════════════════════════════════════════
@@ -1482,7 +1525,8 @@
         </TabControl>
 
         <!-- BOTÕES DE AÇÃO -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="228,8,12,12">
             <Button Style="{StaticResource GhostButton}" Content="Restaurar Padrões" Command="{Binding ResetDefaultsCommand}" Padding="16,8" Margin="0,0,8,0" />
             <Button Style="{StaticResource GhostButton}" Content="Cancelar" Command="{Binding CancelCommand}" Padding="16,8" Margin="0,0,8,0" />
             <Button Style="{StaticResource AccentButton}" Content="Salvar" Command="{Binding SaveCommand}" Padding="24,8" />

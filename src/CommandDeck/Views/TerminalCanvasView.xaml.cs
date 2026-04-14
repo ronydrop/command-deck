@@ -454,11 +454,11 @@ public partial class TerminalCanvasView : UserControl
         {
             _lastGlowTime = glowNow;
             var glowPos = e.GetPosition(ProximityGlowCanvas);
-            Canvas.SetLeft(ProximityGlowEllipse, glowPos.X - 150); // center on cursor (300/2)
-            Canvas.SetTop(ProximityGlowEllipse,  glowPos.Y - 150);
-            if (ProximityGlowEllipse.Opacity < 0.08)
+            Canvas.SetLeft(ProximityGlowEllipse, glowPos.X - 210); // center on cursor (420/2)
+            Canvas.SetTop(ProximityGlowEllipse,  glowPos.Y - 210);
+            if (ProximityGlowEllipse.Opacity < 0.22)
             {
-                var fadeIn = new DoubleAnimation(0.08, TimeSpan.FromMilliseconds(200));
+                var fadeIn = new DoubleAnimation(0.22, TimeSpan.FromMilliseconds(180));
                 ProximityGlowEllipse.BeginAnimation(OpacityProperty, fadeIn);
             }
         }

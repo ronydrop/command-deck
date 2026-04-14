@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -19,9 +20,26 @@ public partial class BrowserWidgetControl : UserControl
         Unloaded += OnUnloaded;
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        _ = WebView.EnsureCoreWebView2Async();
+        try
+        {
+            var tileId = _vm?.Id.ToString() ?? "default";
+            var userDataFolder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "CommandDeck", "WebView2Cache", tileId);
+
+            var env = await CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder);
+            await WebView.EnsureCoreWebView2Async(env);
+        }
+        catch (Exception ex)
+        {
+            if (_vm is not null)
+            {
+                _vm.IsBrowserReady = false;
+                _vm.StatusText = $"Erro ao inicializar browser: {ex.Message}";
+            }
+        }
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -57,16 +75,22 @@ public partial class BrowserWidgetControl : UserControl
         WebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
         WebView.CoreWebView2.Settings.AreDevToolsEnabled = true;
         WebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-
-        // Set User-Agent
         WebView.CoreWebView2.Settings.UserAgent = _vm.CurrentUserAgent;
 
         _vm.IsBrowserReady = true;
 
-        // Navigate to saved URL
-        var startUrl = _vm.Url;
-        if (!string.IsNullOrEmpty(startUrl) && startUrl != "about:blank")
-            WebView.CoreWebView2.Navigate(startUrl);
+        // Force layout pass after entrance animation so HWND gets correct Win32 position
+        Dispatcher.InvokeAsync(() =>
+        {
+            WebView.InvalidateArrange();
+            WebView.UpdateLayout();
+
+            var startUrl = _vm.Url;
+            if (!string.IsNullOrEmpty(startUrl) && startUrl != "about:blank")
+                WebView.CoreWebView2.Navigate(startUrl);
+            else
+                WebView.CoreWebView2.Navigate("https://www.google.com");
+        }, System.Windows.Threading.DispatcherPriority.Render);
     }
 
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)

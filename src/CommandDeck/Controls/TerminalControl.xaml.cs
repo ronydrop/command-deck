@@ -36,6 +36,7 @@ public partial class TerminalControl : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        IsVisibleChanged   += OnIsVisibleChanged;
     }
 
     // ─── Dependency Property: FlowDocument binding ──────────────────────────
@@ -57,7 +58,7 @@ public partial class TerminalControl : UserControl
     {
         if (d is TerminalControl control && e.NewValue is FlowDocument document)
         {
-            control.OutputArea.Document = document;
+            control.TryAssignDocument(document);
         }
     }
 
@@ -76,7 +77,12 @@ public partial class TerminalControl : UserControl
 
         if (_viewModel != null)
         {
-            OutputArea.Document = _viewModel.OutputDocument;
+            // A FlowDocument can only belong to ONE RichTextBox at a time.
+            // When TerminalCanvasView and TabbedTerminalView are both in the visual tree
+            // (one Collapsed, one Visible), they share the same TerminalViewModel and thus
+            // the same FlowDocument. TryAssignDocument handles the ownership conflict
+            // gracefully; IsVisibleChanged retries when this control becomes visible.
+            TryAssignDocument(_viewModel.OutputDocument);
 
             // Auto-scroll at Render priority so the document layout is always up-to-date
             _scrollHandler = (_, _) =>
@@ -103,6 +109,58 @@ public partial class TerminalControl : UserControl
                     RecordAppliedSize(cols, rows);
                 });
             }
+        }
+    }
+
+    /// <summary>
+    /// Tries to assign <paramref name="document"/> to <see cref="OutputArea"/>.
+    /// If the document is already owned by another <see cref="RichTextBox"/>
+    /// (which happens when Canvas and TabbedTerminal views are both in the visual tree
+    /// but share the same <see cref="TerminalViewModel"/>), the assignment is silently
+    /// skipped. <see cref="OnIsVisibleChanged"/> will retry when this control becomes visible.
+    /// </summary>
+    private void TryAssignDocument(FlowDocument document)
+    {
+        try
+        {
+            OutputArea.Document = document;
+        }
+        catch (ArgumentException ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[TerminalControl] Document ownership conflict — will retry on IsVisible: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Handles visibility transitions.
+    /// When this control becomes <b>visible</b>: retries claiming the FlowDocument
+    /// at <see cref="DispatcherPriority.Background"/> so the sibling view's controls
+    /// have already processed their own visibility-lost event and released ownership.
+    /// When this control becomes <b>invisible</b>: immediately releases the document
+    /// so the other view's controls can claim it.
+    /// </summary>
+    private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if ((bool)e.NewValue)
+        {
+            // Became visible — schedule a background-priority retry so WPF finishes
+            // collapsing the other view (and its RichTextBoxes release document ownership)
+            // before we attempt to claim the document.
+            if (_viewModel != null)
+            {
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
+                {
+                    if (_viewModel != null && IsVisible)
+                        TryAssignDocument(_viewModel.OutputDocument);
+                });
+            }
+        }
+        else
+        {
+            // Became invisible — release the document so the other view can own it.
+            if (_viewModel != null && OutputArea.Document == _viewModel.OutputDocument)
+                OutputArea.Document = new FlowDocument();
         }
     }
 
@@ -331,6 +389,12 @@ public partial class TerminalControl : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         _resizeDebounceTimer?.Stop();
+
+        // Release the FlowDocument when the control leaves the visual tree.
+        // This lets other TerminalControl instances (e.g. canvas vs. tabbed view)
+        // claim ownership without hitting an ownership conflict.
+        if (_viewModel != null && OutputArea.Document == _viewModel.OutputDocument)
+            OutputArea.Document = new FlowDocument();
     }
 
     private void RecordAppliedSize(short columns, short rows)

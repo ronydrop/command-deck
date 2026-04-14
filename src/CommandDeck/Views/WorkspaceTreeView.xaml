@@ -353,23 +353,11 @@
                        Foreground="{DynamicResource SubtextBrush}"
                        FontSize="12"
                        HorizontalAlignment="Center"/>
-            <TextBlock Text="Adicione grupos e projetos"
+            <TextBlock Text="Adicione projetos e terminais"
                        Style="{StaticResource CaptionText}"
                        FontSize="10"
                        HorizontalAlignment="Center"
                        Margin="0,2,0,8"/>
-            <Button Style="{StaticResource GhostButton}"
-                    Command="{Binding AddGroupCommand}"
-                    HorizontalAlignment="Center"
-                    Padding="12,6">
-                <StackPanel Orientation="Horizontal">
-                    <Path Data="{StaticResource PlusIcon}"
-                          Style="{StaticResource IconPathSmall}"
-                          Margin="0,0,6,0"/>
-                    <TextBlock Text="Adicionar Grupo"
-                               FontSize="12"/>
-                </StackPanel>
-            </Button>
         </StackPanel>
 
         <TreeView x:Name="HierarchyTree"

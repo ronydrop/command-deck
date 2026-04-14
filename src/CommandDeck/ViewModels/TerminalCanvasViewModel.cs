@@ -590,6 +590,40 @@ public partial class TerminalCanvasViewModel : ObservableObject
         _workspaceService.AddActivityFeedTile(canvasX, canvasY);
     }
 
+    // ─── Sidebar block dispatcher ─────────────────────────────────────────────
+
+    /// <summary>Fired when the user requests a new terminal tile from the canvas sidebar.</summary>
+    public event Action? AddTerminalRequested;
+
+    /// <summary>
+    /// Adds a canvas block by its key name. Called from the sidebar BLOCOS group.
+    /// Valid keys: Terminal, Chat, CodeEditor, FileExplorer, Browser, Note, Git,
+    /// Process, SystemMonitor, Kanban, Pomodoro, TokenCounter, ActivityFeed.
+    /// </summary>
+    [RelayCommand]
+    private void AddBlockByName(string blockKey)
+    {
+        switch (blockKey)
+        {
+            case "Terminal":
+                // Terminal needs TerminalManagerViewModel — delegate via event.
+                AddTerminalRequested?.Invoke();
+                break;
+            case "Chat":          AddChatWidget(0, 0);           break;
+            case "CodeEditor":    AddCodeEditorWidget(0, 0);     break;
+            case "FileExplorer":  AddFileExplorerWidget(0, 0);   break;
+            case "Browser":       AddBrowserWidget(0, 0);        break;
+            case "Note":          AddNoteWidget(0, 0);           break;
+            case "Git":           ToggleGitWidget(0, 0);         break;
+            case "Process":       ToggleProcessWidget(0, 0);     break;
+            case "SystemMonitor": AddSystemMonitorWidget(0, 0);  break;
+            case "Kanban":        AddKanbanWidget(0, 0);         break;
+            case "Pomodoro":      AddPomodoroWidget(0, 0);       break;
+            case "TokenCounter":  AddTokenCounterWidget(0, 0);   break;
+            case "ActivityFeed":  AddActivityFeedWidget(0, 0);   break;
+        }
+    }
+
     // ─── Multi-selection ─────────────────────────────────────────────────────
 
     /// <summary>All currently selected canvas items (drives accent border on cards).</summary>

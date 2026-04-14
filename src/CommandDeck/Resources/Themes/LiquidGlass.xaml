@@ -96,6 +96,8 @@
     <SolidColorBrush x:Key="AccentYellowBrush" Color="{StaticResource AccentYellow}" />
     <SolidColorBrush x:Key="AccentRedBrush"    Color="{StaticResource AccentRed}" />
     <SolidColorBrush x:Key="AccentMauveBrush"  Color="{StaticResource AccentMauve}" />
+    <SolidColorBrush x:Key="AccentForegroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="MenuItemHoverBrush"   Color="#260071E3" />
 
     <!-- Search highlight brushes -->
     <SolidColorBrush x:Key="SearchHighlightBrush"        Color="{StaticResource SearchHighlight}" />
@@ -168,5 +170,10 @@
                       Opacity="0.13"
                       Color="#000000"
                       Direction="270" />
+
+    <!-- DOT GRID: base dark dots + accent glow (revealed via OpacityMask near cursor) -->
+    <SolidColorBrush x:Key="DotGridDotBrush"  Color="#30000000" />
+    <SolidColorBrush x:Key="DotGridLineBrush" Color="#0F000000" />
+    <SolidColorBrush x:Key="DotGridGlowBrush" Color="{StaticResource AccentPurple}" Opacity="0.28" />
 
 </ResourceDictionary>

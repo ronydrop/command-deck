@@ -538,32 +538,6 @@
                                Opacity="0.6"
                                Margin="10,0" />
 
-                    <!-- Browser button -->
-                    <Border CornerRadius="4"
-                            Background="{DynamicResource Surface0Brush}"
-                            BorderBrush="{DynamicResource Surface1Brush}"
-                            BorderThickness="1"
-                            VerticalAlignment="Center">
-                    <Button Command="{Binding DataContext.NavigateToCommand,
-                                     RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="{x:Static vm:ViewType.Browser}"
-                            ToolTip="Abrir Browser do projeto"
-                            Cursor="Hand"
-                            Style="{StaticResource LayoutModeButton}"
-                            Padding="8,4">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="🌐"
-                                       FontSize="13"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,5,0" />
-                            <TextBlock Text="Browser"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextBrush}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    </Border>
 
                 </StackPanel>
             </DockPanel>
@@ -702,39 +676,65 @@
                                           Viewport="0,0,32,32">
                                 <DrawingBrush.Drawing>
                                     <DrawingGroup>
-                                        <!-- Dot at each tile origin -->
-                                        <GeometryDrawing>
-                                            <GeometryDrawing.Brush>
-                                                <SolidColorBrush Color="#FFFFFF" Opacity="0.18" />
-                                            </GeometryDrawing.Brush>
+                                        <!-- Dot at each tile origin — color from theme token -->
+                                        <GeometryDrawing Brush="{DynamicResource DotGridDotBrush}">
                                             <GeometryDrawing.Geometry>
                                                 <EllipseGeometry Center="2,2" RadiusX="1.2" RadiusY="1.2" />
                                             </GeometryDrawing.Geometry>
                                         </GeometryDrawing>
-                                        <!-- Faint horizontal hairline -->
+                                        <!-- Faint horizontal hairline — color from theme token -->
                                         <GeometryDrawing>
                                             <GeometryDrawing.Pen>
-                                                <Pen Thickness="0.5">
-                                                    <Pen.Brush>
-                                                        <SolidColorBrush Color="#FFFFFF" Opacity="0.06" />
-                                                    </Pen.Brush>
-                                                </Pen>
+                                                <Pen Thickness="0.5" Brush="{DynamicResource DotGridLineBrush}" />
                                             </GeometryDrawing.Pen>
                                             <GeometryDrawing.Geometry>
                                                 <LineGeometry StartPoint="0,0" EndPoint="32,0" />
                                             </GeometryDrawing.Geometry>
                                         </GeometryDrawing>
-                                        <!-- Faint vertical hairline -->
+                                        <!-- Faint vertical hairline — color from theme token -->
                                         <GeometryDrawing>
                                             <GeometryDrawing.Pen>
-                                                <Pen Thickness="0.5">
-                                                    <Pen.Brush>
-                                                        <SolidColorBrush Color="#FFFFFF" Opacity="0.06" />
-                                                    </Pen.Brush>
-                                                </Pen>
+                                                <Pen Thickness="0.5" Brush="{DynamicResource DotGridLineBrush}" />
                                             </GeometryDrawing.Pen>
                                             <GeometryDrawing.Geometry>
                                                 <LineGeometry StartPoint="0,0" EndPoint="0,32" />
+                                            </GeometryDrawing.Geometry>
+                                        </GeometryDrawing>
+                                    </DrawingGroup>
+                                </DrawingBrush.Drawing>
+                            </DrawingBrush>
+                        </Canvas.Background>
+                    </Canvas>
+
+                    <!-- World-space GLOW grid — same geometry as WorldGrid, painted with
+                         the theme accent, then revealed only inside a cursor-following
+                         OpacityMask (built in code-behind). Drawn just above WorldGrid so
+                         the revealed dots overlay the gray base dots. -->
+                    <Canvas x:Name="WorldGlowGrid"
+                            Width="20000" Height="20000"
+                            Canvas.Left="-10000" Canvas.Top="-10000"
+                            IsHitTestVisible="False"
+                            Opacity="0"
+                            Panel.ZIndex="-1">
+                        <Canvas.Style>
+                            <Style TargetType="Canvas">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CanvasViewModel.IsTiledMode}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Canvas.Style>
+                        <Canvas.Background>
+                            <DrawingBrush TileMode="Tile"
+                                          ViewportUnits="Absolute"
+                                          Viewport="0,0,32,32">
+                                <DrawingBrush.Drawing>
+                                    <DrawingGroup>
+                                        <!-- Glow dot at each tile origin — same positions as base grid -->
+                                        <GeometryDrawing Brush="{DynamicResource DotGridGlowBrush}">
+                                            <GeometryDrawing.Geometry>
+                                                <EllipseGeometry Center="2,2" RadiusX="1.6" RadiusY="1.6" />
                                             </GeometryDrawing.Geometry>
                                         </GeometryDrawing>
                                     </DrawingGroup>
@@ -787,7 +787,7 @@
                         IsHitTestVisible="False"
                         Panel.ZIndex="1">
                     <Ellipse x:Name="ProximityGlowEllipse"
-                             Width="300" Height="300"
+                             Width="420" Height="420"
                              Opacity="0"
                              IsHitTestVisible="False">
                         <Ellipse.Fill>
@@ -797,7 +797,7 @@
                             </RadialGradientBrush>
                         </Ellipse.Fill>
                         <Ellipse.Effect>
-                            <BlurEffect Radius="24" />
+                            <BlurEffect Radius="40" />
                         </Ellipse.Effect>
                     </Ellipse>
                 </Canvas>
@@ -1297,104 +1297,6 @@
                     <Separator DockPanel.Dock="Bottom"
                                Background="{DynamicResource Surface1Brush}"
                                Margin="0" />
-
-                    <!-- Claude Code — session stats (above widget shortcuts, same VM as dashboard) -->
-                    <Border DockPanel.Dock="Bottom"
-                            CornerRadius="12" ClipToBounds="True"
-                            BorderThickness="1" BorderBrush="#30CC785C"
-                            Margin="8,0,8,8"
-                            DataContext="{Binding Dashboard,
-                                          RelativeSource={RelativeSource AncestorType=UserControl}}">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#1A1A1A" Offset="0"/>
-                                <GradientStop Color="#1C1512" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Grid Margin="12,10">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
-                            <DockPanel Grid.Row="0" Margin="0,0,0,6">
-                                <Button DockPanel.Dock="Right"
-                                        Style="{StaticResource GhostButton}"
-                                        Padding="4,2"
-                                        ToolTip="Resetar estatísticas da sessão"
-                                        Command="{Binding ResetClaudeUsageCommand}">
-                                    <TextBlock Text="↺" FontSize="13" Foreground="#80CC785C" />
-                                </Button>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Border Width="32" Height="32" CornerRadius="8" Padding="2" Margin="0,0,8,0">
-                                        <Border.Background>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                <GradientStop Color="#CC785C" Offset="0"/>
-                                                <GradientStop Color="#A0522D" Offset="1"/>
-                                            </LinearGradientBrush>
-                                        </Border.Background>
-                                        <TextBlock Text="✦" FontSize="17" FontWeight="Bold"
-                                                   Foreground="White"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" />
-                                    </Border>
-                                    <TextBlock Text="Claude Code"
-                                               FontSize="14" FontWeight="SemiBold"
-                                               Foreground="#E8C4A0"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </DockPanel>
-
-                            <StackPanel Grid.Row="1" Margin="0,2,0,0">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding ClaudeTokensDisplay}"
-                                               FontSize="22" FontWeight="Bold"
-                                               FontFamily="{StaticResource MonoFont}"
-                                               Foreground="#E8C4A0"
-                                               VerticalAlignment="Center"
-                                               ToolTip="Total de tokens consumidos pelo Claude Code nesta sessão" />
-                                    <TextBlock Text=" tokens"
-                                               FontSize="11" Foreground="#80CC785C"
-                                               VerticalAlignment="Bottom"
-                                               Margin="3,0,0,4" />
-                                </StackPanel>
-                                <TextBlock Text="consumidos na sessão"
-                                           FontSize="11" Foreground="#50CC785C"
-                                           Margin="0,3,0,0" />
-                                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                    <TextBlock Text="Modelo: "
-                                               FontSize="11" Foreground="#50CC785C"
-                                               VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding ClaudeModelDisplay}"
-                                               FontSize="11" FontWeight="Medium"
-                                               FontFamily="{StaticResource MonoFont}"
-                                               Foreground="#80CC785C"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
-                                <TextBlock Text="USD"
-                                           FontSize="11" Foreground="#50CC785C"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,10,0" />
-                                <TextBlock Text="{Binding ClaudeCostUsdDisplay}"
-                                           FontSize="12" FontWeight="SemiBold"
-                                           FontFamily="{StaticResource MonoFont}"
-                                           Foreground="#E8C4A0"
-                                           Margin="0,0,10,0" />
-                                <TextBlock Text="BRL"
-                                           FontSize="11" Foreground="#50CC785C"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,10,0" />
-                                <TextBlock Text="{Binding ClaudeCostBrlDisplay}"
-                                           FontSize="12" FontWeight="SemiBold"
-                                           FontFamily="{StaticResource MonoFont}"
-                                           Foreground="#CC9966" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
 
                     <!-- ── Terminal list ──────────────────────────────────────────── -->
                     <ScrollViewer VerticalScrollBarVisibility="Auto"
