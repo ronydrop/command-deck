@@ -131,17 +131,15 @@
 
                     <!-- Provider selector -->
                     <ComboBox Grid.Column="0"
+                              x:Name="ProviderCombo"
                               Height="24" FontSize="10"
-                              SelectedItem="{Binding SelectedProviderLabel, Mode=OneWay}"
+                              ItemsSource="{Binding ProviderLabels}"
+                              SelectedItem="{Binding SelectedProviderLabel, Mode=TwoWay}"
                               SelectionChanged="OnProviderSelected"
                               ToolTip="Selecionar provider de IA">
                         <ComboBox.Style>
                             <Style TargetType="ComboBox" BasedOn="{StaticResource DarkComboBox}" />
                         </ComboBox.Style>
-                        <ComboBoxItem Content="Claude" />
-                        <ComboBoxItem Content="OpenAI" />
-                        <ComboBoxItem Content="OpenRouter" />
-                        <ComboBoxItem Content="Local (Ollama)" />
                     </ComboBox>
 
                     <!-- Model selector -->

@@ -12,7 +12,7 @@ namespace CommandDeck.ViewModels;
 /// Canvas item ViewModel for the Activity Feed widget.
 /// Shows a real-time scrolling log of application events.
 /// </summary>
-public partial class ActivityFeedCanvasItemViewModel : CanvasItemViewModel
+public partial class ActivityFeedCanvasItemViewModel : CanvasItemViewModel, IDisposable
 {
     private readonly IActivityFeedService _feed;
 

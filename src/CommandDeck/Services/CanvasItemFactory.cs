@@ -25,6 +25,7 @@ public class CanvasItemFactory
     private readonly AssistantSettings _assistantSettings;
     private readonly IEventBusService _eventBus;
     private readonly ITileContextService _tileContext;
+    private readonly IActivityFeedService _activityFeed;
 
     public CanvasItemFactory(
         IGitService gitService,
@@ -239,16 +240,14 @@ public class CanvasItemFactory
             X = x, Y = y,
             Width = 720, Height = 500
         };
-        return new BrowserCanvasItemViewModel(model, _notificationService, _eventBus, _tileContext);
+        return new BrowserCanvasItemViewModel(model, _eventBus, _tileContext);
     }
 
     /// <summary>Restores a Browser tile from a persisted <see cref="CanvasItemModel"/>.</summary>
     public BrowserCanvasItemViewModel CreateBrowserItemFromModel(CanvasItemModel model)
-        => new(model, _notificationService, _eventBus, _tileContext);
+        => new(model, _eventBus, _tileContext);
 
     // ─── Activity Feed ───────────────────────────────────────────────────────────
-
-    private readonly IActivityFeedService _activityFeed;
 
     public ActivityFeedCanvasItemViewModel CreateActivityFeedItem(double x = 40, double y = 40)
     {

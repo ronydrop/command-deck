@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -16,7 +15,6 @@ namespace CommandDeck.ViewModels;
 /// </summary>
 public partial class BrowserCanvasItemViewModel : CanvasItemViewModel
 {
-    private readonly INotificationService _notifications;
     private readonly IEventBusService _eventBus;
     private readonly ITileContextService _tileContext;
 
@@ -50,12 +48,10 @@ public partial class BrowserCanvasItemViewModel : CanvasItemViewModel
 
     public BrowserCanvasItemViewModel(
         CanvasItemModel model,
-        INotificationService notifications,
         IEventBusService eventBus,
         ITileContextService tileContext)
         : base(model)
     {
-        _notifications = notifications;
         _eventBus = eventBus;
         _tileContext = tileContext;
 

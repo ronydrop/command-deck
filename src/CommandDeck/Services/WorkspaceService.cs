@@ -172,6 +172,16 @@ public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspa
                 ActiveTerminal = TerminalItems.FirstOrDefault();
         }
 
+        // Dispose items that hold event subscriptions to prevent leaks
+        if (vm is IDisposable disposable)
+        {
+            try { disposable.Dispose(); }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[WorkspaceService] Dispose failed for {vm.GetType().Name}: {ex.Message}");
+            }
+        }
+
         WorkspaceChanged?.Invoke();
         ScheduleAutoSave();
     }
@@ -231,6 +241,13 @@ public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspa
         foreach (var terminal in TerminalItems.ToList())
         {
             try { terminal.Terminal?.Dispose(); }
+            catch { /* best-effort cleanup */ }
+        }
+
+        // Dispose any other items that hold event subscriptions (ActivityFeed, etc.)
+        foreach (var item in Items.OfType<IDisposable>().ToList())
+        {
+            try { item.Dispose(); }
             catch { /* best-effort cleanup */ }
         }
 

@@ -210,6 +210,7 @@ public partial class TerminalCanvasViewModel : ObservableObject
         ViewportWidth = width;
         ViewportHeight = height;
         ScheduleTiledLayoutRecalculation();
+        if (IsSplitPaneMode) RecalculateSplitPaneLayout();
     }
 
     /// <summary>

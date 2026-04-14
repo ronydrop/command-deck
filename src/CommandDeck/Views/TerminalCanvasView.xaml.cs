@@ -1558,6 +1558,7 @@ public partial class TerminalCanvasView : UserControl
             CtxAddKanban.Visibility        = catalog.IsEnabled("kanban")         ? Visibility.Visible : Visibility.Collapsed;
             CtxAddPomodoro.Visibility      = catalog.IsEnabled("pomodoro")       ? Visibility.Visible : Visibility.Collapsed;
             CtxAddTokenCounter.Visibility  = catalog.IsEnabled("token_counter")  ? Visibility.Visible : Visibility.Collapsed;
+            CtxAddActivityFeed.Visibility  = catalog.IsEnabled("activity_feed")  ? Visibility.Visible : Visibility.Collapsed;
         }
     }
 

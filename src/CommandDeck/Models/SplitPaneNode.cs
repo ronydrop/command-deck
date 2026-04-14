@@ -12,7 +12,11 @@ public enum SplitOrientation { Horizontal, Vertical }
 /// <summary>
 /// Binary tree node for the Split Pane layout.
 /// Either a <see cref="SplitPaneNode"/> (has children) or a <see cref="LeafPaneNode"/> (holds one tile).
+/// JsonPolymorphic attributes enable correct System.Text.Json round-trips.
 /// </summary>
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
+[JsonDerivedType(typeof(SplitPaneNode), typeDiscriminator: "split")]
+[JsonDerivedType(typeof(LeafPaneNode),  typeDiscriminator: "leaf")]
 public abstract class PaneNode
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];

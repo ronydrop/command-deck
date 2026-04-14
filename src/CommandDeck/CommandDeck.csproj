@@ -33,6 +33,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Monaco editor HTML: must be copied to output so WebView2 can load it at runtime -->
+    <Content Include="Resources\monaco-editor.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="Resources\Images\aider.png" />
     <Resource Include="Resources\Images\anthropic.png" />
     <Resource Include="Resources\Images\copilot.png" />

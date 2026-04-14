@@ -17,6 +17,7 @@
         <conv:StringToVisibilityConverter x:Key="StringToVis" />
         <conv:StringToStretchConverter x:Key="StringToStretch" />
         <conv:StringToImageSourceConverter x:Key="StringToImageSource" />
+        <conv:HexToColorConverter x:Key="HexToColor" />
 
         <!-- Tab styling -->
         <Style x:Key="SettingsTabControl" TargetType="TabControl">
@@ -1222,7 +1223,7 @@
                                                 <Border Grid.Column="0" Width="36" Height="36"
                                                         CornerRadius="9" Margin="0,0,10,0">
                                                     <Border.Background>
-                                                        <SolidColorBrush Color="{Binding AccentColor, Converter={StaticResource StringToImageSource}}"
+                                                        <SolidColorBrush Color="{Binding AccentColor, Converter={StaticResource HexToColor}}"
                                                                          Opacity="0.22"/>
                                                     </Border.Background>
                                                     <TextBlock Text="{Binding Icon}" FontSize="18"
@@ -1240,8 +1241,18 @@
                                                 </StackPanel>
 
                                                 <!-- Toggle switch -->
-                                                <CheckBox Grid.Column="2" IsChecked="{Binding IsEnabled}"
-                                                          IsEnabled="{Binding IsCore, Converter={StaticResource BoolToVis}}"
+                                                <CheckBox Grid.Column="2" IsChecked="{Binding IsEnabled}">
+                                                    <CheckBox.Style>
+                                                        <Style TargetType="CheckBox">
+                                                            <Setter Property="IsEnabled" Value="True"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCore}" Value="True">
+                                                                    <Setter Property="IsEnabled" Value="False"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </CheckBox.Style>
+                                                </CheckBox>
                                                           VerticalAlignment="Center"/>
                                             </Grid>
 

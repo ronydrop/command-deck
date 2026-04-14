@@ -57,6 +57,15 @@ public partial class ChatCanvasItemViewModel : CanvasItemViewModel, IDisposable
     /// <summary>All available agent modes (loaded from IPromptTemplateService).</summary>
     public System.Collections.ObjectModel.ObservableCollection<AgentMode> AgentModes { get; } = new();
 
+    /// <summary>Fixed list of provider display labels — bound directly as ItemsSource so SelectedItem is always string.</summary>
+    public static IReadOnlyList<string> ProviderLabels { get; } = new[]
+    {
+        "Claude",
+        "OpenAI",
+        "OpenRouter",
+        "Local (Ollama)"
+    };
+
     partial void OnActiveAgentModeChanged(AgentMode? value)
     {
         OnPropertyChanged(nameof(ActiveModeLabel));
