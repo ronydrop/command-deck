@@ -791,7 +791,7 @@
                 <!-- ─── Size indicator overlay (shown during resize) ──────────── -->
                 <Border Grid.Row="2"
                         x:Name="SizeIndicator"
-                        Background="#CC1E1E2E"
+                        Background="#CC131318"
                         CornerRadius="4"
                         Padding="8,4"
                         HorizontalAlignment="Right"

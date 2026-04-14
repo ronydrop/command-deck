@@ -8,19 +8,18 @@ namespace CommandDeck.Models;
 public enum WorkspaceNodeType
 {
     Workspace,
-    Group,
     Project,
     Terminal
 }
 
 /// <summary>
 /// A single node in the workspace hierarchy tree.
-/// Groups contain projects and terminals; projects contain terminals.
+/// Projects contain terminals; workspaces contain projects.
 /// </summary>
 public class WorkspaceNodeModel
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public WorkspaceNodeType NodeType { get; set; } = WorkspaceNodeType.Group;
+    public WorkspaceNodeType NodeType { get; set; } = WorkspaceNodeType.Project;
     public string Name { get; set; } = string.Empty;
 
     /// <summary>Hex color for the node badge, e.g. "#7C3AED".</summary>
@@ -75,7 +74,7 @@ public class WorkspaceNodeModel
 
     /// <summary>Whether this node can accept child nodes via drag-and-drop.</summary>
     [JsonIgnore]
-    public bool CanAcceptChildren => NodeType is WorkspaceNodeType.Workspace or WorkspaceNodeType.Group or WorkspaceNodeType.Project;
+    public bool CanAcceptChildren => NodeType is WorkspaceNodeType.Workspace or WorkspaceNodeType.Project;
 
     public List<WorkspaceNodeModel> Children { get; set; } = new();
 }

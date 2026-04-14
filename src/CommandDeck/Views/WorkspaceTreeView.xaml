@@ -143,7 +143,7 @@
                       VerticalAlignment="Center">
                     <Path.Style>
                         <Style TargetType="Path">
-                            <!-- Default: Group → FolderIcon, SubtextBrush -->
+                            <!-- Default: Workspace/fallback → FolderIcon, SubtextBrush -->
                             <Setter Property="Stroke" Value="{DynamicResource SubtextBrush}"/>
                             <Setter Property="Data"   Value="{StaticResource FolderIcon}"/>
                             <Style.Triggers>

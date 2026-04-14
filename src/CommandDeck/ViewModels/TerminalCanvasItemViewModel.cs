@@ -14,6 +14,8 @@ public partial class TerminalCanvasItemViewModel : CanvasItemViewModel
 
     public override CanvasItemType ItemType => CanvasItemType.Terminal;
 
+    public override string DisplayTitle => string.IsNullOrEmpty(TileLabel) ? Title : TileLabel;
+
     [ObservableProperty] private string _title = "Terminal";
     [ObservableProperty] private ShellType _shellType = ShellType.WSL;
     [ObservableProperty] private string? _projectId;

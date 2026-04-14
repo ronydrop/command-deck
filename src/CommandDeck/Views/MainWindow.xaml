@@ -193,6 +193,8 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" MaxHeight="250" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" MaxHeight="200" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -253,151 +255,269 @@
                                Style="{StaticResource DarkSeparator}"
                                Margin="12,0,12,0" />
 
-                    <!-- Project List View -->
-                    <views:ProjectListView Grid.Row="3"
-                                           DataContext="{Binding ProjectList}" />
+                    <!-- ── TERMINAIS: instâncias ativas no canvas ── -->
+                    <Border Grid.Row="3" Padding="0,4,0,2">
+                        <StackPanel>
+                            <ToggleButton x:Name="ActiveBlocksGroupToggle"
+                                          IsChecked="True"
+                                          Style="{StaticResource SidebarGroupHeader}"
+                                          Margin="8,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="TERMINAIS"
+                                               FontSize="10"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SubtextBrush}"
+                                               Opacity="0.7"
+                                               VerticalAlignment="Center" />
+                                    <Path Grid.Column="1" Data="{StaticResource ChevronDownIcon}">
+                                        <Path.Style>
+                                            <Style TargetType="Path" BasedOn="{StaticResource IconPathSmall}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsChecked, ElementName=ActiveBlocksGroupToggle}" Value="False">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Path.Style>
+                                    </Path>
+                                    <Path Grid.Column="1" Data="{StaticResource ChevronRightIcon}">
+                                        <Path.Style>
+                                            <Style TargetType="Path" BasedOn="{StaticResource IconPathSmall}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsChecked, ElementName=ActiveBlocksGroupToggle}" Value="False">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Path.Style>
+                                    </Path>
+                                </Grid>
+                            </ToggleButton>
 
-                    <!-- ─── Grouped navigation sections ─── -->
-                    <StackPanel Grid.Row="4" Margin="0,4,0,8">
-                        <Separator Style="{StaticResource DarkSeparator}"
-                                   Margin="16,0,16,4" />
-
-                        <!-- ══ Group: NAVEGAÇÃO ══ -->
-                        <ToggleButton x:Name="NavGroupToggle"
-                                      IsChecked="True"
-                                      Style="{StaticResource SidebarGroupHeader}"
-                                      Margin="8,0">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0"
-                                           Text="NAVEGAÇÃO"
-                                           FontSize="10"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource SubtextBrush}"
-                                           Opacity="0.7"
-                                           VerticalAlignment="Center" />
-                                <Path Grid.Column="1" Data="{StaticResource ChevronDownIcon}">
-                                    <Path.Style>
-                                        <Style TargetType="Path" BasedOn="{StaticResource IconPathSmall}">
+                            <!-- Lista de terminais instanciados no canvas -->
+                            <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl Margin="4,2,4,0"
+                                              ItemsSource="{Binding CanvasViewModel.TerminalItems}">
+                                    <ItemsControl.Style>
+                                        <Style TargetType="ItemsControl">
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsChecked, ElementName=NavGroupToggle}" Value="False">
+                                                <DataTrigger Binding="{Binding IsChecked, ElementName=ActiveBlocksGroupToggle}" Value="False">
                                                     <Setter Property="Visibility" Value="Collapsed" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
-                                    </Path.Style>
-                                </Path>
-                                <Path Grid.Column="1" Data="{StaticResource ChevronRightIcon}">
-                                    <Path.Style>
-                                        <Style TargetType="Path" BasedOn="{StaticResource IconPathSmall}">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsChecked, ElementName=NavGroupToggle}" Value="False">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Path.Style>
-                                </Path>
-                            </Grid>
-                        </ToggleButton>
+                                    </ItemsControl.Style>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="3" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
 
-                        <!-- Items: NAVEGAÇÃO -->
-                        <StackPanel Margin="8,2,8,0">
-                            <StackPanel.Style>
-                                <Style TargetType="StackPanel">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsChecked, ElementName=NavGroupToggle}" Value="False">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </StackPanel.Style>
+                                                <!-- Accent indicator bar -->
+                                                <Rectangle Grid.Column="0"
+                                                           RadiusX="2" RadiusY="2"
+                                                           Fill="{DynamicResource AccentBrush}">
+                                                    <Rectangle.Style>
+                                                        <Style TargetType="Rectangle">
+                                                            <Setter Property="Opacity" Value="0" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                    <Setter Property="Opacity" Value="1" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Rectangle.Style>
+                                                </Rectangle>
 
-                            <!-- Painel -->
-                            <Button HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Left"
-                                    Padding="8,6" Margin="0,1"
-                                    Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    CommandParameter="{x:Static vm:ViewType.Dashboard}">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                         Value="{x:Static vm:ViewType.Dashboard}">
-                                                <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
-                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                                <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource DashboardIcon}"
-                                          Style="{StaticResource IconPathSmall}"
-                                          Margin="0,0,8,0" />
-                                    <TextBlock Text="Painel" VerticalAlignment="Center" FontSize="13" />
-                                </StackPanel>
-                            </Button>
+                                                <!-- Item body -->
+                                                <Border Grid.Column="1"
+                                                        x:Name="TermSidebarItem"
+                                                        CornerRadius="6"
+                                                        Padding="8,6"
+                                                        Margin="3,0,0,0"
+                                                        Cursor="Hand">
+                                                    <Border.InputBindings>
+                                                        <MouseBinding MouseAction="LeftClick"
+                                                                      Command="{Binding DataContext.CanvasViewModel.ScrollToItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                      CommandParameter="{Binding}" />
+                                                    </Border.InputBindings>
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="Transparent" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                    <Setter Property="Background"
+                                                                            Value="{DynamicResource Surface0Brush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <Border.Triggers>
+                                                        <EventTrigger RoutedEvent="Border.MouseEnter">
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation
+                                                                        Storyboard.TargetName="TermLeftHoverOverlay"
+                                                                        Storyboard.TargetProperty="Opacity"
+                                                                        To="1" Duration="0:0:0.150">
+                                                                        <DoubleAnimation.EasingFunction>
+                                                                            <QuadraticEase EasingMode="EaseOut" />
+                                                                        </DoubleAnimation.EasingFunction>
+                                                                    </DoubleAnimation>
+                                                                    <DoubleAnimation
+                                                                        Storyboard.TargetName="TermLeftCloseBtn"
+                                                                        Storyboard.TargetProperty="Opacity"
+                                                                        To="1" Duration="0:0:0.150" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </EventTrigger>
+                                                        <EventTrigger RoutedEvent="Border.MouseLeave">
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation
+                                                                        Storyboard.TargetName="TermLeftHoverOverlay"
+                                                                        Storyboard.TargetProperty="Opacity"
+                                                                        To="0" Duration="0:0:0.200">
+                                                                        <DoubleAnimation.EasingFunction>
+                                                                            <QuadraticEase EasingMode="EaseOut" />
+                                                                        </DoubleAnimation.EasingFunction>
+                                                                    </DoubleAnimation>
+                                                                    <DoubleAnimation
+                                                                        Storyboard.TargetName="TermLeftCloseBtn"
+                                                                        Storyboard.TargetProperty="Opacity"
+                                                                        To="0" Duration="0:0:0.200" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </EventTrigger>
+                                                    </Border.Triggers>
 
-                            <!-- Terminal -->
-                            <Button HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Left"
-                                    Padding="8,6" Margin="0,1"
-                                    Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    CommandParameter="{x:Static vm:ViewType.Terminal}">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                         Value="{x:Static vm:ViewType.Terminal}">
-                                                <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
-                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                                <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource TerminalIcon}"
-                                          Style="{StaticResource IconPathSmall}"
-                                          Margin="0,0,8,0" />
-                                    <TextBlock Text="Terminal" VerticalAlignment="Center" FontSize="13" />
-                                </StackPanel>
-                            </Button>
+                                                    <Grid>
+                                                        <!-- Hover background overlay -->
+                                                        <Border x:Name="TermLeftHoverOverlay"
+                                                                CornerRadius="6"
+                                                                Background="{DynamicResource Surface0Brush}"
+                                                                Opacity="0"
+                                                                IsHitTestVisible="False"
+                                                                Margin="-8,-6,-8,-6" />
 
-                            <!-- Terminal com Abas -->
-                            <Button HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Left"
-                                    Padding="8,6" Margin="0,1"
-                                    Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    CommandParameter="{x:Static vm:ViewType.TabbedTerminal}">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding DataContext.CurrentView, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                         Value="{x:Static vm:ViewType.TabbedTerminal}">
-                                                <Setter Property="Background" Value="{DynamicResource Surface0Brush}" />
-                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                                <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource TerminalIcon}"
-                                          Style="{StaticResource IconPathSmall}"
-                                          Margin="0,0,8,0" />
-                                    <TextBlock Text="Terminal com Abas" VerticalAlignment="Center" FontSize="13" />
-                                </StackPanel>
-                            </Button>
+                                                        <DockPanel>
+                                                            <!-- Close button -->
+                                                            <Button x:Name="TermLeftCloseBtn"
+                                                                    DockPanel.Dock="Right"
+                                                                    Style="{StaticResource GhostButton}"
+                                                                    Width="20" Height="20"
+                                                                    Padding="0"
+                                                                    Opacity="0"
+                                                                    VerticalAlignment="Center"
+                                                                    Margin="4,0,0,0"
+                                                                    ToolTip="Fechar terminal"
+                                                                    Command="{Binding DataContext.CloseTerminalCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding Terminal}">
+                                                                <Path Data="M 3 3 L 9 9 M 9 3 L 3 9"
+                                                                      Stroke="{DynamicResource SubtextBrush}"
+                                                                      StrokeThickness="1.5"
+                                                                      StrokeLineJoin="Round"
+                                                                      StrokeStartLineCap="Round"
+                                                                      StrokeEndLineCap="Round"
+                                                                      Width="10" Height="10"
+                                                                      Stretch="Uniform" />
+                                                            </Button>
 
+                                                            <!-- Status dot -->
+                                                            <Ellipse DockPanel.Dock="Right"
+                                                                     Width="6" Height="6"
+                                                                     VerticalAlignment="Center"
+                                                                     Margin="4,0,0,0">
+                                                                <Ellipse.Style>
+                                                                    <Style TargetType="Ellipse">
+                                                                        <Setter Property="Fill"
+                                                                                Value="{DynamicResource Surface2Brush}" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding Terminal.IsConnected}"
+                                                                                         Value="True">
+                                                                                <Setter Property="Fill"
+                                                                                        Value="{DynamicResource AccentGreenBrush}" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Ellipse.Style>
+                                                            </Ellipse>
+
+                                                            <!-- Terminal icon -->
+                                                            <Path DockPanel.Dock="Left"
+                                                                  Data="{StaticResource TerminalIcon}"
+                                                                  Stroke="{DynamicResource AccentGreenBrush}"
+                                                                  StrokeThickness="1.2"
+                                                                  StrokeLineJoin="Round"
+                                                                  StrokeStartLineCap="Round"
+                                                                  StrokeEndLineCap="Round"
+                                                                  Fill="Transparent"
+                                                                  Stretch="Uniform"
+                                                                  Width="14" Height="14"
+                                                                  VerticalAlignment="Center"
+                                                                  Margin="0,0,8,0">
+                                                                <Path.Style>
+                                                                    <Style TargetType="Path">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                                <Setter Property="Stroke"
+                                                                                        Value="{DynamicResource AccentBrush}" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Path.Style>
+                                                            </Path>
+
+                                                            <!-- Title + shell type -->
+                                                            <StackPanel VerticalAlignment="Center"
+                                                                        Margin="0,0,4,0">
+                                                                <TextBlock Text="{Binding Title}"
+                                                                           FontSize="12"
+                                                                           Foreground="{DynamicResource TextBrush}"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           MaxWidth="150" />
+                                                                <TextBlock Text="{Binding ShellType}"
+                                                                           FontSize="10"
+                                                                           Foreground="{DynamicResource SubtextBrush}"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           Opacity="0.7"
+                                                                           MaxWidth="150"
+                                                                           Margin="0,1,0,0" />
+                                                            </StackPanel>
+                                                        </DockPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
                         </StackPanel>
+                    </Border>
 
+                    <!-- Separator -->
+                    <Separator Grid.Row="4"
+                               Style="{StaticResource DarkSeparator}"
+                               Margin="12,0,12,0" />
+
+                    <!-- Project List View -->
+                    <views:ProjectListView Grid.Row="5"
+                                           DataContext="{Binding ProjectList}" />
+
+                    <!-- ─── Grouped navigation sections ─── -->
+                    <StackPanel Grid.Row="6" Margin="0,4,0,8">
                         <Separator Style="{StaticResource DarkSeparator}"
-                                   Margin="16,2,16,2" />
+                                   Margin="16,0,16,4" />
 
-                        <!-- ══ Group: BLOCOS ══ -->
+                        <!-- ══ Group: FERRAMENTAS ══ -->
                         <ToggleButton x:Name="BlocksGroupToggle"
                                       IsChecked="True"
                                       Style="{StaticResource SidebarGroupHeader}"
@@ -408,7 +528,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0"
-                                           Text="BLOCOS"
+                                           Text="FERRAMENTAS"
                                            FontSize="10"
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource SubtextBrush}"
@@ -440,7 +560,7 @@
                             </Grid>
                         </ToggleButton>
 
-                        <!-- Items: BLOCOS -->
+                        <!-- Items: FERRAMENTAS (blocos disponíveis + utilitários) -->
                         <StackPanel Margin="8,2,8,0">
                             <StackPanel.Style>
                                 <Style TargetType="StackPanel">
@@ -570,65 +690,26 @@
                                     <TextBlock Text="Kanban" VerticalAlignment="Center" FontSize="13" />
                                 </StackPanel>
                             </Button>
-                        </StackPanel>
 
-                        <Separator Style="{StaticResource DarkSeparator}"
-                                   Margin="16,2,16,2" />
+                            <!-- Monitor do Sistema -->
+                            <Button HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="8,6" Margin="0,1"
+                                    Command="{Binding DataContext.CanvasViewModel.AddBlockByNameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="SystemMonitor">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource GhostButton}" />
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource DashboardIcon}"
+                                          Style="{StaticResource IconPathSmall}"
+                                          Margin="0,0,8,0" />
+                                    <TextBlock Text="Monitor do Sistema" VerticalAlignment="Center" FontSize="13" />
+                                </StackPanel>
+                            </Button>
 
-                        <!-- ══ Group: FERRAMENTAS ══ -->
-                        <ToggleButton x:Name="ToolsGroupToggle"
-                                      IsChecked="True"
-                                      Style="{StaticResource SidebarGroupHeader}"
-                                      Margin="8,0">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0"
-                                           Text="FERRAMENTAS"
-                                           FontSize="10"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource SubtextBrush}"
-                                           Opacity="0.7"
-                                           VerticalAlignment="Center" />
-                                <Path Grid.Column="1" Data="{StaticResource ChevronDownIcon}">
-                                    <Path.Style>
-                                        <Style TargetType="Path" BasedOn="{StaticResource IconPathSmall}">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsChecked, ElementName=ToolsGroupToggle}" Value="False">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Path.Style>
-                                </Path>
-                                <Path Grid.Column="1" Data="{StaticResource ChevronRightIcon}">
-                                    <Path.Style>
-                                        <Style TargetType="Path" BasedOn="{StaticResource IconPathSmall}">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsChecked, ElementName=ToolsGroupToggle}" Value="False">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Path.Style>
-                                </Path>
-                            </Grid>
-                        </ToggleButton>
-
-                        <!-- Items: FERRAMENTAS -->
-                        <StackPanel Margin="8,2,8,0">
-                            <StackPanel.Style>
-                                <Style TargetType="StackPanel">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsChecked, ElementName=ToolsGroupToggle}" Value="False">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </StackPanel.Style>
+                            <Separator Style="{StaticResource DarkSeparator}"
+                                       Margin="4,4,4,4" />
 
                             <!-- Monitor de Processos -->
                             <Button HorizontalAlignment="Stretch"
@@ -775,7 +856,7 @@
                     HorizontalAlignment="Center"
                     Padding="0">
                 <Border.Effect>
-                    <DropShadowEffect ShadowDepth="0" BlurRadius="40" Opacity="0.6" Color="#1a1a2e" />
+                    <DropShadowEffect ShadowDepth="0" BlurRadius="40" Opacity="0.6" Color="#000000" />
                 </Border.Effect>
                 <views:ProjectEditView DataContext="{Binding ProjectEditViewModel}" />
             </Border>
@@ -964,7 +1045,7 @@
                 Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="0" Grid.RowSpan="3"
                 Panel.ZIndex="950"
                 Visibility="{Binding IsProjectSwitching, Converter={StaticResource BoolToVis}}"
-                Background="#CC181825"
+                Background="#CC131318"
                 IsHitTestVisible="True">
             <Border.Resources>
                 <Storyboard x:Key="SpinnerAnimation" RepeatBehavior="Forever">

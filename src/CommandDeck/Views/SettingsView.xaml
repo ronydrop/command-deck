@@ -673,7 +673,7 @@
                                         </StackPanel>
                                     </Grid>
                                 </Border>
-                                <TextBlock Text="{Binding TerminalWallpaperStatusText}" Foreground="#F38BA8" Style="{StaticResource CaptionText}" Margin="0,0,0,8" Visibility="{Binding TerminalWallpaperStatusText, Converter={StaticResource StringToVis}}" />
+                                <TextBlock Text="{Binding TerminalWallpaperStatusText}" Foreground="{DynamicResource AccentRedBrush}" Style="{StaticResource CaptionText}" Margin="0,0,0,8" Visibility="{Binding TerminalWallpaperStatusText, Converter={StaticResource StringToVis}}" />
                                 <!-- IMAGEM controls -->
                                 <Border Background="{DynamicResource Surface0Brush}" CornerRadius="8" Padding="14,10" Margin="0,0,0,8" Visibility="{Binding TerminalWallpaperPath, Converter={StaticResource StringToVis}}">
                                     <StackPanel>
@@ -713,7 +713,7 @@
                                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                                 <RadioButton GroupName="TerminalOverlay" IsChecked="{Binding TerminalWallpaperDarkOverlay}" VerticalAlignment="Center" Margin="0,0,4,0">
                                                     <StackPanel Orientation="Horizontal">
-                                                        <Ellipse Width="12" Height="12" Fill="#1E1E2E" Stroke="{DynamicResource GlassBorderBrush}" StrokeThickness="1" Margin="0,0,5,0" />
+                                                        <Ellipse Width="12" Height="12" Fill="{DynamicResource CrustBgBrush}" Stroke="{DynamicResource GlassBorderBrush}" StrokeThickness="1" Margin="0,0,5,0" />
                                                         <TextBlock Text="Escuro" Foreground="{DynamicResource TextBrush}" FontSize="12" />
                                                     </StackPanel>
                                                 </RadioButton>
@@ -947,13 +947,13 @@
                                                 <Border Grid.Column="2" CornerRadius="10" Padding="10,4" VerticalAlignment="Center">
                                                     <Border.Style>
                                                         <Style TargetType="Border">
-                                                            <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#585B70" Opacity="0.3"/></Setter.Value></Setter>
+                                                            <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{StaticResource Overlay0}" Opacity="0.3"/></Setter.Value></Setter>
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding Status}" Value="{x:Static models:AiToolDetectionStatus.Detected}">
-                                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#34D85C" Opacity="0.15"/></Setter.Value></Setter>
+                                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{StaticResource AccentGreen}" Opacity="0.15"/></Setter.Value></Setter>
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding Status}" Value="{x:Static models:AiToolDetectionStatus.NotFound}">
-                                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#FF5048" Opacity="0.15"/></Setter.Value></Setter>
+                                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{StaticResource AccentRed}" Opacity="0.15"/></Setter.Value></Setter>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>

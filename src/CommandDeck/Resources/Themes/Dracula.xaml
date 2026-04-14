@@ -17,6 +17,7 @@
     <Color x:Key="AccentBlue">#8BE9FD</Color>
     <Color x:Key="AccentGreen">#50FA7B</Color>
     <Color x:Key="AccentYellow">#F1FA8C</Color>
+    <Color x:Key="AccentPeach">#FFB86C</Color>
     <Color x:Key="AccentRed">#FF5555</Color>
     <Color x:Key="AccentPink">#FF79C6</Color>
     <Color x:Key="AccentCyan">#8BE9FD</Color>
@@ -35,6 +36,7 @@
     <SolidColorBrush x:Key="AccentBlueBrush"   Color="{StaticResource AccentBlue}" />
     <SolidColorBrush x:Key="AccentGreenBrush"  Color="{StaticResource AccentGreen}" />
     <SolidColorBrush x:Key="AccentYellowBrush" Color="{StaticResource AccentYellow}" />
+    <SolidColorBrush x:Key="AccentPeachBrush"  Color="{StaticResource AccentPeach}" />
     <SolidColorBrush x:Key="AccentRedBrush"    Color="{StaticResource AccentRed}" />
     <SolidColorBrush x:Key="AccentMauveBrush"  Color="{StaticResource AccentMauve}" />
     <SolidColorBrush x:Key="AccentForegroundBrush" Color="#FFFFFF" />

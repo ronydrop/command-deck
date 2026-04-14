@@ -68,10 +68,10 @@
                     <Ellipse Width="7" Height="7" Margin="0,0,4,0" VerticalAlignment="Center">
                         <Ellipse.Style>
                             <Style TargetType="Ellipse">
-                                <Setter Property="Fill" Value="#A6E3A1" />
+                                <Setter Property="Fill" Value="{DynamicResource AccentGreenBrush}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsProviderAvailable}" Value="False">
-                                        <Setter Property="Fill" Value="#F38BA8" />
+                                        <Setter Property="Fill" Value="{DynamicResource AccentRedBrush}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>

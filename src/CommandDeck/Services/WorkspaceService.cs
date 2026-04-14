@@ -28,6 +28,7 @@ public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspa
 
     public ObservableCollection<CanvasItemViewModel> Items { get; } = new();
     public ObservableCollection<TerminalCanvasItemViewModel> TerminalItems { get; } = new();
+    public ObservableCollection<ChatCanvasItemViewModel> ChatItems { get; } = new();
 
     public TerminalCanvasItemViewModel? ActiveTerminal { get; set; }
     public WorkspaceModel? CurrentWorkspace { get; private set; }
@@ -79,6 +80,7 @@ public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspa
         item.ZIndex = _nextZIndex++;
 
         Items.Add(item);
+        ChatItems.Add(item);
         WorkspaceChanged?.Invoke();
         ScheduleAutoSave();
         return item;
@@ -171,6 +173,10 @@ public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspa
             if (ActiveTerminal?.Model.Id == itemId)
                 ActiveTerminal = TerminalItems.FirstOrDefault();
         }
+        else if (vm is ChatCanvasItemViewModel cvm)
+        {
+            ChatItems.Remove(cvm);
+        }
 
         // Dispose items that hold event subscriptions to prevent leaks
         if (vm is IDisposable disposable)
@@ -253,6 +259,7 @@ public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspa
 
         Items.Clear();
         TerminalItems.Clear();
+        ChatItems.Clear();
         ActiveTerminal = null;
         _nextX = 40;
         _nextY = 40;
@@ -274,6 +281,10 @@ public class WorkspaceService : IWorkspaceService, ICanvasItemsService, IWorkspa
             TerminalItems.Add(tvm);
             if (ActiveTerminal is null)
                 ActiveTerminal = tvm;
+        }
+        else if (item is ChatCanvasItemViewModel cvm)
+        {
+            ChatItems.Add(cvm);
         }
 
         WorkspaceChanged?.Invoke();

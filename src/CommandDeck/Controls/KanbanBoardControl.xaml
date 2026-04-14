@@ -15,6 +15,9 @@
         <conv:HexToBrushConverter x:Key="HexToBrush" />
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <ctrl:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
+        <conv:AgentToModelsConverter x:Key="AgentToModels" />
+        <conv:UnresolvedDepsConverter x:Key="UnresolvedDeps" />
+        <conv:StringEqualsConverter x:Key="StringEquals" />
 
         <!-- Column container -->
         <Style x:Key="ColumnBorderStyle" TargetType="Border">
@@ -110,10 +113,48 @@
 
                             <!-- Title + agent badge -->
                             <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <!-- Title display — double-click to rename -->
                                 <TextBlock Text="{Binding Title}"
                                            FontSize="12" FontWeight="SemiBold"
                                            Foreground="{DynamicResource TextBrush}"
-                                           TextTrimming="CharacterEllipsis" />
+                                           TextTrimming="CharacterEllipsis"
+                                           Tag="{Binding}"
+                                           MouseDown="OnCardTitleMouseDown"
+                                           Cursor="IBeam"
+                                           ToolTip="Clique duplo para renomear">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEditingTitle}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <!-- Inline title editor — visible on double-click -->
+                                <TextBox Text="{Binding DraftTitle, UpdateSourceTrigger=PropertyChanged}"
+                                         FontSize="12" FontWeight="SemiBold"
+                                         Background="Transparent"
+                                         BorderThickness="0,0,0,1.5"
+                                         BorderBrush="{DynamicResource AccentBrush}"
+                                         Foreground="{DynamicResource TextBrush}"
+                                         VerticalContentAlignment="Center"
+                                         Tag="{Binding}"
+                                         KeyDown="OnCardTitleKeyDown"
+                                         IsVisibleChanged="OnCardTitleEditBoxVisibleChanged">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEditingTitle}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
                                 <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                     <Border CornerRadius="6" Padding="5,1" Margin="0,0,4,0">
                                         <Border.Background>
@@ -168,14 +209,27 @@
                                     Margin="1,0,0,0"
                                     Background="Transparent" BorderThickness="0"
                                     Cursor="Hand"
-                                    ToolTip="Executar tarefa com agente AI"
                                     Click="OnExecuteCardClicked"
                                     Visibility="{Binding Launched, Converter={StaticResource InvBoolToVis}}">
+                                <Button.IsEnabled>
+                                    <MultiBinding Converter="{StaticResource UnresolvedDeps}" ConverterParameter="bool">
+                                        <Binding Path="Card.CardRefs" />
+                                        <Binding Path="DataContext.KanbanColumnViewModels"
+                                                 RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                                    </MultiBinding>
+                                </Button.IsEnabled>
+                                <Button.ToolTip>
+                                    <MultiBinding Converter="{StaticResource UnresolvedDeps}">
+                                        <Binding Path="Card.CardRefs" />
+                                        <Binding Path="DataContext.KanbanColumnViewModels"
+                                                 RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                                    </MultiBinding>
+                                </Button.ToolTip>
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="ExecBg" CornerRadius="4" Background="Transparent"
                                                 Width="22" Height="22">
-                                            <TextBlock Text="▶" FontSize="9"
+                                            <TextBlock x:Name="ExecIcon" Text="▶" FontSize="9"
                                                        Foreground="{DynamicResource AccentGreenBrush}"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center" />
@@ -187,6 +241,11 @@
                                                         <SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.18" />
                                                     </Setter.Value>
                                                 </Setter>
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="ExecIcon" Property="Text" Value="⏸" />
+                                                <Setter TargetName="ExecIcon" Property="Foreground" Value="{DynamicResource AccentMauveBrush}" />
+                                                <Setter TargetName="ExecIcon" Property="Opacity" Value="0.7" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -226,12 +285,13 @@
                             </Button>
                         </Grid>
 
-                        <!-- ── Expanded detail panel ──────────────────────── -->
+                        <!-- ── Expanded detail panel (editor) ───────────────── -->
                         <Border x:Name="ExpandedPanel"
-                                Padding="0,0,0,8"
+                                Padding="0,0,0,6"
                                 Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}">
                             <StackPanel>
-                                <Separator Margin="0,0,0,6">
+                                <!-- Thin separator -->
+                                <Separator Margin="0,2,0,4">
                                     <Separator.Style>
                                         <Style TargetType="Separator">
                                             <Setter Property="Background">
@@ -243,106 +303,616 @@
                                     </Separator.Style>
                                 </Separator>
 
-                                <!-- Description preview (hidden when empty) -->
-                                <TextBlock Text="{Binding Card.Description}"
-                                           FontSize="11"
-                                           Foreground="{DynamicResource SubtextBrush}"
-                                           TextWrapping="Wrap"
-                                           MaxHeight="56"
-                                           TextTrimming="CharacterEllipsis">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Card.Description}" Value="">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-
-                                <!-- Instructions preview -->
-                                <TextBlock Text="{Binding Card.Instructions}"
-                                           FontSize="10"
-                                           FontFamily="{StaticResource MonoFont}"
-                                           Foreground="{DynamicResource SubtextBrush}"
-                                           TextWrapping="Wrap"
-                                           MaxHeight="44"
-                                           Margin="0,4,0,0"
-                                           TextTrimming="CharacterEllipsis">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Card.Instructions}" Value="">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-
-                                <!-- Footer: deps badge + comment count + delete -->
-                                <Grid Margin="0,6,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <!-- Comment count badge -->
-                                    <Border Grid.Column="0" CornerRadius="8" Padding="6,2"
-                                            HorizontalAlignment="Left"
-                                            Visibility="{Binding HasDeps, Converter={StaticResource BoolToVis}}">
-                                        <Border.Background>
-                                            <SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.15" />
-                                        </Border.Background>
-                                        <TextBlock Text="↳ deps" FontSize="9"
-                                                   FontFamily="{StaticResource MonoFont}"
-                                                   Foreground="{DynamicResource AccentBrush}" />
-                                    </Border>
-
-                                    <!-- Notes count -->
-                                    <TextBlock Grid.Column="1"
-                                               FontSize="10"
-                                               Foreground="{DynamicResource SubtextBrush}"
-                                               VerticalAlignment="Center"
-                                               Margin="0,0,6,0">
-                                        <Run Text="{Binding Comments.Count, Mode=OneWay}" />
-                                        <Run Text=" nota(s)" />
-                                    </TextBlock>
-
-                                    <!-- Delete card button -->
-                                    <Button Grid.Column="2"
-                                            Tag="{Binding}"
-                                            Width="22" Height="22"
-                                            Background="Transparent" BorderThickness="0"
-                                            Cursor="Hand"
-                                            ToolTip="Excluir card"
-                                            Click="OnDeleteCardClicked">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="DelBg" CornerRadius="4" Background="Transparent"
-                                                        Width="22" Height="22">
-                                                    <TextBlock Text="✕" FontSize="10"
-                                                               Foreground="{DynamicResource AccentRedBrush}"
-                                                               HorizontalAlignment="Center"
-                                                               VerticalAlignment="Center" />
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="DelBg" Property="Background">
+                                <!-- Tab strip -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <!-- Overview tab button -->
+                                    <Border x:Name="TabOverviewBg" CornerRadius="4" Padding="7,3" Margin="0,0,3,0"
+                                            Tag="overview" MouseDown="OnCardTabClick" Cursor="Hand">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="Transparent" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ActiveTab}" Value="overview">
+                                                        <Setter Property="Background">
                                                             <Setter.Value>
-                                                                <SolidColorBrush Color="{DynamicResource AccentRed}" Opacity="0.15" />
+                                                                <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.18" />
                                                             </Setter.Value>
                                                         </Setter>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                    </Button>
-                                </Grid>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="Overview" FontSize="9" FontWeight="SemiBold" Cursor="Hand">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ActiveTab}" Value="overview">
+                                                            <Setter Property="Foreground" Value="{DynamicResource AccentBlueBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Border>
+                                    <!-- Notes tab button -->
+                                    <Border CornerRadius="4" Padding="7,3" Margin="0,0,3,0"
+                                            Tag="notes" MouseDown="OnCardTabClick" Cursor="Hand">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="Transparent" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ActiveTab}" Value="notes">
+                                                        <Setter Property="Background">
+                                                            <Setter.Value>
+                                                                <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.18" />
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Tag="notes" FontSize="9" FontWeight="SemiBold" Cursor="Hand">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ActiveTab}" Value="notes">
+                                                            <Setter Property="Foreground" Value="{DynamicResource AccentBlueBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                            <Run Text="Notas (" /><Run Text="{Binding Comments.Count, Mode=OneWay}" /><Run Text=")" />
+                                        </TextBlock>
+                                    </Border>
+                                    <!-- Progress tab button -->
+                                    <Border CornerRadius="4" Padding="7,3"
+                                            Tag="progress" MouseDown="OnCardTabClick" Cursor="Hand"
+                                            Visibility="{Binding Launched, Converter={StaticResource BoolToVis}}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="Transparent" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ActiveTab}" Value="progress">
+                                                        <Setter Property="Background">
+                                                            <Setter.Value>
+                                                                <SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.15" />
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="Progresso" FontSize="9" FontWeight="SemiBold" Cursor="Hand">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ActiveTab}" Value="progress">
+                                                            <Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- ══ OVERVIEW TAB ══════════════════════════════════════ -->
+                                <StackPanel>
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ActiveTab}" Value="overview">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+
+                                    <!-- Description -->
+                                    <TextBlock Text="Descrição" FontSize="9" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SubtextBrush}" Margin="0,0,0,3" />
+                                    <TextBox Text="{Binding DraftDescription, UpdateSourceTrigger=PropertyChanged}"
+                                             AcceptsReturn="True" TextWrapping="Wrap"
+                                             MinHeight="48" MaxHeight="120"
+                                             VerticalScrollBarVisibility="Auto"
+                                             FontSize="11"
+                                             Padding="5,4"
+                                             Margin="0,0,0,6"
+                                             Tag="{Binding}"
+                                             KeyDown="OnCardEditorKeyDown">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}" />
+                                        </TextBox.Style>
+                                    </TextBox>
+
+                                    <!-- Instructions -->
+                                    <TextBlock Text="Instruções" FontSize="9" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SubtextBrush}" Margin="0,0,0,3" />
+                                    <TextBox Text="{Binding DraftInstructions, UpdateSourceTrigger=PropertyChanged}"
+                                             AcceptsReturn="True" TextWrapping="Wrap"
+                                             MinHeight="48" MaxHeight="120"
+                                             VerticalScrollBarVisibility="Auto"
+                                             FontSize="10"
+                                             FontFamily="{StaticResource MonoFont}"
+                                             Padding="5,4"
+                                             Margin="0,0,0,6"
+                                             Tag="{Binding}"
+                                             KeyDown="OnCardEditorKeyDown">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}" />
+                                        </TextBox.Style>
+                                    </TextBox>
+
+                                    <!-- Agent pills -->
+                                    <TextBlock Text="Agente" FontSize="9" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SubtextBrush}" Margin="0,0,0,3" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <Border x:Name="AgentClaude" Tag="claude" CornerRadius="10" Padding="7,3" Margin="0,0,3,0"
+                                                Cursor="Hand" MouseDown="OnAgentPillClick">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background">
+                                                        <Setter.Value><SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.5" /></Setter.Value>
+                                                    </Setter>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DraftAgent}" Value="claude">
+                                                            <Setter Property="Background">
+                                                                <Setter.Value><SolidColorBrush Color="{DynamicResource AccentPurple}" Opacity="0.25" /></Setter.Value>
+                                                            </Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="claude" FontSize="9" FontWeight="SemiBold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DraftAgent}" Value="claude">
+                                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                        <Border Tag="codex" CornerRadius="10" Padding="7,3" Margin="0,0,3,0"
+                                                Cursor="Hand" MouseDown="OnAgentPillClick">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.5" /></Setter.Value></Setter>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DraftAgent}" Value="codex">
+                                                            <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.25" /></Setter.Value></Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="codex" FontSize="9" FontWeight="SemiBold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DraftAgent}" Value="codex">
+                                                                <Setter Property="Foreground" Value="{DynamicResource AccentBlueBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                        <Border Tag="aider" CornerRadius="10" Padding="7,3" Margin="0,0,3,0"
+                                                Cursor="Hand" MouseDown="OnAgentPillClick">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.5" /></Setter.Value></Setter>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DraftAgent}" Value="aider">
+                                                            <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{DynamicResource AccentGreen}" Opacity="0.2" /></Setter.Value></Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="aider" FontSize="9" FontWeight="SemiBold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DraftAgent}" Value="aider">
+                                                                <Setter Property="Foreground" Value="{DynamicResource AccentGreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                        <Border Tag="gemini" CornerRadius="10" Padding="7,3" Margin="0,0,3,0"
+                                                Cursor="Hand" MouseDown="OnAgentPillClick">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.5" /></Setter.Value></Setter>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DraftAgent}" Value="gemini">
+                                                            <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{DynamicResource AccentPeach}" Opacity="0.2" /></Setter.Value></Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="gemini" FontSize="9" FontWeight="SemiBold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DraftAgent}" Value="gemini">
+                                                                <Setter Property="Foreground" Value="{DynamicResource AccentPeachBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                        <Border Tag="shell" CornerRadius="10" Padding="7,3"
+                                                Cursor="Hand" MouseDown="OnAgentPillClick">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.5" /></Setter.Value></Setter>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DraftAgent}" Value="shell">
+                                                            <Setter Property="Background"><Setter.Value><SolidColorBrush Color="{DynamicResource AccentYellow}" Opacity="0.2" /></Setter.Value></Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="shell" FontSize="9" FontWeight="SemiBold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DraftAgent}" Value="shell">
+                                                                <Setter Property="Foreground" Value="{DynamicResource AccentYellowBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- Model pills (hidden for shell) -->
+                                    <StackPanel Margin="0,0,0,6">
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DraftAgent}" Value="shell">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Text="Modelo" FontSize="9" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource SubtextBrush}" Margin="0,0,0,3" />
+                                        <ItemsControl ItemsSource="{Binding DraftAgent, Converter={StaticResource AgentToModels}}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border CornerRadius="10" Padding="7,3" Margin="0,0,3,3"
+                                                            Cursor="Hand"
+                                                            Tag="{Binding}"
+                                                            MouseDown="OnModelPillClick">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background">
+                                                                    <Setter.Value><SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.5" /></Setter.Value>
+                                                                </Setter>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Value="True">
+                                                                        <DataTrigger.Binding>
+                                                                            <MultiBinding Converter="{StaticResource StringEquals}">
+                                                                                <Binding />
+                                                                                <Binding Path="DataContext.DraftModel"
+                                                                                         RelativeSource="{RelativeSource AncestorType=ItemsControl}" />
+                                                                            </MultiBinding>
+                                                                        </DataTrigger.Binding>
+                                                                        <Setter Property="Background">
+                                                                            <Setter.Value><SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.28" /></Setter.Value>
+                                                                        </Setter>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock FontSize="9">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Value="True">
+                                                                            <DataTrigger.Binding>
+                                                                                <MultiBinding Converter="{StaticResource StringEquals}">
+                                                                                    <Binding />
+                                                                                    <Binding Path="DataContext.DraftModel"
+                                                                                             RelativeSource="{RelativeSource AncestorType=ItemsControl}" />
+                                                                                </MultiBinding>
+                                                                            </DataTrigger.Binding>
+                                                                            <Setter Property="Foreground" Value="{DynamicResource AccentBlueBrush}" />
+                                                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                            <Run Text="{Binding}" />
+                                                        </TextBlock>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+
+                                    <!-- Color row -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBlock Text="Cor:" FontSize="9" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource SubtextBrush}"
+                                                   VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <Button Width="16" Height="16"
+                                                Cursor="Hand"
+                                                ToolTip="Escolher cor"
+                                                Tag="{Binding}"
+                                                Click="OnCardColorPickerClick"
+                                                Background="Transparent" BorderThickness="0">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Width="16" Height="16" CornerRadius="8"
+                                                            BorderThickness="1.5"
+                                                            BorderBrush="{DynamicResource SubtextBrush}">
+                                                        <Border.Background>
+                                                            <Binding Path="DraftColor" Converter="{StaticResource HexToBrush}" />
+                                                        </Border.Background>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </StackPanel>
+
+                                    <!-- Action row: Save / Cancel / Delete -->
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,2">
+                                        <!-- Delete -->
+                                        <Button Content="Excluir"
+                                                Padding="7,4"
+                                                Margin="0,0,4,0"
+                                                Tag="{Binding}"
+                                                Click="OnDeleteCardClicked"
+                                                Background="Transparent" BorderThickness="0" Cursor="Hand">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="DelBg" CornerRadius="4" Padding="7,4">
+                                                        <Border.Background>
+                                                            <SolidColorBrush Color="{DynamicResource AccentRed}" Opacity="0.12" />
+                                                        </Border.Background>
+                                                        <TextBlock Text="Excluir" FontSize="9"
+                                                                   Foreground="{DynamicResource AccentRedBrush}" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="DelBg" Property="Background">
+                                                                <Setter.Value><SolidColorBrush Color="{DynamicResource AccentRed}" Opacity="0.22" /></Setter.Value>
+                                                            </Setter>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <!-- Cancel -->
+                                        <Button Content="Cancelar"
+                                                Padding="7,4"
+                                                Margin="0,0,4,0"
+                                                Tag="{Binding}"
+                                                Click="OnCancelCardEdit"
+                                                Background="Transparent" BorderThickness="0" Cursor="Hand">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="CancelBg" CornerRadius="4" Padding="7,4">
+                                                        <Border.Background>
+                                                            <SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.5" />
+                                                        </Border.Background>
+                                                        <TextBlock Text="Cancelar" FontSize="9"
+                                                                   Foreground="{DynamicResource SubtextBrush}" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="CancelBg" Property="Background">
+                                                                <Setter.Value><SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.8" /></Setter.Value>
+                                                            </Setter>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                        <!-- Save -->
+                                        <Button Content="Salvar"
+                                                Padding="7,4"
+                                                Tag="{Binding}"
+                                                Click="OnSaveCardEdit"
+                                                Cursor="Hand">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource AccentButton}">
+                                                    <Setter Property="FontSize" Value="9" />
+                                                    <Setter Property="Padding" Value="7,4" />
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- ══ NOTES TAB ═════════════════════════════════════════ -->
+                                <StackPanel MaxHeight="200">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ActiveTab}" Value="notes">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+
+                                    <ScrollViewer MaxHeight="130" VerticalScrollBarVisibility="Auto"
+                                                  Margin="0,0,0,6"
+                                                  x:Name="NotesScrollViewer">
+                                        <ItemsControl ItemsSource="{Binding Comments}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="0,0,0,4" Padding="6,4" CornerRadius="4">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background">
+                                                                    <Setter.Value><SolidColorBrush Color="{DynamicResource Surface2}" Opacity="0.3" /></Setter.Value>
+                                                                </Setter>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsAgentOutput}" Value="True">
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentGreenBrush}" />
+                                                                        <Setter Property="BorderThickness" Value="2,0,0,0" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock Text="{Binding Text}" FontSize="10"
+                                                                   TextWrapping="Wrap"
+                                                                   Foreground="{DynamicResource SubtextBrush}">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsAgentOutput}" Value="True">
+                                                                            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+                                                                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+
+                                    <!-- Add comment input -->
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="4" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 x:Name="NewCommentBox"
+                                                 Tag="{Binding}"
+                                                 Height="24" FontSize="10"
+                                                 Padding="5,3"
+                                                 VerticalContentAlignment="Center"
+                                                 KeyDown="OnNewCommentKeyDown">
+                                            <TextBox.Style>
+                                                <Style TargetType="TextBox" BasedOn="{StaticResource DarkTextBox}" />
+                                            </TextBox.Style>
+                                        </TextBox>
+                                        <Button Grid.Column="2"
+                                                Content="+ Nota"
+                                                Height="24" Padding="6,0"
+                                                Tag="{Binding}"
+                                                Click="OnAddCommentClick"
+                                                Background="Transparent" BorderThickness="0" Cursor="Hand">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="AddNoteBg" CornerRadius="4" Padding="6,0" Height="24">
+                                                        <Border.Background>
+                                                            <SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.15" />
+                                                        </Border.Background>
+                                                        <TextBlock Text="+ Nota" FontSize="9" VerticalAlignment="Center"
+                                                                   Foreground="{DynamicResource AccentBlueBrush}" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="AddNoteBg" Property="Background">
+                                                                <Setter.Value><SolidColorBrush Color="{DynamicResource AccentBlue}" Opacity="0.25" /></Setter.Value>
+                                                            </Setter>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- ══ PROGRESS TAB ══════════════════════════════════════ -->
+                                <StackPanel MaxHeight="200">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ActiveTab}" Value="progress">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+
+                                    <!-- Not launched message -->
+                                    <TextBlock FontSize="10" Foreground="{DynamicResource SubtextBrush}"
+                                               Text="Execute este card para ver atualizações do agente aqui."
+                                               TextWrapping="Wrap" Margin="0,4">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Launched}" Value="False">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto"
+                                                  Visibility="{Binding Launched, Converter={StaticResource BoolToVis}}">
+                                        <ItemsControl x:Name="ProgressList">
+                                            <ItemsControl.ItemsSource>
+                                                <Binding Path="Comments" />
+                                            </ItemsControl.ItemsSource>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="0,0,0,4" Padding="8,6" CornerRadius="6">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                <Setter Property="Background">
+                                                                    <Setter.Value><SolidColorBrush Color="{DynamicResource Surface1}" Opacity="0.6" /></Setter.Value>
+                                                                </Setter>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsAgentOutput}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock Text="{Binding Text}"
+                                                                   FontSize="10"
+                                                                   FontFamily="{StaticResource MonoFont}"
+                                                                   TextWrapping="Wrap"
+                                                                   Foreground="{DynamicResource TextBrush}" />
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </StackPanel>
+
                             </StackPanel>
                         </Border>
                     </StackPanel>

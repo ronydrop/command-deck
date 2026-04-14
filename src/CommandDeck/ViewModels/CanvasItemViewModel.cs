@@ -43,13 +43,6 @@ public abstract partial class CanvasItemViewModel : ObservableObject
     /// <summary>Corner radius override. -1 = use theme default.</summary>
     [ObservableProperty] private double _tileBorderRadius = -1;
 
-    // ─── Group membership (Fase 3.2) ─────────────────────────────────────────
-
-    /// <summary>ID of the group this tile belongs to (null = ungrouped).</summary>
-    [ObservableProperty] private string? _groupId;
-
-    partial void OnGroupIdChanged(string? value) => Model.GroupId = value;
-
     // ─── Connection targets (Fase 3.3) ───────────────────────────────────────
 
     /// <summary>IDs of tiles this tile is visually connected to via Bézier lines.</summary>
@@ -108,7 +101,6 @@ public abstract partial class CanvasItemViewModel : ObservableObject
         _tileLabel = model.TileLabel;
         _hideTitlebar = model.HideTitlebar;
         _tileBorderRadius = model.TileBorderRadius;
-        _groupId = model.GroupId;
 
         foreach (var id in model.ConnectionTargetIds)
             ConnectionTargetIds.Add(id);
@@ -127,6 +119,26 @@ public abstract partial class CanvasItemViewModel : ObservableObject
     partial void OnTileBorderRadiusChanged(double value) => Model.TileBorderRadius = value;
 
     public abstract CanvasItemType ItemType { get; }
+
+    /// <summary>Human-readable title shown in the sidebar block list.</summary>
+    public virtual string DisplayTitle => ItemType switch
+    {
+        CanvasItemType.Terminal          => "Terminal",
+        CanvasItemType.ChatWidget        => "Chat IA",
+        CanvasItemType.CodeEditorWidget  => "Editor de Código",
+        CanvasItemType.BrowserWidget     => "Browser",
+        CanvasItemType.NoteWidget        => "Nota",
+        CanvasItemType.GitWidget         => "Git Status",
+        CanvasItemType.KanbanWidget      => "Kanban",
+        CanvasItemType.ProcessWidget     => "Processos",
+        CanvasItemType.SystemMonitorWidget => "Monitor",
+        CanvasItemType.FileExplorerWidget  => "Explorador",
+        CanvasItemType.ActivityFeedWidget  => "Feed",
+        CanvasItemType.ImageWidget         => "Imagem",
+        CanvasItemType.TokenCounterWidget  => "Token Counter",
+        CanvasItemType.PomodoroWidget      => "Pomodoro",
+        _                                  => ItemType.ToString()
+    };
 
     /// <summary>
     /// When true the item's container applies an inverse ScaleTransform so it

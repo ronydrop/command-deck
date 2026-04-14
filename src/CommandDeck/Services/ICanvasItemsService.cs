@@ -16,8 +16,11 @@ public interface ICanvasItemsService
     /// <summary>All items currently on the canvas (terminals + widgets).</summary>
     ObservableCollection<CanvasItemViewModel> Items { get; }
 
-    /// <summary>Filtered view of only terminal items — used by the sidebar.</summary>
+    /// <summary>Filtered view of only terminal items — used by the left sidebar.</summary>
     ObservableCollection<TerminalCanvasItemViewModel> TerminalItems { get; }
+
+    /// <summary>Filtered view of only chat tile items — used by the right sidebar.</summary>
+    ObservableCollection<ChatCanvasItemViewModel> ChatItems { get; }
 
     /// <summary>The terminal that currently receives keyboard input.</summary>
     TerminalCanvasItemViewModel? ActiveTerminal { get; set; }

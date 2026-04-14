@@ -16,17 +16,17 @@
 
     <!-- ═══════════════════════════════════════════════════════════════════════
          ORB / RADIAL MENU COLORS
-         Catppuccin Mocha palette with alpha — defined here so OrbTooltipStyle
+         MorphDark palette with alpha — defined here so OrbTooltipStyle
          and RadialMenuButtonStyle don't hardcode hex values.
          ═══════════════════════════════════════════════════════════════════════ -->
-    <SolidColorBrush x:Key="OrbTooltipBackgroundBrush"  Color="#CC1E1E2E" />
-    <SolidColorBrush x:Key="OrbTooltipBorderBrush"      Color="#44CBA6F7" />
-    <SolidColorBrush x:Key="OrbTooltipForegroundBrush"  Color="#CDD6F4" />
-    <SolidColorBrush x:Key="RadialBtnFillBrush"         Color="#331E1E2E" />
-    <SolidColorBrush x:Key="RadialBtnStrokeBrush"       Color="#33CBA6F7" />
-    <SolidColorBrush x:Key="RadialBtnFillHoverBrush"    Color="#441E1E2E" />
-    <SolidColorBrush x:Key="RadialBtnStrokeHoverBrush"  Color="#55CBA6F7" />
-    <SolidColorBrush x:Key="RadialBtnFillPressBrush"    Color="#661E1E2E" />
+    <SolidColorBrush x:Key="OrbTooltipBackgroundBrush"  Color="#CC131318" />
+    <SolidColorBrush x:Key="OrbTooltipBorderBrush"      Color="#44C5F467" />
+    <SolidColorBrush x:Key="OrbTooltipForegroundBrush"  Color="#EDEDED" />
+    <SolidColorBrush x:Key="RadialBtnFillBrush"         Color="#33131318" />
+    <SolidColorBrush x:Key="RadialBtnStrokeBrush"       Color="#33C5F467" />
+    <SolidColorBrush x:Key="RadialBtnFillHoverBrush"    Color="#44131318" />
+    <SolidColorBrush x:Key="RadialBtnStrokeHoverBrush"  Color="#55C5F467" />
+    <SolidColorBrush x:Key="RadialBtnFillPressBrush"    Color="#66131318" />
 
     <!-- Easing functions keyed as resources for reuse across animations -->
     <QuadraticEase  x:Key="EaseOut"     EasingMode="EaseOut" />
@@ -95,8 +95,8 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="12,6" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Padding" Value="16,8" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
@@ -104,7 +104,7 @@
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="border"
                             Background="{TemplateBinding Background}"
-                            CornerRadius="8,0,0,8"
+                            CornerRadius="20,0,0,20"
                             Padding="{TemplateBinding Padding}"
                             BorderThickness="0">
                         <ContentPresenter HorizontalAlignment="Center"
@@ -112,10 +112,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="#44FFFFFF" />
+                            <Setter TargetName="border" Property="Background" Value="#33FFFFFF" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="#22FFFFFF" />
+                            <Setter TargetName="border" Property="Background" Value="#1AFFFFFF" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="border" Property="Opacity" Value="0.4" />
@@ -130,8 +130,8 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="8,6" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
@@ -139,7 +139,7 @@
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="border"
                             Background="{TemplateBinding Background}"
-                            CornerRadius="0,8,8,0"
+                            CornerRadius="0,20,20,0"
                             Padding="{TemplateBinding Padding}"
                             BorderThickness="0">
                         <ContentPresenter HorizontalAlignment="Center"
@@ -147,10 +147,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="#44FFFFFF" />
+                            <Setter TargetName="border" Property="Background" Value="#33FFFFFF" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="#22FFFFFF" />
+                            <Setter TargetName="border" Property="Background" Value="#1AFFFFFF" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="border" Property="Opacity" Value="0.4" />
@@ -161,20 +161,20 @@
         </Setter>
     </Style>
 
-    <!-- Layout mode toggle buttons (Canvas / Tiled) — surface-based, distinct from AccentButton -->
+    <!-- Layout mode toggle buttons (Canvas / Tiled) — outlined style similar to secondary action -->
     <Style x:Key="LayoutModeButton" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource SubtextBrush}" />
-        <Setter Property="Opacity" Value="0.65" />
+        <Setter Property="Opacity" Value="0.7" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="Padding" Value="10,5" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="border"
                             Background="{TemplateBinding Background}"
-                            CornerRadius="3"
+                            CornerRadius="6"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center"
                                           VerticalAlignment="Center" />
@@ -266,7 +266,7 @@
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Focusable" Value="False"/>
         <Setter Property="IsTabStop" Value="False"/>
-        <Setter Property="Foreground" Value="#CDD6F4"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         <Setter Property="FontSize" Value="16"/>
         <Setter Property="Template">
             <Setter.Value>

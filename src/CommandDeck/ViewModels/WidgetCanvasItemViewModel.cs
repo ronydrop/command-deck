@@ -493,6 +493,60 @@ public partial class WidgetCanvasItemViewModel : CanvasItemViewModel
         // CardDeleted event handler removes it from the column VM collection
     }
 
+    /// <summary>Adds a manual comment to a card.</summary>
+    public async Task AddCommentAsync(string cardId, string text)
+    {
+        if (_kanbanService is null) return;
+        var comment = new KanbanComment
+        {
+            CardId        = cardId,
+            Text          = text,
+            IsAgentOutput = false,
+            CreatedAt     = DateTime.UtcNow
+        };
+        await _kanbanService.AddCommentAsync(comment).ConfigureAwait(false);
+
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            foreach (var colVm in KanbanColumnViewModels)
+            {
+                var cardVm = colVm.Cards.FirstOrDefault(c => c.Id == cardId);
+                if (cardVm is not null)
+                {
+                    cardVm.Card.Comments.Add(comment);
+                    cardVm.OnPropertyChanged(nameof(KanbanCardViewModel.Comments));
+                    break;
+                }
+            }
+        });
+    }
+
+    /// <summary>Adds prereqCardId as a dependency (CardRef) of dependentCardId.</summary>
+    public async Task AddDependencyAsync(string dependentCardId, string prereqCardId)
+    {
+        if (_kanbanService is null) return;
+
+        KanbanCard? card = null;
+        foreach (var colVm in KanbanColumnViewModels)
+        {
+            var found = colVm.Cards.FirstOrDefault(c => c.Id == dependentCardId);
+            if (found is not null) { card = found.Card; break; }
+        }
+        if (card is null || card.CardRefs.Contains(prereqCardId)) return;
+
+        card.CardRefs.Add(prereqCardId);
+        await _kanbanService.UpdateCardAsync(card).ConfigureAwait(false);
+
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            foreach (var colVm in KanbanColumnViewModels)
+            {
+                var cardVm = colVm.Cards.FirstOrDefault(c => c.Id == dependentCardId);
+                if (cardVm is not null) { cardVm.OnPropertyChanged(nameof(KanbanCardViewModel.HasDeps)); break; }
+            }
+        });
+    }
+
     /// <summary>Adds a new column to the board.</summary>
     public async Task AddColumnAsync(string title)
     {

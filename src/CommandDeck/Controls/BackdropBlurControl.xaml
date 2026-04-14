@@ -21,7 +21,7 @@
         <!-- Semi-transparent tint overlay for depth -->
         <Rectangle x:Name="TintRect" Opacity="0.6">
             <Rectangle.Fill>
-                <SolidColorBrush x:Name="TintBrush" Color="#1E1E2E" />
+                <SolidColorBrush x:Name="TintBrush" Color="#131318" />
             </Rectangle.Fill>
         </Rectangle>
     </Grid>

@@ -46,8 +46,11 @@ public partial class TerminalCanvasViewModel : ObservableObject
     /// <summary>All canvas items (terminals + widgets) bound to the ItemsControl.</summary>
     public ObservableCollection<CanvasItemViewModel> Items => _workspaceService.Items;
 
-    /// <summary>Terminal-only items bound to the right sidebar.</summary>
+    /// <summary>Terminal-only items bound to the left sidebar.</summary>
     public ObservableCollection<TerminalCanvasItemViewModel> TerminalItems => _workspaceService.TerminalItems;
+
+    /// <summary>Chat-only items bound to the right sidebar.</summary>
+    public ObservableCollection<ChatCanvasItemViewModel> ChatItems => _workspaceService.ChatItems;
 
     // ─── Observable state ────────────────────────────────────────────────────
 
@@ -109,6 +112,9 @@ public partial class TerminalCanvasViewModel : ObservableObject
 
     /// <summary>View should animate to focus on this item.</summary>
     public event Action<TerminalCanvasItemViewModel>? FocusItemRequested;
+
+    /// <summary>View should pan/zoom to center on the given item (sidebar block navigation).</summary>
+    public event Action<CanvasItemViewModel>? ScrollToItemRequested;
 
     /// <summary>View should animate to fit all items in the viewport.</summary>
     public event Action? FitAllRequested;
@@ -471,6 +477,10 @@ public partial class TerminalCanvasViewModel : ObservableObject
     {
         FitAllRequested?.Invoke();
     }
+
+    [RelayCommand]
+    private void ScrollToItem(CanvasItemViewModel item)
+        => ScrollToItemRequested?.Invoke(item);
 
     [RelayCommand]
     private async Task SaveLayout()
@@ -1054,63 +1064,6 @@ public partial class TerminalCanvasViewModel : ObservableObject
 
     /// <summary>Fired whenever connections are added or removed — View redraws the Bézier overlay.</summary>
     public event Action? ConnectionsChanged;
-
-    // ─── Tile Grouping (Fase 3.2) ─────────────────────────────────────────────
-
-    /// <summary>All active tile groups on the canvas.</summary>
-    public System.Collections.ObjectModel.ObservableCollection<TileGroup> Groups { get; } = new();
-
-    /// <summary>Groups the currently selected items into a new named group.</summary>
-    public TileGroup? GroupSelected(string label = "Grupo", string color = "#89b4fa")
-    {
-        if (SelectedCount < 2) return null;
-
-        var group = new TileGroup { Label = label, Color = color };
-        foreach (var item in SelectedItems)
-        {
-            // Remove from any existing group
-            if (item.GroupId is not null)
-                GetGroup(item.GroupId)?.MemberIds.Remove(item.Id);
-
-            group.MemberIds.Add(item.Id);
-            item.GroupId = group.Id;
-        }
-        Groups.Add(group);
-        _workspaceService.NotifyChanged();
-        return group;
-    }
-
-    /// <summary>Removes all selected items from their groups.</summary>
-    public void UngroupSelected()
-    {
-        foreach (var item in SelectedItems.ToList())
-        {
-            if (item.GroupId is null) continue;
-            var group = GetGroup(item.GroupId);
-            if (group is not null)
-            {
-                group.MemberIds.Remove(item.Id);
-                if (group.MemberIds.Count == 0)
-                    Groups.Remove(group);
-            }
-            item.GroupId = null;
-        }
-        _workspaceService.NotifyChanged();
-    }
-
-    /// <summary>Returns the group with the given id, or null.</summary>
-    public TileGroup? GetGroup(string groupId)
-        => Groups.FirstOrDefault(g => g.Id == groupId);
-
-    /// <summary>
-    /// Returns all items belonging to the same group as <paramref name="item"/>.
-    /// Used by multi-drag to move group members together.
-    /// </summary>
-    public IEnumerable<CanvasItemViewModel> GetGroupMembers(CanvasItemViewModel item)
-    {
-        if (item.GroupId is null) return Enumerable.Empty<CanvasItemViewModel>();
-        return Items.Where(i => i.GroupId == item.GroupId);
-    }
 
     // ─── Layout Templates (Fase 3.8) ─────────────────────────────────────────
 

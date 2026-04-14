@@ -97,7 +97,7 @@
         </Grid.RowDefinitions>
 
         <!-- Accent strip -->
-        <Border Grid.Row="0" Background="#a6e3a1" CornerRadius="0"/>
+        <Border Grid.Row="0" Background="{DynamicResource AccentBrush}" CornerRadius="0"/>
 
         <!-- ── Toolbar ─────────────────────────────────────────────────────── -->
         <Border Grid.Row="1">

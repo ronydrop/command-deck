@@ -223,8 +223,9 @@ public partial class TerminalCanvasView : UserControl
 
         if (_canvasVm is not null)
         {
-            _canvasVm.FocusItemRequested  += OnFocusItemRequested;
-            _canvasVm.FitAllRequested     += OnFitAllRequested;
+            _canvasVm.FocusItemRequested     += OnFocusItemRequested;
+            _canvasVm.ScrollToItemRequested  += AnimateFocusOnItem;
+            _canvasVm.FitAllRequested        += OnFitAllRequested;
             _canvasVm.ExitFocusModeRequested += OnExitFocusModeRequested;
             _canvasVm.LayoutModeChanged += OnLayoutModeChanged;
             _canvasVm.ConnectionsChanged += RefreshConnectionOverlay;
@@ -268,10 +269,11 @@ public partial class TerminalCanvasView : UserControl
 
         if (_canvasVm is not null)
         {
-            _canvasVm.FocusItemRequested -= OnFocusItemRequested;
-            _canvasVm.FitAllRequested -= OnFitAllRequested;
+            _canvasVm.FocusItemRequested    -= OnFocusItemRequested;
+            _canvasVm.ScrollToItemRequested -= AnimateFocusOnItem;
+            _canvasVm.FitAllRequested       -= OnFitAllRequested;
             _canvasVm.ExitFocusModeRequested -= OnExitFocusModeRequested;
-            _canvasVm.LayoutModeChanged -= OnLayoutModeChanged;
+            _canvasVm.LayoutModeChanged     -= OnLayoutModeChanged;
         }
 
         _momentumTimer?.Stop();
@@ -1020,6 +1022,19 @@ public partial class TerminalCanvasView : UserControl
         }
     }
 
+    private void OnSidebarChatItemClick(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as Border)?.DataContext is ChatCanvasItemViewModel item)
+            _canvasVm?.ScrollToItemCommand.Execute(item);
+    }
+
+    private void OnSidebarChatCloseClick(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true; // prevent OnSidebarChatItemClick from firing
+        if ((sender as FrameworkElement)?.DataContext is ChatCanvasItemViewModel item)
+            _canvasVm?.RemoveItem(item);
+    }
+
     // ─── Widget buttons ───────────────────────────────────────────────────
 
     private void OnToggleGitWidgetClick(object sender, RoutedEventArgs e)
@@ -1605,8 +1620,6 @@ public partial class TerminalCanvasView : UserControl
         CtxSetLabel.Visibility       = hasSelection ? Visibility.Visible : Visibility.Collapsed;
         CtxToggleTitlebar.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;
         CtxConnect.Visibility        = _canvasVm.SelectedCount >= 2 ? Visibility.Visible : Visibility.Collapsed;
-        CtxGroup.Visibility          = _canvasVm.SelectedCount >= 2 ? Visibility.Visible : Visibility.Collapsed;
-        CtxUngroup.Visibility        = hasSelection ? Visibility.Visible : Visibility.Collapsed;
 
         // Apply Widget Catalog visibility
         var catalog = App.Services.GetService(typeof(Services.IWidgetCatalogService)) as Services.IWidgetCatalogService;
@@ -1716,24 +1729,6 @@ public partial class TerminalCanvasView : UserControl
             _canvasVm.AddConnection(items[i], items[i + 1].Id);
         RefreshConnectionOverlay();
     }
-
-    private void OnContextGroup(object sender, RoutedEventArgs e)
-    {
-        if (_canvasVm is null || _canvasVm.SelectedCount < 2) return;
-        var dialog = new TileLabelDialog("Grupo");
-        if (dialog.ShowDialog() == true)
-        {
-            var popup = new ColorPickerPopup();
-            popup.ColorSelected += hex => _canvasVm.GroupSelected(dialog.NewLabel ?? "Grupo", hex);
-            popup.PlacementTarget = ViewportArea;
-            popup.IsOpen = true;
-            if (!popup.IsOpen) // if user dismissed without color, use default
-                _canvasVm.GroupSelected(dialog.NewLabel ?? "Grupo");
-        }
-    }
-
-    private void OnContextUngroup(object sender, RoutedEventArgs e)
-        => _canvasVm?.UngroupSelected();
 
     // ─── Connections overlay ─────────────────────────────────────────────────
 

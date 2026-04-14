@@ -12,7 +12,7 @@ namespace CommandDeck.ViewModels;
 
 /// <summary>
 /// ViewModel for the workspace hierarchy sidebar.
-/// Owns the flat + tree display of WorkspaceNodeModels (groups and projects).
+/// Owns the flat + tree display of WorkspaceNodeModels (workspaces, projects, terminals).
 /// </summary>
 public partial class WorkspaceTreeViewModel : ObservableObject
 {

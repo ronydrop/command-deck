@@ -5,7 +5,7 @@ using CommandDeck.Models;
 namespace CommandDeck.Services;
 
 /// <summary>
-/// Manages the hierarchical workspace tree (groups → projects → terminals).
+/// Manages the hierarchical workspace tree (workspaces → projects → terminals).
 /// Persists to JSON alongside the existing layout JSON.
 /// </summary>
 public interface IWorkspaceTreeService

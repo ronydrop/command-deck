@@ -134,7 +134,7 @@
         <!-- ── Monaco WebView2 ────────────────────────────────────────────── -->
         <Grid Grid.Row="2">
             <!-- Loading overlay -->
-            <Border x:Name="LoadingOverlay" Background="#1e1e2e"
+            <Border x:Name="LoadingOverlay" Background="{DynamicResource CrustBgBrush}"
                     Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" >
                     <TextBlock Text="⌨" FontSize="32" HorizontalAlignment="Center" Opacity="0.4"/>

@@ -3,6 +3,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using CommandDeck.Converters;
 using CommandDeck.ViewModels;
 
 namespace CommandDeck.Controls;
@@ -298,5 +300,200 @@ public partial class KanbanBoardControl : UserControl
         var colVm = GetColumnVm(sender);
         if (colVm is not null)
             colVm.IsDragOver = value;
+    }
+
+    // ── Card editor handlers ──────────────────────────────────────────────────
+
+    private void OnCardTabClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is KanbanCardViewModel cardVm && fe.Tag is string tab)
+            cardVm.ActiveTab = tab;
+        e.Handled = true;
+    }
+
+    private void OnCardEditorKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox tb || tb.Tag is not KanbanCardViewModel cardVm) return;
+        if (DataContext is not WidgetCanvasItemViewModel vm) return;
+
+        if ((Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Enter) ||
+            (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.S))
+        {
+            _ = vm.SaveCardAsync(cardVm.CommitEdit());
+            cardVm.IsExpanded = false;
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            cardVm.BeginEdit();  // revert
+            cardVm.IsExpanded = false;
+            e.Handled = true;
+        }
+    }
+
+    private void OnSaveCardEdit(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement fe || fe.Tag is not KanbanCardViewModel cardVm) return;
+        if (DataContext is not WidgetCanvasItemViewModel vm) return;
+        _ = vm.SaveCardAsync(cardVm.CommitEdit());
+        cardVm.IsExpanded = false;
+        e.Handled = true;
+    }
+
+    private void OnCancelCardEdit(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement fe || fe.Tag is not KanbanCardViewModel cardVm) return;
+        cardVm.BeginEdit();  // revert drafts
+        cardVm.IsExpanded = false;
+        e.Handled = true;
+    }
+
+    private void OnAgentPillClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is KanbanCardViewModel cardVm && fe.Tag is string agent)
+        {
+            cardVm.DraftAgent = agent;
+            // Reset model to first for this agent
+            var models = new AgentToModelsConverter().Convert(agent, typeof(string[]), null, System.Globalization.CultureInfo.InvariantCulture) as string[];
+            cardVm.DraftModel = models?.Length > 0 ? models[0] : string.Empty;
+        }
+        e.Handled = true;
+    }
+
+    private void OnModelPillClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is string model)
+        {
+            // Walk up to find card VM — the DataContext inside ItemsControl item is the string
+            var parent = VisualTreeHelper.GetParent(fe);
+            while (parent is not null)
+            {
+                if (parent is FrameworkElement parentFe && parentFe.DataContext is KanbanCardViewModel cardVm)
+                {
+                    cardVm.DraftModel = model;
+                    break;
+                }
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+        }
+        e.Handled = true;
+    }
+
+    private void OnCardColorPickerClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement fe || fe.Tag is not KanbanCardViewModel cardVm) return;
+
+        var popup = new ColorPickerPopup
+        {
+            PlacementTarget = fe,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom
+        };
+        popup.ColorSelected += hex =>
+        {
+            cardVm.DraftColor = hex ?? string.Empty;
+            // Also update immediately so the accent stripe updates
+            cardVm.Card.Color = hex ?? string.Empty;
+            cardVm.OnPropertyChanged(nameof(KanbanCardViewModel.Color));
+        };
+        popup.IsOpen = true;
+        e.Handled = true;
+    }
+
+    private void OnAddCommentClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement fe || fe.Tag is not KanbanCardViewModel cardVm) return;
+        if (DataContext is not WidgetCanvasItemViewModel vm) return;
+
+        // Find the TextBox for the comment in the visual tree
+        var parent = VisualTreeHelper.GetParent(fe);
+        TextBox? commentBox = null;
+        while (parent is not null)
+        {
+            if (parent is FrameworkElement pfe)
+            {
+                commentBox = FindChild<TextBox>(pfe, "NewCommentBox");
+                if (commentBox is not null) break;
+            }
+            parent = VisualTreeHelper.GetParent(parent);
+        }
+
+        var text = commentBox?.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(text)) return;
+
+        _ = vm.AddCommentAsync(cardVm.Id, text);
+        if (commentBox is not null) commentBox.Text = string.Empty;
+        e.Handled = true;
+    }
+
+    private void OnNewCommentKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        if (sender is not TextBox tb || tb.Tag is not KanbanCardViewModel cardVm) return;
+        if (DataContext is not WidgetCanvasItemViewModel vm) return;
+
+        var text = tb.Text.Trim();
+        if (!string.IsNullOrEmpty(text))
+        {
+            _ = vm.AddCommentAsync(cardVm.Id, text);
+            tb.Text = string.Empty;
+        }
+        e.Handled = true;
+    }
+
+    private static T? FindChild<T>(DependencyObject parent, string name) where T : FrameworkElement
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T fe && fe.Name == name) return fe;
+            var result = FindChild<T>(child, name);
+            if (result is not null) return result;
+        }
+        return null;
+    }
+
+    // ── Card title inline rename ──────────────────────────────────────────────
+
+    private void OnCardTitleMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount < 2) return;
+        if (sender is FrameworkElement fe && fe.Tag is KanbanCardViewModel cardVm)
+        {
+            cardVm.DraftTitle = cardVm.Title;
+            cardVm.IsEditingTitle = true;
+        }
+        e.Handled = true;
+    }
+
+    private void OnCardTitleKeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox tb || tb.Tag is not KanbanCardViewModel cardVm) return;
+        if (DataContext is not WidgetCanvasItemViewModel vm) return;
+
+        if (e.Key == Key.Enter)
+        {
+            var trimmed = cardVm.DraftTitle.Trim();
+            if (trimmed.Length > 0)
+            {
+                cardVm.Card.Title = trimmed;
+                cardVm.OnPropertyChanged(nameof(KanbanCardViewModel.Title));
+                _ = vm.SaveCardAsync(cardVm.Card);
+            }
+            cardVm.IsEditingTitle = false;
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            cardVm.DraftTitle = cardVm.Title;
+            cardVm.IsEditingTitle = false;
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>Auto-focuses and selects-all when the card title TextBox becomes visible.</summary>
+    private void OnCardTitleEditBoxVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if ((bool)e.NewValue && sender is TextBox tb)
+            tb.Dispatcher.BeginInvoke(() => { tb.Focus(); tb.SelectAll(); });
     }
 }

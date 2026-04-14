@@ -162,7 +162,7 @@
                                Margin="0,0,8,0" />
 
                     <!-- Open split button -->
-                    <Border CornerRadius="8" Background="{DynamicResource AccentBrush}"
+                    <Border CornerRadius="20" Background="{DynamicResource AccentBrush}"
                             ClipToBounds="True" Margin="0,0,8,0" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <Button Style="{StaticResource AccentButtonLeft}"
@@ -236,7 +236,7 @@
                     </Border>
 
                     <!-- Commit split button (always visible; disabled when no git info) -->
-                    <Border CornerRadius="8" Background="{DynamicResource AccentGreenBrush}"
+                    <Border CornerRadius="20" Background="{DynamicResource AccentGreenBrush}"
                             ClipToBounds="True" Margin="0,0,8,0" VerticalAlignment="Center"
                             IsEnabled="{Binding DataContext.Dashboard.HasGitInfo,
                                         RelativeSource={RelativeSource AncestorType=Window}}">
@@ -330,7 +330,7 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
 
                     <!-- ── Novo Terminal split button + AI dropdown + Layout toggle (unified group) ── -->
-                    <Border CornerRadius="8" Background="{DynamicResource AccentBrush}" ClipToBounds="True">
+                    <Border CornerRadius="20" Background="{DynamicResource AccentBrush}" ClipToBounds="True">
                         <StackPanel Orientation="Horizontal">
                             <!-- Main: new terminal -->
                             <Button Style="{StaticResource AccentButtonLeft}"
@@ -491,29 +491,6 @@
                     </Border>
 
                     <!-- ── Auto-arrange button ── -->
-                    <Border CornerRadius="4"
-                            Margin="4,0,0,0"
-                            Background="{DynamicResource Surface0Brush}"
-                            BorderBrush="{DynamicResource Surface1Brush}"
-                            BorderThickness="1">
-                    <Button Padding="6,4"
-                            Command="{Binding CanvasViewModel.AutoArrangeCommand}"
-                            ToolTip="Organizar terminais automaticamente"
-                            Cursor="Hand"
-                            Style="{StaticResource LayoutModeButton}">
-                        <!-- Grid/arrange icon (4 arrows pointing outward) -->
-                        <Path Data="M4 1L4 5M1 4L5 4 M16 1L16 5M13 4L17 4 M4 15L4 19M1 16L5 16 M16 15L16 19M13 16L17 16 M7 7H13V13H7Z"
-                              Stroke="{DynamicResource TextBrush}"
-                              StrokeThickness="1.2"
-                              StrokeLineJoin="Round"
-                              StrokeStartLineCap="Round"
-                              StrokeEndLineCap="Round"
-                              Fill="Transparent"
-                              Width="14" Height="14"
-                              Stretch="Uniform"
-                              VerticalAlignment="Center" />
-                    </Button>
-                    </Border>
 
                     <!-- Vertical separator -->
                     <Rectangle Width="1" Height="20"
@@ -618,10 +595,6 @@
                                   Click="OnContextToggleTitlebar"/>
                         <MenuItem x:Name="CtxConnect"        Header="🔗 Conectar Tiles"
                                   Click="OnContextConnect"/>
-                        <MenuItem x:Name="CtxGroup"          Header="🗂 Agrupar Selecionados"
-                                  Click="OnContextGroup"/>
-                        <MenuItem x:Name="CtxUngroup"        Header="🗂 Desagrupar"
-                                  Click="OnContextUngroup"/>
                     </ContextMenu>
                 </Grid.ContextMenu>
 
@@ -853,7 +826,7 @@
 
                     <StackPanel Orientation="Horizontal">
                         <!-- Selection count badge -->
-                        <Border Background="#30cba6f7" CornerRadius="4" Padding="5,1" Margin="0,0,6,0"
+                        <Border Background="#30C5F467" CornerRadius="4" Padding="5,1" Margin="0,0,6,0"
                                 VerticalAlignment="Center">
                             <TextBlock FontSize="11" Foreground="{DynamicResource SubtextBrush}">
                                 <Run Text="{Binding CanvasViewModel.SelectedCount, Mode=OneWay}"/>
@@ -1060,7 +1033,7 @@
                                         ConverterParameter=Invert}"
                             Background="Transparent"
                             Cursor="Hand"
-                            ToolTip="Mostrar painel de terminais (Ctrl+Shift+B)">
+                            ToolTip="Mostrar painel de chats (Ctrl+Shift+B)">
                         <Border.InputBindings>
                             <MouseBinding MouseAction="LeftClick"
                                           Command="{Binding DataContext.ToggleTerminalPanelCommand,
@@ -1073,7 +1046,7 @@
                                 Margin="4,10,0,0"
                                 Command="{Binding DataContext.ToggleTerminalPanelCommand,
                                           RelativeSource={RelativeSource AncestorType=Window}}"
-                                ToolTip="Mostrar painel de terminais">
+                                ToolTip="Mostrar painel de chats">
                             <Path Data="M 7 1 L 3 5 L 7 9"
                                   Stroke="{DynamicResource SubtextBrush}"
                                   StrokeThickness="1.5"
@@ -1118,7 +1091,7 @@
                             </Button>
                             <!-- Icon + label (left) -->
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Path Data="{StaticResource TerminalIcon}"
+                                <Path Data="{StaticResource ChatIcon}"
                                       Stroke="{DynamicResource AccentBrush}"
                                       StrokeThickness="1.5"
                                       StrokeLineJoin="Round"
@@ -1129,7 +1102,7 @@
                                       Width="14" Height="14"
                                       VerticalAlignment="Center"
                                       Margin="0,0,7,0" />
-                                <TextBlock Text="Terminais"
+                                <TextBlock Text="Chats"
                                            Style="{StaticResource CaptionText}"
                                            Foreground="{DynamicResource SubtextBrush}"
                                            FontWeight="SemiBold"
@@ -1278,15 +1251,14 @@
                                Background="{DynamicResource Surface1Brush}"
                                Margin="0" />
 
-                    <!-- ── Terminal list ──────────────────────────────────────────── -->
+                    <!-- ── Chat list ──────────────────────────────────────────────── -->
                     <ScrollViewer VerticalScrollBarVisibility="Auto"
                                   Padding="6,4">
-                        <ItemsControl ItemsSource="{Binding CanvasViewModel.TerminalItems}">
+                        <ItemsControl ItemsSource="{Binding CanvasViewModel.ChatItems}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <!-- Outer container holds accent bar + item body -->
-                                    <Grid Margin="0,2"
-                                          x:Name="SidebarRow">
+                                    <Grid Margin="0,2">
                                         <Grid.ColumnDefinitions>
                                             <!-- 3 px accent bar (left) -->
                                             <ColumnDefinition Width="3" />
@@ -1312,12 +1284,12 @@
 
                                         <!-- Item body -->
                                         <Border Grid.Column="1"
-                                                x:Name="SidebarItem"
+                                                x:Name="ChatSidebarItem"
                                                 CornerRadius="6"
                                                 Padding="8,6"
                                                 Margin="3,0,0,0"
                                                 Cursor="Hand"
-                                                MouseDown="OnSidebarItemClick">
+                                                MouseDown="OnSidebarChatItemClick">
                                             <Border.Style>
                                                 <Style TargetType="Border">
                                                     <Setter Property="Background" Value="Transparent" />
@@ -1336,7 +1308,7 @@
                                                     <BeginStoryboard>
                                                         <Storyboard>
                                                             <DoubleAnimation
-                                                                Storyboard.TargetName="HoverOverlay"
+                                                                Storyboard.TargetName="ChatHoverOverlay"
                                                                 Storyboard.TargetProperty="Opacity"
                                                                 To="1"
                                                                 Duration="0:0:0.150">
@@ -1345,7 +1317,7 @@
                                                                 </DoubleAnimation.EasingFunction>
                                                             </DoubleAnimation>
                                                             <DoubleAnimation
-                                                                Storyboard.TargetName="CloseBtn"
+                                                                Storyboard.TargetName="ChatCloseBtn"
                                                                 Storyboard.TargetProperty="Opacity"
                                                                 To="1"
                                                                 Duration="0:0:0.150" />
@@ -1356,7 +1328,7 @@
                                                     <BeginStoryboard>
                                                         <Storyboard>
                                                             <DoubleAnimation
-                                                                Storyboard.TargetName="HoverOverlay"
+                                                                Storyboard.TargetName="ChatHoverOverlay"
                                                                 Storyboard.TargetProperty="Opacity"
                                                                 To="0"
                                                                 Duration="0:0:0.200">
@@ -1365,7 +1337,7 @@
                                                                 </DoubleAnimation.EasingFunction>
                                                             </DoubleAnimation>
                                                             <DoubleAnimation
-                                                                Storyboard.TargetName="CloseBtn"
+                                                                Storyboard.TargetName="ChatCloseBtn"
                                                                 Storyboard.TargetProperty="Opacity"
                                                                 To="0"
                                                                 Duration="0:0:0.200" />
@@ -1376,7 +1348,7 @@
 
                                             <Grid>
                                                 <!-- Hover background overlay -->
-                                                <Border x:Name="HoverOverlay"
+                                                <Border x:Name="ChatHoverOverlay"
                                                         CornerRadius="6"
                                                         Background="{DynamicResource Surface0Brush}"
                                                         Opacity="0"
@@ -1385,7 +1357,7 @@
 
                                                 <DockPanel>
                                                     <!-- Close button (right-aligned, visible on hover) -->
-                                                    <Button x:Name="CloseBtn"
+                                                    <Button x:Name="ChatCloseBtn"
                                                             DockPanel.Dock="Right"
                                                             Style="{StaticResource GhostButton}"
                                                             Width="20" Height="20"
@@ -1393,8 +1365,8 @@
                                                             Opacity="0"
                                                             VerticalAlignment="Center"
                                                             Margin="4,0,0,0"
-                                                            ToolTip="Fechar terminal"
-                                                            Click="OnSidebarCloseClick">
+                                                            ToolTip="Fechar chat"
+                                                            Click="OnSidebarChatCloseClick">
                                                         <Path Data="M 3 3 L 9 9 M 9 3 L 3 9"
                                                               Stroke="{DynamicResource SubtextBrush}"
                                                               StrokeThickness="1.5"
@@ -1405,7 +1377,7 @@
                                                               Stretch="Uniform" />
                                                     </Button>
 
-                                                    <!-- Status dot -->
+                                                    <!-- Loading dot -->
                                                     <Ellipse DockPanel.Dock="Right"
                                                              Width="6" Height="6"
                                                              VerticalAlignment="Center"
@@ -1415,20 +1387,20 @@
                                                                 <Setter Property="Fill"
                                                                         Value="{DynamicResource Surface2Brush}" />
                                                                 <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding Terminal.IsConnected}"
+                                                                    <DataTrigger Binding="{Binding IsLoading}"
                                                                                  Value="True">
                                                                         <Setter Property="Fill"
-                                                                                Value="{DynamicResource AccentGreenBrush}" />
+                                                                                Value="{DynamicResource AccentBrush}" />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
                                                         </Ellipse.Style>
                                                     </Ellipse>
 
-                                                    <!-- Terminal icon -->
+                                                    <!-- Chat icon -->
                                                     <Path DockPanel.Dock="Left"
-                                                          Data="{StaticResource TerminalIcon}"
-                                                          Stroke="{DynamicResource AccentGreenBrush}"
+                                                          Data="{StaticResource ChatIcon}"
+                                                          Stroke="{DynamicResource AccentBrush}"
                                                           StrokeThickness="1.2"
                                                           StrokeLineJoin="Round"
                                                           StrokeStartLineCap="Round"
@@ -1437,39 +1409,23 @@
                                                           Stretch="Uniform"
                                                           Width="14" Height="14"
                                                           VerticalAlignment="Center"
-                                                          Margin="0,0,8,0">
-                                                        <Path.Style>
-                                                            <Style TargetType="Path">
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                                        <Setter Property="Stroke"
-                                                                                Value="{DynamicResource AccentBrush}" />
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Path.Style>
-                                                    </Path>
+                                                          Margin="0,0,8,0" />
 
-                                                    <!-- Title + shell type -->
+                                                    <!-- Title + provider -->
                                                     <StackPanel VerticalAlignment="Center"
                                                                 Margin="0,0,4,0">
-                                                        <TextBlock Text="{Binding Title}"
+                                                        <TextBlock Text="{Binding ChatTitle}"
                                                                    FontSize="12"
                                                                    Foreground="{DynamicResource TextBrush}"
                                                                    TextTrimming="CharacterEllipsis"
-                                                                   MaxWidth="140" />
-                                                        <TextBlock FontSize="10"
+                                                                   MaxWidth="130" />
+                                                        <TextBlock Text="{Binding SelectedProviderLabel}"
+                                                                   FontSize="10"
                                                                    Foreground="{DynamicResource SubtextBrush}"
                                                                    TextTrimming="CharacterEllipsis"
                                                                    Opacity="0.7"
-                                                                   MaxWidth="140"
-                                                                   Margin="0,1,0,0">
-                                                            <TextBlock.Text>
-                                                                <MultiBinding StringFormat="{}{0}">
-                                                                    <Binding Path="ShellType" />
-                                                                </MultiBinding>
-                                                            </TextBlock.Text>
-                                                        </TextBlock>
+                                                                   MaxWidth="130"
+                                                                   Margin="0,1,0,0" />
                                                     </StackPanel>
                                                 </DockPanel>
                                             </Grid>

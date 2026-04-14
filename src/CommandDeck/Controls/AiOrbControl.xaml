@@ -76,11 +76,11 @@
                      HorizontalAlignment="Center"
                      VerticalAlignment="Center">
                 <Ellipse.Fill>
-                    <SolidColorBrush x:Name="GlowBrush" Color="#CBA6F7" Opacity="0.08" />
+                    <SolidColorBrush x:Name="GlowBrush" Color="#B87FD0" Opacity="0.08" />
                 </Ellipse.Fill>
                 <Ellipse.Effect>
                     <DropShadowEffect x:Name="GlowAuraEffect"
-                                      Color="#CBA6F7"
+                                      Color="#B87FD0"
                                       BlurRadius="24"
                                       ShadowDepth="0"
                                       Opacity="0.8" />
@@ -93,13 +93,13 @@
                      VerticalAlignment="Center">
                 <Ellipse.Fill>
                     <LinearGradientBrush StartPoint="0.2,0" EndPoint="0.8,1">
-                        <GradientStop Color="#E61E1E2E" Offset="0" />
-                        <GradientStop Color="#CC181825" Offset="1" />
+                        <GradientStop Color="#E6131318" Offset="0" />
+                        <GradientStop Color="#CC17171C" Offset="1" />
                     </LinearGradientBrush>
                 </Ellipse.Fill>
                 <Ellipse.Effect>
                     <DropShadowEffect x:Name="OrbGlow"
-                                      Color="#CBA6F7"
+                                      Color="#B87FD0"
                                       BlurRadius="16"
                                       ShadowDepth="0"
                                       Opacity="0.6" />
@@ -119,7 +119,7 @@
                      Width="52" Height="52"
                      HorizontalAlignment="Center"
                      VerticalAlignment="Center"
-                     Stroke="#CBA6F7"
+                     Stroke="#B87FD0"
                      StrokeThickness="2"
                      Fill="Transparent"
                      StrokeDashArray="3 5"
@@ -135,7 +135,7 @@
                      Width="52" Height="52"
                      HorizontalAlignment="Center"
                      VerticalAlignment="Center"
-                     Stroke="#F38BA8"
+                     Stroke="#D988AA"
                      StrokeThickness="2"
                      Fill="Transparent"
                      Visibility="Collapsed" />
@@ -159,7 +159,7 @@
                     <ToolTip Style="{StaticResource OrbTooltipStyle}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="AI Dev Assistant" VerticalAlignment="Center"/>
-                            <TextBlock Text="  Ctrl+Alt+A" Foreground="#88A6ADC8" FontSize="10" VerticalAlignment="Center"/>
+                            <TextBlock Text="  Ctrl+Alt+A" Foreground="#88808088" FontSize="10" VerticalAlignment="Center"/>
                         </StackPanel>
                     </ToolTip>
                 </Button.ToolTip>
@@ -229,7 +229,7 @@
                     <!-- Mic icon (recording) — Lucide "mic" com stroke para visual mais limpo -->
                     <Path x:Name="MicIcon"
                           Data="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z M19 10v2a7 7 0 0 1-14 0v-2 M12 19v3"
-                          Stroke="#F38BA8"
+                          Stroke="#D988AA"
                           StrokeThickness="1.6"
                           StrokeLineJoin="Round"
                           StrokeStartLineCap="Round"
@@ -260,8 +260,8 @@
 
         <!-- Transcription bubble (shown during recording) -->
         <Border x:Name="TranscriptionBubble"
-                Background="#E61E1E2E"
-                BorderBrush="#33CBA6F7"
+                Background="#E6131318"
+                BorderBrush="#33B87FD0"
                 BorderThickness="1"
                 CornerRadius="8"
                 Padding="8,4"
@@ -272,7 +272,7 @@
                 IsHitTestVisible="False"
                 Visibility="{Binding TranscriptionText, Converter={StaticResource StringToVis}}">
             <TextBlock Text="{Binding TranscriptionText}"
-                       Foreground="#CDD6F4"
+                       Foreground="{DynamicResource TextBrush}"
                        FontSize="11"
                        TextWrapping="Wrap"
                        MaxHeight="60" />
@@ -280,8 +280,8 @@
 
         <!-- Status message bubble -->
         <Border x:Name="StatusBubble"
-                Background="#E61E1E2E"
-                BorderBrush="#33A6E3A1"
+                Background="#E6131318"
+                BorderBrush="#33C5F467"
                 BorderThickness="1"
                 CornerRadius="8"
                 Padding="8,4"
@@ -292,21 +292,21 @@
                 IsHitTestVisible="False"
                 Visibility="{Binding StatusMessage, Converter={StaticResource StringToVis}}">
             <TextBlock Text="{Binding StatusMessage}"
-                       Foreground="#A6E3A1"
+                       Foreground="{DynamicResource AccentGreenBrush}"
                        FontSize="11" />
         </Border>
 
         <!-- Suggestion badge — green dot top-right, visible when HasSuggestion=true -->
         <Ellipse x:Name="SuggestionBadge"
                  Width="10" Height="10"
-                 Fill="#A6E3A1"
+                 Fill="{DynamicResource AccentGreenBrush}"
                  HorizontalAlignment="Right"
                  VerticalAlignment="Top"
                  Margin="0,4,4,0"
                  IsHitTestVisible="False"
                  Visibility="{Binding HasSuggestion, Converter={StaticResource BoolToVis}}">
             <Ellipse.Effect>
-                <DropShadowEffect Color="#A6E3A1"
+                <DropShadowEffect Color="#7BCF5A"
                                   BlurRadius="6"
                                   ShadowDepth="0"
                                   Opacity="0.9" />
@@ -335,10 +335,10 @@
                 BorderThickness="1"
                 Visibility="{Binding IsQuickChatOpen, Converter={StaticResource BoolToVis}}">
             <Border.Background>
-                <SolidColorBrush Color="#E01E1E2E" />
+                <SolidColorBrush Color="#E0131318" />
             </Border.Background>
             <Border.BorderBrush>
-                <SolidColorBrush Color="#44CBA6F7" />
+                <SolidColorBrush Color="#44B87FD0" />
             </Border.BorderBrush>
             <Border.Effect>
                 <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.4" Color="#000000"/>
@@ -353,8 +353,8 @@
                          Text="{Binding QuickChatInput, UpdateSourceTrigger=PropertyChanged}"
                          Background="Transparent"
                          BorderThickness="0"
-                         Foreground="#CDD6F4"
-                         CaretBrush="#CBA6F7"
+                         Foreground="{DynamicResource TextBrush}"
+                         CaretBrush="#B87FD0"
                          FontSize="12"
                          Padding="10,8"
                          MinHeight="36"
@@ -370,7 +370,7 @@
                                         <Grid>
                                             <TextBlock x:Name="ph" Text="Pergunte algo ao AI..."
                                                        Padding="10,8" FontSize="12"
-                                                       Foreground="#6C7086"
+                                                       Foreground="{DynamicResource SubtextBrush}"
                                                        VerticalAlignment="Center"
                                                        Visibility="Collapsed"
                                                        IsHitTestVisible="False"/>
@@ -395,13 +395,13 @@
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="Bg" CornerRadius="7" Background="Transparent" Padding="5">
-                                <TextBlock Text="↑" FontSize="14" Foreground="#CBA6F7"
+                                <TextBlock Text="↑" FontSize="14" Foreground="#B87FD0"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="Bg" Property="Background">
-                                        <Setter.Value><SolidColorBrush Color="#44CBA6F7"/></Setter.Value>
+                                        <Setter.Value><SolidColorBrush Color="#44B87FD0"/></Setter.Value>
                                     </Setter>
                                 </Trigger>
                             </ControlTemplate.Triggers>
@@ -415,7 +415,7 @@
         <Border x:Name="TerminalCountBadge"
                 Width="16" Height="16"
                 CornerRadius="8"
-                Background="#A6E3A1"
+                Background="{DynamicResource AccentGreenBrush}"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Margin="0,2,0,0"
@@ -423,7 +423,7 @@
                 Visibility="{Binding ActiveTerminalCount, Converter={StaticResource StringToVis}}">
             <TextBlock Text="{Binding ActiveTerminalCount}"
                        FontSize="8" FontWeight="Bold"
-                       Foreground="#1E1E2E"
+                       Foreground="{DynamicResource CrustBgBrush}"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"/>
         </Border>
