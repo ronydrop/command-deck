@@ -25,6 +25,7 @@ public class ProjectSwitchService : IProjectSwitchService
     private readonly CanvasItemFactory _canvasItemFactory;
     private readonly IEventBusService _eventBus;
     private readonly ITileContextService _tileContext;
+    private readonly IActivityFeedService _activityFeed;
 
     // ViewModels injected lazily to break circular DI chains.
     private readonly Lazy<TerminalCanvasViewModel> _canvasVm;
@@ -42,6 +43,7 @@ public class ProjectSwitchService : IProjectSwitchService
         CanvasItemFactory canvasItemFactory,
         IEventBusService eventBus,
         ITileContextService tileContext,
+        IActivityFeedService activityFeed,
         Lazy<TerminalCanvasViewModel> canvasVm,
         Lazy<DashboardViewModel> dashboardVm,
         Lazy<BrowserViewModel> browserVm,
@@ -53,6 +55,7 @@ public class ProjectSwitchService : IProjectSwitchService
         _canvasItemFactory = canvasItemFactory;
         _eventBus = eventBus;
         _tileContext = tileContext;
+        _activityFeed = activityFeed;
         _canvasVm = canvasVm;
         _dashboardVm = dashboardVm;
         _browserVm = browserVm;
@@ -202,6 +205,8 @@ public class ProjectSwitchService : IProjectSwitchService
                             _canvasItemFactory.CreateFileExplorerItemFromModel(itemModel),
                         CanvasItemType.BrowserWidget =>
                             _canvasItemFactory.CreateBrowserItemFromModel(itemModel),
+                        CanvasItemType.ActivityFeedWidget =>
+                            _canvasItemFactory.CreateActivityFeedItemFromModel(itemModel),
                         _ => null  // WidgetCanvasItemViewModel types are handled by AddWidgetItem
                     };
 
@@ -236,6 +241,8 @@ public class ProjectSwitchService : IProjectSwitchService
             _tileContext.Set(TileContextKeys.ProjectId, project.Id, sourceLabel: "Project");
             _tileContext.Set(TileContextKeys.ProjectName, project.Name, sourceLabel: "Project");
             _tileContext.Set(TileContextKeys.ProjectPath, project.Path, sourceLabel: "Project");
+            _activityFeed.Log(ActivityEntryType.Project, $"Projeto aberto: {project.Name}",
+                detail: project.Path, icon: "📂");
         }
         catch (Exception ex)
         {

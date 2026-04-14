@@ -654,6 +654,7 @@
                         <MenuItem x:Name="CtxAddKanban"        Header="🗂 Kanban"                     Click="OnContextAddKanban"/>
                         <MenuItem x:Name="CtxAddPomodoro"      Header="🍅 Pomodoro"                   Click="OnContextAddPomodoro"/>
                         <MenuItem x:Name="CtxAddTokenCounter"  Header="🔢 Contador de Tokens"         Click="OnContextAddTokenCounter"/>
+                        <MenuItem x:Name="CtxAddActivityFeed"  Header="📋 Activity Feed"               Click="OnContextAddActivityFeed"/>
                         <Separator/>
                         <!-- Canvas actions -->
                         <MenuItem Header="🎯 Centralizar Tudo (Home)" Click="OnContextFitAll"/>
@@ -670,6 +671,10 @@
                                   Click="OnContextToggleTitlebar"/>
                         <MenuItem x:Name="CtxConnect"        Header="🔗 Conectar Tiles"
                                   Click="OnContextConnect"/>
+                        <MenuItem x:Name="CtxGroup"          Header="🗂 Agrupar Selecionados"
+                                  Click="OnContextGroup"/>
+                        <MenuItem x:Name="CtxUngroup"        Header="🗂 Desagrupar"
+                                  Click="OnContextUngroup"/>
                     </ContextMenu>
                 </Grid.ContextMenu>
 

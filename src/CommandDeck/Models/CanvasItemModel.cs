@@ -74,6 +74,9 @@ public class CanvasItemModel
     /// <summary>Border corner radius override. -1 = theme default.</summary>
     public double TileBorderRadius { get; set; } = -1;
 
+    /// <summary>Group ID this tile belongs to (null = ungrouped).</summary>
+    public string? GroupId { get; set; }
+
     // ─── Connection targets (Fase 3.3) ───────────────────────────────────────
 
     /// <summary>IDs of tiles this tile is connected to with a Bézier line.</summary>

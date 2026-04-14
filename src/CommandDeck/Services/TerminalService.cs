@@ -16,6 +16,7 @@ public class TerminalService : ITerminalService, IDisposable
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _closeLocks = new();
     private readonly IEventBusService _eventBus;
     private readonly ITileContextService _tileContext;
+    private readonly IActivityFeedService _activityFeed;
 
     public event Action<string, string>? OutputReceived;
     public event Action<TerminalSession>? SessionCreated;
@@ -24,10 +25,11 @@ public class TerminalService : ITerminalService, IDisposable
     public event Action<string, string>? TitleChanged;
 #pragma warning restore CS0067
 
-    public TerminalService(IEventBusService eventBus, ITileContextService tileContext)
+    public TerminalService(IEventBusService eventBus, ITileContextService tileContext, IActivityFeedService activityFeed)
     {
         _eventBus = eventBus;
         _tileContext = tileContext;
+        _activityFeed = activityFeed;
     }
 
     public async Task<TerminalSession> CreateSessionAsync(
@@ -68,6 +70,8 @@ public class TerminalService : ITerminalService, IDisposable
             _conPtySessions[session.Id] = conPtySession;
             SessionCreated?.Invoke(session);
             _eventBus.Publish(BusEventType.Terminal_SessionCreated, session, source: session.Id);
+            _activityFeed.Log(ActivityEntryType.Terminal, $"Terminal iniciado",
+                detail: session.Title, source: session.Id, icon: "⬛");
 
             // Start reading output asynchronously
             var cts = new CancellationTokenSource();
@@ -101,6 +105,8 @@ public class TerminalService : ITerminalService, IDisposable
                     session.Status = TerminalStatus.Stopped;
                     SessionExited?.Invoke(session.Id);
                     _eventBus.Publish(BusEventType.Terminal_SessionExited, session.Id, source: session.Id);
+                    _activityFeed.Log(ActivityEntryType.Terminal, "Terminal encerrado",
+                        detail: session.Title, source: session.Id, icon: "⬛");
                 }
             });
         }

@@ -532,6 +532,12 @@ public partial class TerminalCanvasViewModel : ObservableObject
         _workspaceService.AddBrowserTile(canvasX, canvasY);
     }
 
+    /// <summary>Adds an Activity Feed tile to the canvas at the given position.</summary>
+    public void AddActivityFeedWidget(double canvasX = 40, double canvasY = 40)
+    {
+        _workspaceService.AddActivityFeedTile(canvasX, canvasY);
+    }
+
     // ─── Multi-selection ─────────────────────────────────────────────────────
 
     /// <summary>All currently selected canvas items (drives accent border on cards).</summary>
@@ -962,5 +968,195 @@ public partial class TerminalCanvasViewModel : ObservableObject
 
     /// <summary>Fired whenever connections are added or removed — View redraws the Bézier overlay.</summary>
     public event Action? ConnectionsChanged;
+
+    // ─── Tile Grouping (Fase 3.2) ─────────────────────────────────────────────
+
+    /// <summary>All active tile groups on the canvas.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<TileGroup> Groups { get; } = new();
+
+    /// <summary>Groups the currently selected items into a new named group.</summary>
+    public TileGroup? GroupSelected(string label = "Grupo", string color = "#89b4fa")
+    {
+        if (SelectedCount < 2) return null;
+
+        var group = new TileGroup { Label = label, Color = color };
+        foreach (var item in SelectedItems)
+        {
+            // Remove from any existing group
+            if (item.GroupId is not null)
+                GetGroup(item.GroupId)?.MemberIds.Remove(item.Id);
+
+            group.MemberIds.Add(item.Id);
+            item.GroupId = group.Id;
+        }
+        Groups.Add(group);
+        _workspaceService.NotifyChanged();
+        return group;
+    }
+
+    /// <summary>Removes all selected items from their groups.</summary>
+    public void UngroupSelected()
+    {
+        foreach (var item in SelectedItems.ToList())
+        {
+            if (item.GroupId is null) continue;
+            var group = GetGroup(item.GroupId);
+            if (group is not null)
+            {
+                group.MemberIds.Remove(item.Id);
+                if (group.MemberIds.Count == 0)
+                    Groups.Remove(group);
+            }
+            item.GroupId = null;
+        }
+        _workspaceService.NotifyChanged();
+    }
+
+    /// <summary>Returns the group with the given id, or null.</summary>
+    public TileGroup? GetGroup(string groupId)
+        => Groups.FirstOrDefault(g => g.Id == groupId);
+
+    /// <summary>
+    /// Returns all items belonging to the same group as <paramref name="item"/>.
+    /// Used by multi-drag to move group members together.
+    /// </summary>
+    public IEnumerable<CanvasItemViewModel> GetGroupMembers(CanvasItemViewModel item)
+    {
+        if (item.GroupId is null) return Enumerable.Empty<CanvasItemViewModel>();
+        return Items.Where(i => i.GroupId == item.GroupId);
+    }
+
+    // ─── Layout Templates (Fase 3.8) ─────────────────────────────────────────
+
+    private static readonly LayoutTemplate[] BuiltInLayoutTemplates =
+    [
+        new() { Id = "2col", Name = "2 Colunas", Icon = "⬛⬛", IsBuiltIn = true,
+            Description = "Dois terminais lado a lado (50/50).",
+            Items = [
+                new() { Type = CanvasItemType.Terminal, RelativeX=0, RelativeY=0, RelativeWidth=0.49, RelativeHeight=0.95 },
+                new() { Type = CanvasItemType.Terminal, RelativeX=0.51, RelativeY=0, RelativeWidth=0.49, RelativeHeight=0.95 },
+            ]},
+        new() { Id = "3col", Name = "3 Colunas", Icon = "⬛⬛⬛", IsBuiltIn = true,
+            Description = "Três terminais em colunas iguais.",
+            Items = [
+                new() { Type = CanvasItemType.Terminal, RelativeX=0, RelativeY=0, RelativeWidth=0.32, RelativeHeight=0.95 },
+                new() { Type = CanvasItemType.Terminal, RelativeX=0.34, RelativeY=0, RelativeWidth=0.32, RelativeHeight=0.95 },
+                new() { Type = CanvasItemType.Terminal, RelativeX=0.68, RelativeY=0, RelativeWidth=0.32, RelativeHeight=0.95 },
+            ]},
+        new() { Id = "focus_sidebar", Name = "Foco + Sidebar", Icon = "⬜◻", IsBuiltIn = true,
+            Description = "Terminal grande à esquerda e Git/Chat à direita.",
+            Items = [
+                new() { Type = CanvasItemType.Terminal, RelativeX=0, RelativeY=0, RelativeWidth=0.65, RelativeHeight=0.95 },
+                new() { Type = CanvasItemType.GitWidget, RelativeX=0.67, RelativeY=0, RelativeWidth=0.33, RelativeHeight=0.45 },
+                new() { Type = CanvasItemType.ChatWidget, RelativeX=0.67, RelativeY=0.5, RelativeWidth=0.33, RelativeHeight=0.45 },
+            ]},
+        new() { Id = "quadrant", Name = "Quadrante", Icon = "⬛⬛\n⬛⬛", IsBuiltIn = true,
+            Description = "Quatro tiles em quadrante (2x2).",
+            Items = [
+                new() { Type = CanvasItemType.Terminal, RelativeX=0, RelativeY=0, RelativeWidth=0.49, RelativeHeight=0.48 },
+                new() { Type = CanvasItemType.Terminal, RelativeX=0.51, RelativeY=0, RelativeWidth=0.49, RelativeHeight=0.48 },
+                new() { Type = CanvasItemType.ChatWidget, RelativeX=0, RelativeY=0.52, RelativeWidth=0.49, RelativeHeight=0.48 },
+                new() { Type = CanvasItemType.GitWidget, RelativeX=0.51, RelativeY=0.52, RelativeWidth=0.49, RelativeHeight=0.48 },
+            ]},
+        new() { Id = "dev_dashboard", Name = "Dev Dashboard", Icon = "📐", IsBuiltIn = true,
+            Description = "Terminal principal com Git, Monitor e Chat.",
+            Items = [
+                new() { Type = CanvasItemType.Terminal, RelativeX=0, RelativeY=0, RelativeWidth=0.65, RelativeHeight=0.65 },
+                new() { Type = CanvasItemType.GitWidget, RelativeX=0.67, RelativeY=0, RelativeWidth=0.33, RelativeHeight=0.32 },
+                new() { Type = CanvasItemType.SystemMonitorWidget, RelativeX=0.67, RelativeY=0.34, RelativeWidth=0.33, RelativeHeight=0.31 },
+                new() { Type = CanvasItemType.ChatWidget, RelativeX=0, RelativeY=0.67, RelativeWidth=0.65, RelativeHeight=0.33 },
+                new() { Type = CanvasItemType.ActivityFeedWidget, RelativeX=0.67, RelativeY=0.67, RelativeWidth=0.33, RelativeHeight=0.33 },
+            ]},
+    ];
+
+    public IReadOnlyList<LayoutTemplate> LayoutTemplates => BuiltInLayoutTemplates;
+
+    /// <summary>
+    /// Applies a layout template to the current canvas.
+    /// Creates new tile items positioned according to the template's relative coordinates,
+    /// scaled to the current viewport size.
+    /// </summary>
+    public void ApplyLayoutTemplate(LayoutTemplate template)
+    {
+        if (ViewportWidth <= 0 || ViewportHeight <= 0) return;
+
+        foreach (var entry in template.Items)
+        {
+            double x = entry.RelativeX * ViewportWidth;
+            double y = entry.RelativeY * ViewportHeight;
+            double w = entry.RelativeWidth * ViewportWidth;
+            double h = entry.RelativeHeight * ViewportHeight;
+
+            switch (entry.Type)
+            {
+                case CanvasItemType.Terminal:
+                    // Adding a terminal requires user interaction — skip in template apply
+                    break;
+                case CanvasItemType.ChatWidget:
+                    var chat = _workspaceService.AddChatTile(x, y);
+                    chat.Width = w; chat.Height = h;
+                    break;
+                case CanvasItemType.CodeEditorWidget:
+                    var editor = _workspaceService.AddCodeEditorTile(x, y);
+                    editor.Width = w; editor.Height = h;
+                    break;
+                case CanvasItemType.FileExplorerWidget:
+                    var fe = _workspaceService.AddFileExplorerTile(x, y);
+                    fe.Width = w; fe.Height = h;
+                    break;
+                case CanvasItemType.BrowserWidget:
+                    var br = _workspaceService.AddBrowserTile(x, y);
+                    br.Width = w; br.Height = h;
+                    break;
+                case CanvasItemType.ActivityFeedWidget:
+                    var af = _workspaceService.AddActivityFeedTile(x, y);
+                    af.Width = w; af.Height = h;
+                    break;
+                default:
+                    var widgetType = entry.Type switch
+                    {
+                        CanvasItemType.GitWidget      => WidgetType.Git,
+                        CanvasItemType.ProcessWidget  => WidgetType.Process,
+                        CanvasItemType.NoteWidget     => WidgetType.Note,
+                        CanvasItemType.SystemMonitorWidget => WidgetType.SystemMonitor,
+                        CanvasItemType.KanbanWidget   => WidgetType.Kanban,
+                        CanvasItemType.PomodoroWidget => WidgetType.Pomodoro,
+                        CanvasItemType.TokenCounterWidget => WidgetType.TokenCounter,
+                        _ => (WidgetType?)null
+                    };
+                    if (widgetType.HasValue)
+                    {
+                        var wgt = _workspaceService.AddWidgetItem(widgetType.Value);
+                        wgt.X = x; wgt.Y = y; wgt.Width = w; wgt.Height = h;
+                    }
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Saves the current canvas layout as a new template.
+    /// </summary>
+    public LayoutTemplate SaveCurrentAsTemplate(string name, string description = "")
+    {
+        var vw = ViewportWidth > 0 ? ViewportWidth : 1200;
+        var vh = ViewportHeight > 0 ? ViewportHeight : 800;
+
+        var items = Items.Select(i => new LayoutTemplateItem
+        {
+            Type = i.ItemType,
+            RelativeX = i.X / vw,
+            RelativeY = i.Y / vh,
+            RelativeWidth = i.Width / vw,
+            RelativeHeight = i.Height / vh
+        }).ToList();
+
+        return new LayoutTemplate
+        {
+            Name = name,
+            Description = description,
+            Items = items
+        };
+    }
 }
 

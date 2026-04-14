@@ -190,6 +190,9 @@ public static class ServiceCollectionExtensions
         // Prompt templates and agent modes
         services.AddSingleton<IPromptTemplateService, PromptTemplateService>();
 
+        // Activity Feed
+        services.AddSingleton<IActivityFeedService, ActivityFeedService>();
+
         // ViewModels for catalog and template picker
         services.AddSingleton<WidgetCatalogViewModel>();
         services.AddSingleton<PromptTemplatePickerViewModel>();

@@ -183,6 +183,18 @@ public sealed class WidgetCatalogService : IWidgetCatalogService
         },
         new()
         {
+            Key = "activity_feed",
+            Name = "Activity Feed",
+            Description = "Log em tempo real de todas as ações do projeto: terminais, git, IA, arquivos e mais.",
+            Icon = "📋",
+            AccentColor = "#94e2d5",
+            Category = "Sistema",
+            IsCore = false,
+            CanvasItemType = CanvasItemType.ActivityFeedWidget,
+            PreviewHint = "Terminal · Git · IA · Browser · Widgets"
+        },
+        new()
+        {
             Key = "image",
             Name = "Imagem",
             Description = "Exibe uma imagem no canvas. Útil para wireframes, diagramas ou referências visuais.",

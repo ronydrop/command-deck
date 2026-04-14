@@ -43,6 +43,13 @@ public abstract partial class CanvasItemViewModel : ObservableObject
     /// <summary>Corner radius override. -1 = use theme default.</summary>
     [ObservableProperty] private double _tileBorderRadius = -1;
 
+    // ─── Group membership (Fase 3.2) ─────────────────────────────────────────
+
+    /// <summary>ID of the group this tile belongs to (null = ungrouped).</summary>
+    [ObservableProperty] private string? _groupId;
+
+    partial void OnGroupIdChanged(string? value) => Model.GroupId = value;
+
     // ─── Connection targets (Fase 3.3) ───────────────────────────────────────
 
     /// <summary>IDs of tiles this tile is visually connected to via Bézier lines.</summary>
@@ -101,6 +108,7 @@ public abstract partial class CanvasItemViewModel : ObservableObject
         _tileLabel = model.TileLabel;
         _hideTitlebar = model.HideTitlebar;
         _tileBorderRadius = model.TileBorderRadius;
+        _groupId = model.GroupId;
 
         foreach (var id in model.ConnectionTargetIds)
             ConnectionTargetIds.Add(id);

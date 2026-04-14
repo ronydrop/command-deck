@@ -26,6 +26,7 @@ public class CanvasItemContentTemplateSelector : DataTemplateSelector
     public DataTemplate? CodeEditorWidgetTemplate { get; set; }
     public DataTemplate? FileExplorerWidgetTemplate { get; set; }
     public DataTemplate? BrowserWidgetTemplate { get; set; }
+    public DataTemplate? ActivityFeedWidgetTemplate { get; set; }
 
     public override DataTemplate? SelectTemplate(object item, DependencyObject container)
     {
@@ -36,6 +37,7 @@ public class CanvasItemContentTemplateSelector : DataTemplateSelector
             CodeEditorCanvasItemViewModel   => CodeEditorWidgetTemplate,
             FileExplorerCanvasItemViewModel => FileExplorerWidgetTemplate,
             BrowserCanvasItemViewModel      => BrowserWidgetTemplate,
+            ActivityFeedCanvasItemViewModel => ActivityFeedWidgetTemplate,
             WidgetCanvasItemViewModel w => w.WidgetType switch
             {
                 WidgetType.Git           => GitWidgetTemplate,

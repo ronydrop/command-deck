@@ -41,7 +41,8 @@ public class CanvasItemFactory
         IDatabaseService db,
         AssistantSettings assistantSettings,
         IEventBusService eventBus,
-        ITileContextService tileContext)
+        ITileContextService tileContext,
+        IActivityFeedService activityFeed)
     {
         _gitService = gitService;
         _processMonitorService = processMonitorService;
@@ -58,6 +59,7 @@ public class CanvasItemFactory
         _assistantSettings = assistantSettings;
         _eventBus = eventBus;
         _tileContext = tileContext;
+        _activityFeed = activityFeed;
     }
 
     // ─── Terminal ───────────────────────────────────────────────────────────────
@@ -243,4 +245,22 @@ public class CanvasItemFactory
     /// <summary>Restores a Browser tile from a persisted <see cref="CanvasItemModel"/>.</summary>
     public BrowserCanvasItemViewModel CreateBrowserItemFromModel(CanvasItemModel model)
         => new(model, _notificationService, _eventBus, _tileContext);
+
+    // ─── Activity Feed ───────────────────────────────────────────────────────────
+
+    private readonly IActivityFeedService _activityFeed;
+
+    public ActivityFeedCanvasItemViewModel CreateActivityFeedItem(double x = 40, double y = 40)
+    {
+        var model = new CanvasItemModel
+        {
+            Type = CanvasItemType.ActivityFeedWidget,
+            X = x, Y = y,
+            Width = 320, Height = 480
+        };
+        return new ActivityFeedCanvasItemViewModel(model, _activityFeed);
+    }
+
+    public ActivityFeedCanvasItemViewModel CreateActivityFeedItemFromModel(CanvasItemModel model)
+        => new(model, _activityFeed);
 }

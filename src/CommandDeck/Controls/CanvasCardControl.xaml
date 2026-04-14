@@ -137,6 +137,12 @@
                 </DataTemplate>
             </ctrl:CanvasItemContentTemplateSelector.BrowserWidgetTemplate>
 
+            <ctrl:CanvasItemContentTemplateSelector.ActivityFeedWidgetTemplate>
+                <DataTemplate DataType="{x:Type vm:ActivityFeedCanvasItemViewModel}">
+                    <ctrl:ActivityFeedWidgetControl DataContext="{Binding}" />
+                </DataTemplate>
+            </ctrl:CanvasItemContentTemplateSelector.ActivityFeedWidgetTemplate>
+
         </ctrl:CanvasItemContentTemplateSelector>
 
     </UserControl.Resources>

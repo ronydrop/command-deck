@@ -205,7 +205,20 @@ public partial class CanvasCardControl : UserControl
         var canvasVm = (Window.GetWindow(this)?.DataContext as ViewModels.MainViewModel)?.CanvasViewModel;
         if (canvasVm is not null && vm.IsSelected && canvasVm.SelectedItems.Count > 1)
         {
-            _multiDragSnapshot = canvasVm.SelectedItems
+            // Include group members if the dragged item is in a group
+            var membersToMove = canvasVm.SelectedItems
+                .Concat(vm.GroupId is not null ? canvasVm.GetGroupMembers(vm) : Enumerable.Empty<CanvasItemViewModel>())
+                .Distinct()
+                .ToList();
+
+            _multiDragSnapshot = membersToMove
+                .Select(s => (Vm: s, X0: s.X, Y0: s.Y))
+                .ToList();
+        }
+        else if (canvasVm is not null && vm.GroupId is not null)
+        {
+            // Dragging an unselected tile that belongs to a group — move the whole group
+            _multiDragSnapshot = canvasVm.GetGroupMembers(vm)
                 .Select(s => (Vm: s, X0: s.X, Y0: s.Y))
                 .ToList();
         }

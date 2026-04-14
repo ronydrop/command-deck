@@ -1537,6 +1537,8 @@ public partial class TerminalCanvasView : UserControl
         CtxSetLabel.Visibility       = hasSelection ? Visibility.Visible : Visibility.Collapsed;
         CtxToggleTitlebar.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;
         CtxConnect.Visibility        = _canvasVm.SelectedCount >= 2 ? Visibility.Visible : Visibility.Collapsed;
+        CtxGroup.Visibility          = _canvasVm.SelectedCount >= 2 ? Visibility.Visible : Visibility.Collapsed;
+        CtxUngroup.Visibility        = hasSelection ? Visibility.Visible : Visibility.Collapsed;
 
         // Apply Widget Catalog visibility
         var catalog = App.Services.GetService(typeof(Services.IWidgetCatalogService)) as Services.IWidgetCatalogService;
@@ -1595,6 +1597,9 @@ public partial class TerminalCanvasView : UserControl
     private void OnContextAddTokenCounter(object sender, RoutedEventArgs e)
         => _canvasVm?.AddTokenCounterWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
 
+    private void OnContextAddActivityFeed(object sender, RoutedEventArgs e)
+        => _canvasVm?.AddActivityFeedWidget(_contextMenuCanvasPoint.X, _contextMenuCanvasPoint.Y);
+
     private void OnContextFitAll(object sender, RoutedEventArgs e)
         => _canvasVm?.RequestFitAll();
 
@@ -1642,6 +1647,24 @@ public partial class TerminalCanvasView : UserControl
             _canvasVm.AddConnection(items[i], items[i + 1].Id);
         RefreshConnectionOverlay();
     }
+
+    private void OnContextGroup(object sender, RoutedEventArgs e)
+    {
+        if (_canvasVm is null || _canvasVm.SelectedCount < 2) return;
+        var dialog = new TileLabelDialog("Grupo");
+        if (dialog.ShowDialog() == true)
+        {
+            var popup = new ColorPickerPopup();
+            popup.ColorSelected += hex => _canvasVm.GroupSelected(dialog.NewLabel ?? "Grupo", hex);
+            popup.PlacementTarget = ViewportArea;
+            popup.IsOpen = true;
+            if (!popup.IsOpen) // if user dismissed without color, use default
+                _canvasVm.GroupSelected(dialog.NewLabel ?? "Grupo");
+        }
+    }
+
+    private void OnContextUngroup(object sender, RoutedEventArgs e)
+        => _canvasVm?.UngroupSelected();
 
     // ─── Connections overlay ─────────────────────────────────────────────────
 
